@@ -24,7 +24,7 @@
         {
             jsc : "../tools/build_scripts/jsc/jsc.py",
             pre_parser : "../tools/pre_parser/pre_parser.py",
-            premake_path : "${premake_path}",
+            premake : "${premake_path}",
         }
     },
 
@@ -58,6 +58,7 @@
 
         // premake
         premake : [
+            "vs_version",   // To genenrate vs sln, the first param must is "vs_version"
             "--renderer=dx11",
             "--platform_dir=win32",
         ],

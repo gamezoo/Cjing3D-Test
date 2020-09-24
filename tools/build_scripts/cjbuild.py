@@ -8,8 +8,15 @@ import time
 import shutil
 import collections
 import subprocess
+import platform
 import utils
 import jsc.jsc as jsc
+
+def get_tools(tool_name, config):
+    tool = utils.path_replace_os_sep(config["tools"][tool_name])
+    if platform.system() == "Windows":
+        tool += ".exe"
+    return tool
 
 ##########################################################################################
 # Task Methods
@@ -28,9 +35,31 @@ def taks_run_libs(config):
         args += config["vs_version"] + " "
         final_cmd = lib_cmd + "\"" + config["vcvarsall_dir"] + "\"" + " " + args
 
-        print(final_cmd)
-        # p = subprocess.Popen(final_cmd, shell=True)
-        # p.wait()
+        p = subprocess.Popen(final_cmd, shell=True)
+        p.wait()
+
+def task_run_premake(config):
+    print("-----------------------------------------------------------------------")
+    print("Task: Premake")
+    print("-----------------------------------------------------------------------")
+    premake_cmd = get_tools("premake", config)
+    if not premake_cmd:
+        print("error: cannot find tool:premake")
+        exit(1)
+    # 遍历添加所有config permake cmd
+    for cmd in config["premake"]:
+        if cmd == "vs_version":
+            cmd = config["vs_version"]
+        premake_cmd += " " + cmd
+    # add env dir
+    if "env_dir" in config.keys():
+        premake_cmd += " --env_dir=\"" + config["env_dir"] + "\""
+    # add sdk version
+    if "sdk_version" in config.keys():
+        premake_cmd += " --sdk_version=\"" + str(config["sdk_version"]) + "\""
+
+    print(premake_cmd)
+    subprocess.call(premake_cmd, shell=True)
 
 def taks_run_copy(config):
     print("-----------------------------------------------------------------------")
@@ -60,7 +89,16 @@ def generate_cjingbuild_config(config, profile):
 
 ##########################################################################################
 
-def ste_user_config_update(key, value, config):
+def check_vs_version(config):
+    vs_version = config["vs_version"]
+    if not utils.check_vs_version(vs_version):
+        print("error: unsupported visual studio version:" + str(version))
+        exit(1)
+    if vs_version == "latest":
+        config["vs_version"] = utils.locate_laste_vs_version()
+        print("set vs version:" + config["vs_version"])
+
+def set_user_config_update(key, value, config):
     config[key] = value
 
     user_cfg = dict()
@@ -90,7 +128,7 @@ def set_user_config_winsdk_version(config, wanted_sdk_version):
             sdk_version = wanted_sdk_version
 
         if sdk_version:
-            ste_user_config_update("sdk_version", sdk_version, config)
+            set_user_config_update("sdk_version", sdk_version, config)
     else:
         print("error:Cannot find one setted Windows SDK")
         print("error:Some task is invalid")
@@ -105,7 +143,7 @@ def set_user_config_vc_vars(config):
     vcvarsall_dir = utils.locate_vcvarall()
     if vcvarsall_dir:
         vcvarsall_dir = os.path.dirname(vcvarsall_dir)
-        ste_user_config_update("vcvarsall_dir", vcvarsall_dir, config)
+        set_user_config_update("vcvarsall_dir", vcvarsall_dir, config)
         return
     else:
         print("error:Cannot find vcvarsall.bat")
@@ -143,6 +181,7 @@ def print_help(config):
     print("task:")
     print("      -all ")
     print("      -libs")
+    print("      -premake")
     print("      -copy")
 
 def main():
@@ -183,12 +222,17 @@ def main():
 
     set_user_config(profile_cfg)
 
+    # check vs version
+    if "vs_version" in profile_cfg:
+        check_vs_version(profile_cfg)
+
    #######################################
     # tasks
     tasks = collections.OrderedDict()
-    tasks["libs"]  = { "run" : taks_run_libs, "exclusive" : True}
-    tasks["copy"]  = { "run" : taks_run_copy}
-    tasks["build"] = { "run" : task_run_build}
+    tasks["libs"]    = { "run" : taks_run_libs, "exclusive" : True}
+    tasks["premake"] = { "run" : task_run_premake}
+    tasks["copy"]    = { "run" : taks_run_copy}
+    tasks["build"]   = { "run" : task_run_build}
 
     # clean总是最先执行，所以独立出来优先处理
     if "-clean" in sys.argv:

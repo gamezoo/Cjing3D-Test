@@ -48,9 +48,36 @@ def locate_winsdk_version_list():
                 return sorted(os.listdir(child_dir), reverse=False)
     return None
 
+def path_replace_os_sep(path):
+    path = path.replace("/", os.sep)
+    path = path.replace("\\", os.sep)
+    return path
+
 #################################################################
 ## vs utils
 #################################################################
+support_vs_version = [
+    "vs2019"
+]
+
+def check_vs_version(vs_version):
+    if vs_version == "latest":
+        return True
+    return vs_version in support_vs_version
+
+def locate_laste_vs_version():
+    vs_root_dir = locate_vs_root()
+    if len(vs_root_dir) <= 0:
+        return ""
+
+    ret = ""
+    versions = sorted(os.listdir(vs_root_dir), reverse=False)
+    for v in versions:
+        vs_version = "vs" + v
+        if vs_version in support_vs_version:
+            ret = vs_version
+    return ret
+
 def locate_vs_root():
     vs_root = ""
     vs_directory_name = "Microsoft Visual Studio"
