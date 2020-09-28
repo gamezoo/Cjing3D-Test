@@ -4,3 +4,5 @@ assets
 tools/build_scripts/__pycache__/utils.cpython-37.pyc
 editor/bin
 editor/build
+src/math/build
+src/math/lib

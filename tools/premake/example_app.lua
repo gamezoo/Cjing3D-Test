@@ -20,9 +20,9 @@ function get_current_script_path()
 end
 
 function create_example_app(project_name, source_directory, root_directory, app_kind)
-    project_dir = root_directory .. "/build/" .. platform_dir
-    target_dir  = root_directory .. "/bin/" .. platform_dir
-    source_dir  = root_directory .. source_directory
+    local project_dir = root_directory .. "/build/" .. platform_dir
+    local target_dir  = root_directory .. "/bin/" .. platform_dir
+    local source_dir  = root_directory .. source_directory
 
     project (project_name)
         location(project_dir)
@@ -36,19 +36,13 @@ function create_example_app(project_name, source_directory, root_directory, app_
         setup_platform()
         setup_project_definines()
 
-        -- dependencies
-        setup_all_dependencies()
-
         -- includes
         includedirs { 
-            -- engine
-            env_dir .. "/src/",
+            -- local
+            project_dir,
 
             -- 3rdParty
             env_dir .. "3rdparty/",
-
-            -- local
-            project_dir,
         }
 
         -- 3rd library
@@ -72,11 +66,11 @@ function create_example_app(project_name, source_directory, root_directory, app_
         -- Debug config
         filter {"configurations:Debug"}
             targetname(project_name)
-            setup_engine_libs("Debug")
+            setup_engine("Debug")
 
         -- Release config
         filter {"configurations:Release"}
             targetname(project_name .. "_d")
-            setup_engine_libs("Release")
+            setup_engine("Release")
         --------------------------------------------------------------
 end

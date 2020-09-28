@@ -1,8 +1,11 @@
 
 #include <iostream>
 
+#include "math\maths.h"
+
+using namespace Cjing3D;
+
 int main()
 {
-    std::cout << "Hello world!" << std::endl;
     return 0;
 }
