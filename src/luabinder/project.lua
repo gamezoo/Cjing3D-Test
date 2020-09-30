@@ -1,6 +1,6 @@
 
 print("-------------------------------------------------------------")
-print("[Engine modulers] Math")
+print("[Engine modulers] LuaBinder")
 print("-------------------------------------------------------------")
 
 local function setup_platform_win32()
@@ -13,7 +13,7 @@ local function setup_platform()
     end 
 end 
 
-project (PROJECT_MATH_NAME)
+project (PROJECT_LUA_BINDER_NAME)
     location("build/" ..  platform_dir)
     objdir("build/" ..  platform_dir .. "/temp")
     kind "StaticLib"
@@ -22,10 +22,10 @@ project (PROJECT_MATH_NAME)
     setup_project_env()
     setup_platform()
     setup_project_definines()
-    targetname(PROJECT_MATH_NAME)
+    targetname(PROJECT_LUA_BINDER_NAME)
 
     -- Files
-    local SOURCE_DIR = "src/math"
+    local SOURCE_DIR = "src/luabinder"
 	files 
 	{ 
         SOURCE_DIR .. "/**.c",
@@ -35,7 +35,7 @@ project (PROJECT_MATH_NAME)
         SOURCE_DIR .. "/**.inl",
     }
     
-    -- Includes
+    -- includes
     includedirs {
         -- local
         SOURCE_DIR,
@@ -44,12 +44,20 @@ project (PROJECT_MATH_NAME)
         "../../3rdparty", 
     }
     
+    -- libdirs
+    libdirs
+    { 
+        "../../3rdparty/lua/lib/" .. platform_dir, 
+    }
+
     -- Debug config
     filter {"configurations:Debug"}
         targetdir ("lib/" .. platform_dir .. "/Debug")
         defines { "DEBUG" }
+        links {"lua_lib_d"}
 
     -- Release config
     filter {"configurations:Release"}
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
+        links {"lua_lib"}
