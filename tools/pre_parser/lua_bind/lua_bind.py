@@ -129,6 +129,10 @@ def parse_jsn_meta_info(jsn, meta_info):
             meta_info.class_base_mapping[class_meta_info["name"]] = list()
 
 def parse_meta_info(input_file_name, meta_info):
+    # 0. make temp dir
+    if not os.path.exists("./temp"):
+        os.makedirs("./temp")
+
     # 1. use cppparser to generate meta.json
     cmd = "..\cppParser.exe"
     cmd += " -i " + input_file_name
@@ -153,6 +157,8 @@ def parse_meta_info(input_file_name, meta_info):
         return
     parse_jsn_meta_info(jsn, meta_info)
 
+    # 3. remove temp json file
+    os.remove(temp_path)
 
 def get_class_register_name(jsn):
     name = jsn["name"]

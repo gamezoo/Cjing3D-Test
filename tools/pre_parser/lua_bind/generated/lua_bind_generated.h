@@ -3,10 +3,24 @@
 
 #include "luabinder\luaBinder.h"
 #include ".\test\geometry.h"
+#include ".\test\intersectable.h"
 
 using namespace Cjing3D;
 
 void luabind_registers_AutoBindFunction(lua_State* l) {
+    LuaBinder(l)
+    .BeginClass<Sphere>("LuaSphere")
+    .AddConstructor(_LUA_ARGS_())
+    .AddConstructor(_LUA_ARGS_(F32x3 ,F32))
+    .EndClass();
+
+    LuaBinder(l)
+    .BeginClass<AABB>("AABB")
+    .AddFunction("CreateFromHalfWidth", &AABB::CreateFromHalfWidth)
+    .AddMethod("GetMin", &AABB::GetMin)
+    .AddMethod("GetMax", &AABB::GetMax)
+    .EndClass();
+
     LuaBinder(l)
     .BeginClass<RectInt>("RectInt")
     .EndClass();
