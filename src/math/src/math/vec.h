@@ -1,6 +1,7 @@
 #pragma once
 
 #include "maths_common.h"
+#include "directXMath.h"
 
 #include <array>
 #include <tuple>

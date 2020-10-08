@@ -1,15 +1,18 @@
 -- definitions
-PROJECT_MATH_NAME  = "Math"
-PROJECT_LUA_BINDER_NAME = "LuaBinder"
+PROJECT_LUA_BINDER_NAME = "luaBinder"
+PROJECT_MATH_NAME       = "math"
+PROJECT_CORE_NAME       = "core"
 
 all_project_table = 
 {
     PROJECT_MATH_NAME,
-    PROJECT_LUA_BINDER_NAME
+    PROJECT_LUA_BINDER_NAME,
+    PROJECT_CORE_NAME,
 }
 
 dependencies_mapping = 
 {
+    [PROJECT_CORE_NAME] = { PROJECT_MATH_NAME }
 }
 
 -----------------------------------------------------------------------------
@@ -18,12 +21,25 @@ dependencies_mapping =
 function setup_dependencies(project_name)
     local dependencies = dependencies_mapping[project_name]
     if dependencies ~= nil then 
-        for _, dependency in iparis(dependencies) do
-            print("dependson", dependency)
+        for _, dependency in ipairs(dependencies) do
             dependson { dependency }
         end 
     end 
 end 
+
+function setup_dependent_libs(project_name, config)
+    local dependencies = dependencies_mapping[project_name]
+    if dependencies ~= nil then 
+        for _, dependency in ipairs(dependencies) do
+            libdirs {"../" .. dependency .. "/lib/" .. config}
+            links {dependency}
+            includedirs {"../" .. dependency .. "/src"}
+        end 
+    end 
+end 
+
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 
 function setup_all_dependencies()
     for _, project_name in ipairs(all_project_table) do 
