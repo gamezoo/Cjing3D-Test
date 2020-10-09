@@ -1,4 +1,4 @@
-#include "jobsystemFiber.h"
+#include "jobsystem.h"
 #include "container\mpmc_bounded_queue.h"
 #include "helper\debug.h"
 #include "helper\logger.h"
@@ -8,6 +8,8 @@
 #include <vector>
 #include <array>
 
+#ifdef CJING3D_PLATFORM_WIN32
+
 namespace Cjing3D
 {
 // job system profile enable
@@ -15,21 +17,32 @@ namespace Cjing3D
 // job system logging level
 #define JOB_SYSTEM_LOGGING_LEVEL (0)
 
-namespace JobSystemFiber
+namespace JobSystem
 {
 	class WorkerThread;
 	class JobFiber;
 
 	// worker wait time
 	static const I32 WORKER_SEMAPHORE_WAITTIME = 100;
-
+	// free job signal count
+	static const U32 HANDLE_ID_MASK = 0xffFF;
+	static const U32 HANDLE_GENERATION_MASK = 0xffFF0000;
+	static const I32 JOB_SIGNAL_COUNT = 512;
 
 	//////////////////////////////////////////////////////////////////////////
 	// ManagerImpl
 	//////////////////////////////////////////////////////////////////////////
-
 	struct ManagerImpl
 	{
+		ManagerImpl()
+		{
+			mCounterPool.resize(JOB_SIGNAL_COUNT);
+			mFreeQueue.Reset(JOB_SIGNAL_COUNT);
+			for (U32 i = 0; i < JOB_SIGNAL_COUNT; ++i) {
+				mFreeQueue.Enqueue(i);
+			}
+		}
+
 		std::vector<WorkerThread*> mWorkerThreads;
 		MPMCBoundedQueue<JobFiber*> mFreeFibers;
 		I32 mFiberStackSize = 0;
@@ -43,12 +56,19 @@ namespace JobSystemFiber
 		std::array<MPMCBoundedQueue<JobInfo>, (I32)Priority::MAX> mPendingJobs;
 		std::array<MPMCBoundedQueue<JobFiber*>, (I32)Priority::MAX> mWaitingFibers;
 
+		// job signals
+		MPMCBoundedQueue<U32> mFreeQueue;
+		std::vector<Counter> mCounterPool;
+
 		// debug infos
 #ifdef DEBUG
 		volatile I32 mNumPendingJobs   = 0;
 		volatile I32 mNumFreeFibers    = 0;
 		volatile I32 mNumWaitingFibers = 0;
 #endif
+		JobHandle AllocateHandle();
+		void ReleaseHandle(JobHandle jobHandle, bool freeHandle);
+		bool IsHandleZero(JobHandle jobHandle);
 
 		bool GetJobFiber(JobFiber** ouputFiber);
 		void ReleaseFiber(JobFiber* fiber, bool complete);
@@ -66,7 +86,7 @@ namespace JobSystemFiber
 
 		static void FiberEntryPointCallback(void* userData)
 		{
-			JobSystemFiber::JobFiber* jobFiber = reinterpret_cast<JobSystemFiber::JobFiber*>(userData);
+			JobSystem::JobFiber* jobFiber = reinterpret_cast<JobSystem::JobFiber*>(userData);
 			while (!jobFiber->mIsExiting || jobFiber->mWorkFiber != nullptr)
 			{
 				// do job
@@ -78,13 +98,16 @@ namespace JobSystemFiber
 				}
 
 				// update counter
-				I32 jobCount = Concurrency::AtomicDecrement(&jobFiber->mJobInfo.mCounter->value_);
-				if (jobCount == 0)
-				{
-					if (jobFiber->mJobInfo.mFreeCounter) {
-						SAFE_DELETE(jobFiber->mJobInfo.mCounter);
-					}
+				if (jobFiber->mJobInfo.mHandle != INVALID_HANDLE) {
+					jobFiber->mManager.ReleaseHandle(jobFiber->mJobInfo.mHandle, jobFiber->mJobInfo.mFreeHandle);
 				}
+				//I32 jobCount = Concurrency::AtomicDecrement(&jobFiber->mJobInfo.mCounter->value_);
+				//if (jobCount == 0)
+				//{
+				//	if (jobFiber->mJobInfo.mFreeCounter) {
+				//		SAFE_DELETE(jobFiber->mJobInfo.mCounter);
+				//	}
+				//}
 
 				Concurrency::AtomicDecrement(&jobFiber->mManager.mJobCount);
 
@@ -149,8 +172,8 @@ namespace JobSystemFiber
 			// convert current thread to fiber
 			Concurrency::Fiber workerFiber(Concurrency::Fiber::THIS_THREAD, "Job worker fiber");
 
-			JobSystemFiber::ManagerImpl& manager = worker->mManager;
-			JobSystemFiber::JobFiber* jobFiber = nullptr;
+			JobSystem::ManagerImpl& manager = worker->mManager;
+			JobSystem::JobFiber* jobFiber = nullptr;
 
 			// 仅当manager.mIsExiting=true时，结束循环
 			while (manager.GetJobFiber(&jobFiber))
@@ -169,7 +192,7 @@ namespace JobSystemFiber
 
 #ifdef JOB_SYSTEM_PROFILE_ENABLE
 #endif
-					bool complete = Concurrency::AtomicExchange(&worker->mMoveToWaitingFlag, 0) != 0;
+					bool complete = Concurrency::AtomicExchange(&worker->mMoveToWaitingFlag, 0) == 0;
 					complete |= jobFiber->mJobInfo.jobFunc_ == nullptr;
 					manager.ReleaseFiber(jobFiber, complete);
 				}
@@ -189,6 +212,47 @@ namespace JobSystemFiber
 		I32 mIndex = -1;
 		bool mExiting = false;
 	};
+
+	JobHandle ManagerImpl::AllocateHandle()
+	{
+		U32 handle = INVALID_HANDLE;
+		if (mFreeQueue.Dequeue(handle))
+		{
+			Counter& counter = mCounterPool[handle & HANDLE_ID_MASK];
+			Concurrency::AtomicExchange(&counter.value_, 0);
+		}
+		return handle;
+	}
+
+	void ManagerImpl::ReleaseHandle(JobHandle jobHandle, bool freeHandle)
+	{
+		if (jobHandle == INVALID_HANDLE) {
+			return;
+		}
+
+		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
+		I32 jobCount = Concurrency::AtomicDecrement(&counter.value_);
+		if (jobCount == 0 && freeHandle)
+		{
+			while (!mFreeQueue.Enqueue(jobHandle & HANDLE_ID_MASK))
+			{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+				Logger::Warning("Failed to enqueue free conunter");
+#endif
+				Concurrency::SwitchToThread();
+			}
+		}
+	}
+
+	bool ManagerImpl::IsHandleZero(JobHandle jobHandle)
+	{
+		if (jobHandle == INVALID_HANDLE) {
+			return true;
+		}
+
+		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
+		return counter.value_ <= 0;
+	}
 
 	bool ManagerImpl::GetJobFiber(JobFiber** ouputFiber)
 	{
@@ -353,7 +417,7 @@ namespace JobSystemFiber
 			gManagerImpl->mFreeFibers.Enqueue(new JobFiber(*gManagerImpl));
 #ifdef DEBUG
 			Concurrency::AtomicIncrement(&gManagerImpl->mNumFreeFibers);
-#endif
+#endif		
 		}
 	}
 
@@ -482,6 +546,169 @@ namespace JobSystemFiber
 		}
 	}
 
+	void RunJob(const JobFunc& job, void* jobData, JobHandle* jobHandle, Priority priority, const std::string& jobName)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		JobSystem::JobInfo jobInfo;
+		jobInfo.jobName = jobName;
+		jobInfo.userParam_ = 0;
+		jobInfo.userData_ = jobData;
+		jobInfo.jobPriority_ = priority;
+		jobInfo.jobFunc_ = job;
+
+		RunJobs(&jobInfo, 1, jobHandle);
+	}
+
+	void RunJobs(I32 jobCount, I32 groupSize, const JobFunc& jobFunc, void* jobData, JobHandle* jobHandle, Priority priority, const std::string& jobName)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		if (jobCount == 0 || groupSize == 0) {
+			return;
+		}
+
+		std::vector<JobInfo> jobInfos;
+		const I32 groupCount = (jobCount + groupSize - 1) / groupSize;
+		for (I32 groupID = 0; groupID < groupCount; groupID++)
+		{
+			I32 groupJobOffset = groupID * groupSize;
+			I32 groupJobEnd = std::min(groupJobOffset + groupSize, jobCount);
+
+			JobSystem::JobInfo jobInfo;
+			jobInfo.jobName = jobName;
+			jobInfo.userParam_ = groupID;
+			jobInfo.userData_ = jobData;
+			jobInfo.jobPriority_ = priority;
+			jobInfo.jobFunc_ = [groupJobOffset, groupJobEnd, jobFunc](I32 param, void* data)
+			{
+				JobGroupArgs groupArg;
+				groupArg.groupID_ = param;
+
+				for (I32 i = groupJobOffset; i < groupJobEnd; i++)
+				{
+					groupArg.groupIndex_ = i - groupJobOffset;
+					groupArg.isFirstJobInGroup_ = (i == groupJobOffset);
+					groupArg.isLastJobInGroup_ = (i == groupJobEnd - 1);
+
+					jobFunc(i, &groupArg);
+				}
+			};
+
+			jobInfos.push_back(jobInfo);
+		}
+
+		RunJobs(jobInfos.data(), jobInfos.size(), jobHandle);
+	}
+
+	void RunJobs(JobInfo* jobInfos, I32 numJobs, JobHandle* jobHandle)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		// allocate counter
+		JobHandle localHandle = [&]() -> JobHandle 
+		{
+			if (!jobHandle) {
+				return INVALID_HANDLE;
+			}
+			if (*jobHandle != INVALID_HANDLE && !gManagerImpl->IsHandleZero(*jobHandle))  {
+				return *jobHandle;
+			}
+			return gManagerImpl->AllocateHandle();
+		}();
+		if (localHandle == INVALID_HANDLE) {
+			return;
+		}
+		if (jobHandle != nullptr) {
+			*jobHandle = localHandle;
+		}
+
+		Concurrency::AtomicAdd(&gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK].value_, numJobs);
+
+		//Counter* localCounter = new Counter();
+		//localCounter->value_ = numJobs;
+		const bool jobShouldFreeHandle = (jobHandle == nullptr);
+
+		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);
+
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+		F64 startTime = Timer::GetAbsoluteTime();
+		const F64 LOG_TIME_THRESHOLD = 100.0f / 1000000.0;    // 100us.
+		const F64 LOG_TIME_REPEAT = 1000.0f / 1000.0;      // 1000ms.
+		F64 nextLogTime = startTime + LOG_TIME_THRESHOLD;
+#endif
+
+		for (int i = 0; i < numJobs; i++)
+		{
+			JobInfo& jobInfo = jobInfos[i];
+			jobInfo.mHandle = localHandle;
+			jobInfo.mFreeHandle = jobShouldFreeHandle;
+			//jobInfo.mCounter = localCounter;
+			//jobInfo.mFreeCounter = jobShouldFreeCounter;
+
+			auto& pendingJobs = gManagerImpl->mPendingJobs[(I32)jobInfo.jobPriority_];
+			while (!pendingJobs.Enqueue(jobInfo))
+			{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+				// log when enqueue job failed
+				F64 currentTime = Timer::GetAbsoluteTime();
+				if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
+				{
+					if (currentTime > nextLogTime)
+					{
+						Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
+						nextLogTime = currentTime + LOG_TIME_REPEAT;
+					}
+				}
+#endif
+				YieldCPU();
+			}
+			// 通知worker去执行job
+			gManagerImpl->mScheduleSem.Signal(1);
+
+#ifdef DEBUG
+			Concurrency::AtomicIncrement(&gManagerImpl->mNumPendingJobs);
+#endif
+		}
+	}
+
+	void Wait(JobHandle* jobHandle, I32 value)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		if (!jobHandle || *jobHandle == INVALID_HANDLE) {
+			return;
+		}
+
+		if (gManagerImpl->IsHandleZero(*jobHandle)) {
+			return;
+		}
+
+		Counter& counter = gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK];
+		while (counter.value_ > value) {
+			YieldCPU();
+		}
+
+		if (value == 0) {
+			while (!gManagerImpl->mFreeQueue.Enqueue(*jobHandle & HANDLE_ID_MASK))
+			{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+				Logger::Warning("Failed to enqueue jobHandle");
+#endif
+				Concurrency::SwitchToThread();
+			}
+			*jobHandle = INVALID_HANDLE;
+		}
+	}
+
 	void YieldCPU()
 	{
 		if (!IsInitialized()) {
@@ -531,80 +758,22 @@ namespace JobSystemFiber
 				YieldCPU();
 			}
 
-			if (value == 0 && freeCounter) {
+			if (value <= 0 && freeCounter) {
 				SAFE_DELETE(counter);
 			}
 		}
 	}
 
-	void RunJobs(JobContext& context)
-	{
-		RunJobs(context.jobInfos_.data(), context.jobInfos_.size(), &context.counter_);
-	}
-
-	void Wait(JobContext& context)
-	{
-		WaitForCounter(context.counter_, 0);
-	}
-
 	ScopedManager::ScopedManager(I32 numThreads, I32 numFibers, I32 fiberStackSize)
 	{
-		JobSystemFiber::Initialize(numThreads, numFibers, fiberStackSize);
+		JobSystem::Initialize(numThreads, numFibers, fiberStackSize);
 	}
 
 	ScopedManager::~ScopedManager()
 	{
-		JobSystemFiber::Uninitialize();
-	}
-
-	void JobContext::Execute(const JobFunc& job, void* jobData, Priority priority, const std::string& jobName)
-	{
-		JobSystemFiber::JobInfo jobInfo;
-		jobInfo.jobName = jobName;
-		jobInfo.userParam_ = jobInfos_.size() + 1;
-		jobInfo.userData_ = jobData;
-		jobInfo.jobFunc_ = job;
-
-		jobInfos_.push_back(jobInfo);
-	}
-
-	void JobContext::Dispatch(I32 jobCount, I32 groupSize, const JobFunc& jobFunc, Priority priority, const std::string& jobName)
-	{
-		DBG_ASSERT(jobInfos_.empty());
-
-		if (jobCount == 0 || groupSize == 0) {
-			return;
-		}
-
-		const I32 groupCount = (jobCount + groupSize - 1) / groupSize;
-		jobGroupArgs_.reserve(groupCount);
-
-		for (I32 groupID = 0; groupID < groupCount; groupID++)
-		{
-			I32 groupJobOffset = groupID * groupSize;
-			I32 groupJobEnd = std::min(groupJobOffset + groupSize, jobCount);
-
-			JobSystemFiber::JobInfo jobInfo;
-			jobInfo.jobName = jobName;
-			jobInfo.userParam_ = groupID;
-			jobInfo.userData_ = &jobGroupArgs_[groupID];
-			jobInfo.jobFunc_ = [groupJobOffset, groupJobEnd, jobFunc](I32 param, void* data)
-			{
-				JobGroupArgs groupArg;
-				groupArg.groupID_ = param;
-
-				for (I32 i = groupJobOffset; i < groupJobEnd; i++)
-				{
-					groupArg.groupIndex_ = i - groupJobOffset;
-					groupArg.isFirstJobInGroup_ = (i == groupJobOffset);
-					groupArg.isLastJobInGroup_ = (i == groupJobEnd - 1);
-
-					jobFunc(i, &groupArg);
-				}
-			};
-
-			jobInfos_.push_back(jobInfo);
-		}
+		JobSystem::Uninitialize();
 	}
 }
 }
+
+#endif

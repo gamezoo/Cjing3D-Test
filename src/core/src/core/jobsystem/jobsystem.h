@@ -4,8 +4,11 @@
 
 namespace Cjing3D
 {
-	namespace JobSystemFiber
+	namespace JobSystem
 	{
+		using JobHandle = U32;
+		constexpr JobHandle INVALID_HANDLE = 0xFFFFFFFF;
+
 		using JobFunc = std::function<void(I32, void*)>;
 
 		enum class Priority
@@ -30,26 +33,20 @@ namespace Cjing3D
 			Priority jobPriority_ = Priority::NORMAL;
 			I32 userParam_ = 0;
 			void* userData_ = nullptr;
+			JobHandle mHandle = INVALID_HANDLE;
+			bool mFreeHandle = false;
+
+			// not use
 			Counter* mCounter = nullptr;
 			bool mFreeCounter = false;
 		};
 
-		struct JobContext
+		struct JobGroupArgs
 		{
-			struct JobGroupArgs
-			{
-				U32 groupID_;		   
-				U32 groupIndex_;	       
-				bool isFirstJobInGroup_;
-				bool isLastJobInGroup_;	
-			};
-
-			std::vector<JobGroupArgs> jobGroupArgs_;
-			std::vector<JobInfo> jobInfos_;
-			Counter* counter_ = nullptr;
-
-			void Execute(const JobFunc& job, void* jobData = nullptr, Priority priority = Priority::NORMAL, const std::string& jobName = "");
-			void Dispatch(I32 jobCount, I32 groupSize, const JobFunc& jobFunc, Priority priority = Priority::NORMAL, const std::string& jobName = "");
+			U32 groupID_;
+			U32 groupIndex_;
+			bool isFirstJobInGroup_;
+			bool isLastJobInGroup_;
 		};
 
 		void Initialize(I32 numThreads, I32 numFibers, I32 fiberStackSize);
@@ -58,13 +55,12 @@ namespace Cjing3D
 		void BeginProfile();
 		void EndProfile();
 		void YieldCPU();
+
+		void RunJob(const JobFunc& job, void* jobData = nullptr, JobHandle* jobHandle = nullptr, Priority priority = Priority::NORMAL, const std::string& jobName = "");
+		void RunJobs(I32 jobCount, I32 groupSize, const JobFunc& jobFunc, void* jobData = nullptr, JobHandle* jobHandle = nullptr, Priority priority = Priority::NORMAL, const std::string& jobName = "");
+		void RunJobs(JobInfo* jobInfos, I32 numJobs, JobHandle* jobHandle = nullptr);
+		void Wait(JobHandle* jobHandle, I32 value = 0);
 		void WaitAll();
-
-		void RunJobs(JobInfo* jobInfos, I32 numJobs, Counter** counter = nullptr);
-		void WaitForCounter(Counter* counter, I32 value = 0, bool freeCounter = true);
-
-		void RunJobs(JobContext& context);
-		void Wait(JobContext& context);
 
 		class ScopedManager
 		{

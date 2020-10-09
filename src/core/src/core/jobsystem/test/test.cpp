@@ -1,5 +1,5 @@
 
-#include "jobsystem\jobsystemFiber.h"
+#include "jobsystem\jobsystem.h"
 #include "jobsystem\concurrency.h"
 
 #include "math\maths.h"
@@ -46,11 +46,11 @@ namespace
             jobDatas[i] = i;
         }
 
-        std::vector<JobSystemFiber::JobInfo> jobInfos;
+        std::vector<JobSystem::JobInfo> jobInfos;
         jobInfos.reserve(jobCount);
         for (I32 i = 0; i < jobCount; i++)
         {
-            JobSystemFiber::JobInfo jobInfo;
+            JobSystem::JobInfo jobInfo;
             jobInfo.jobName = "TestFunc";
             jobInfo.userParam_ = i + 1;
             jobInfo.userData_ = jobDatas.data();
@@ -62,11 +62,11 @@ namespace
             jobInfos.push_back(jobInfo);
         }
 
-        JobSystemFiber::Counter* counter = nullptr;
+        JobSystem::JobHandle handle = JobSystem::INVALID_HANDLE;
         F64 timeStart = Timer::GetAbsoluteTime();
-        JobSystemFiber::RunJobs(jobInfos.data(), jobInfos.size(), &counter);
+        JobSystem::RunJobs(jobInfos.data(), jobInfos.size(), &handle);
         F64 runDeltaTime = Timer::GetAbsoluteTime() - timeStart;
-        JobSystemFiber::WaitForCounter(counter);
+        JobSystem::Wait(&handle);
         F64 totalTime = Timer::GetAbsoluteTime() - timeStart;
         F64 waitDelatTime = totalTime - runDeltaTime;
 
@@ -78,59 +78,116 @@ namespace
         Logger::Print("\tTotal: %f ms (%f ms. avg)", totalTime / 1000.0, totalTime / 1000.0 / (double)jobCount);
         Logger::Print("***************************************************************************");
     }
+
+
+    void JobTest2(I32 jobCount, const char* name)
+    {
+        JobSystem::JobHandle handle = JobSystem::INVALID_HANDLE;
+        F64 timeStart = Timer::GetAbsoluteTime();
+        JobSystem::RunJob([&](I32 param, void* data) {
+            
+            for (I32 i = 0; i < jobCount; i++)
+            {
+                JobSystem::JobHandle localHandle = JobSystem::INVALID_HANDLE;
+                JobSystem::RunJob([&](I32 param, void* data) {
+                        CalculatePrimes(100);
+                    }, 
+                    nullptr, & localHandle);
+                JobSystem::Wait(&localHandle);
+            }
+
+        }, nullptr, &handle);
+  
+        F64 runDeltaTime = Timer::GetAbsoluteTime() - timeStart;
+        JobSystem::Wait(&handle);
+        F64 totalTime = Timer::GetAbsoluteTime() - timeStart;
+        F64 waitDelatTime = totalTime - runDeltaTime;
+
+        Concurrency::ScopedMutex lock(loggingMutex);
+        Logger::Print("***************************************************************************");
+        Logger::Print("\"%s\"", name);
+        Logger::Print("\tRubJobs: %f ms", runDeltaTime / 1000.0);
+        Logger::Print("\tWaitForCounter: %f ms ", waitDelatTime / 1000.0);
+        Logger::Print("\tTotal: %f ms", totalTime / 1000.0);
+        Logger::Print("***************************************************************************");
+    }
 }
 
-TEST_CASE("jobsystem-worker-1-job-1", "[jobsystem]")
+TEST_CASE("jobsystem-test2-worker-1-job-10", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
-    JobTest(1, "jobsystem-worker-1-job-1");
+    JobSystem::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobTest2(5000, "jobsystem-test2-worker-1-job-10");
+}
+
+TEST_CASE("jobsystem-test2-worker-1-job-10", "[jobsystem]")
+{
+    JobSystem::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobTest2(10, "jobsystem-test2-worker-1-job-10");
+}
+
+TEST_CASE("jobsystem-test2-worker-1-job-50", "[jobsystem]")
+{
+    JobSystem::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobTest2(50, "jobsystem-test2-worker-1-job-50");
+}
+
+TEST_CASE("jobsystem-test2-worker-4-job-10", "[jobsystem]")
+{
+    JobSystem::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobTest2(10, "jobsystem-test2-worker-4-job-10");
+}
+
+TEST_CASE("jobsystem-test2-worker-4-job-50", "[jobsystem]")
+{
+    JobSystem::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobTest2(50, "jobsystem-test2-worker-4-job-50");
 }
 
 TEST_CASE("jobsystem-worker-4-job-1", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(1, "jobsystem-worker-4-job-1");
 }
 
 TEST_CASE("jobsystem-worker-8-job-1", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(1, "jobsystem-worker-8-job-1");
 }
 
 TEST_CASE("jobsystem-worker-1-job-100", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(100, "jobsystem-worker-1-job-100");
 }
 
 TEST_CASE("jobsystem-worker-4-job-100", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(100, "jobsystem-worker-4-job-100");
 }
 
 TEST_CASE("jobsystem-worker-8-job-100", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(100, "jobsystem-worker-8-job-100");
 }
 
 
 TEST_CASE("jobsystem-worker-1-job-1000", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(1, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(1000, "jobsystem-worker-1-job-1000");
 }
 
 TEST_CASE("jobsystem-worker-4-job-1000", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(4, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(1000, "jobsystem-worker-4-job-1000");
 }
 
 TEST_CASE("jobsystem-worker-8-job-1000", "[jobsystem]")
 {
-    JobSystemFiber::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+    JobSystem::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(1000, "jobsystem-worker-8-job-1000");
 }

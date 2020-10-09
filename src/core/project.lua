@@ -16,7 +16,7 @@ end
 project (PROJECT_CORE_NAME)
     location("build/" ..  platform_dir)
     objdir("build/" ..  platform_dir .. "/temp")
-    kind "ConsoleApp"
+    kind "StaticLib"
     language "C++"
     conformanceMode(true)
     setup_project_env()
