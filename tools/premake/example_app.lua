@@ -1,4 +1,3 @@
-
 local function setup_platform_win32()
     systemversion(windows_sdk_version())
 end 
@@ -20,6 +19,10 @@ function get_current_script_path()
 end
 
 function create_example_app(project_name, source_directory, root_directory, app_kind)
+    print("-------------------------------------------------------------")
+    print("[APP]")
+    print("-------------------------------------------------------------")
+
     local project_dir = root_directory .. "/build/" .. platform_dir
     local target_dir  = root_directory .. "/bin/" .. platform_dir
     local source_dir  = root_directory .. source_directory

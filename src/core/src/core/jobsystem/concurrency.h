@@ -196,5 +196,23 @@ namespace Concurrency
 		volatile I32 mLockedFlag = 0;
 	};
 
+	class ScopedSpinLock final
+	{
+	public:
+		ScopedSpinLock(SpinLock& spinLock)
+			: mSpinLock(spinLock)
+		{
+			mSpinLock.Lock();
+		}
+
+		~ScopedSpinLock() { mSpinLock.Unlock(); }
+
+	private:
+		ScopedSpinLock(const ScopedSpinLock&) = delete;
+		ScopedSpinLock(ScopedSpinLock&&) = delete;
+
+		SpinLock& mSpinLock;
+	};
+
 }
 }

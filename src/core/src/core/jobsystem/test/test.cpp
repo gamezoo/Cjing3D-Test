@@ -6,7 +6,7 @@
 #include "helper\timer.h"
 #include "helper\logger.h"
 
-#define CATCH_CONFIG_MAIN
+//#define CATCH_CONFIG_MAIN
 #include "catch\catch.hpp"
 
 using namespace Cjing3D;

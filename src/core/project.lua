@@ -47,14 +47,22 @@ project (PROJECT_CORE_NAME)
         "../../3rdparty", 
     }
     
+    -- libdirs
+    libdirs
+    { 
+        "../../3rdparty/physfs_3.0.2/lib", 
+    }
+
     -- Debug config
     filter {"configurations:Debug"}
         targetdir ("lib/" .. platform_dir .. "/Debug")
         defines { "DEBUG" }
         setup_dependent_libs(PROJECT_CORE_NAME, "Debug")
+        links {"physfs-static-debug"}
 
     -- Release config
     filter {"configurations:Release"}
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
         setup_dependent_libs(PROJECT_CORE_NAME, "Release")
+        links {"physfs-static"}
