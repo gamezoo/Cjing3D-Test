@@ -1,6 +1,7 @@
 #pragma once
 
-#include "jobsystem\concurrency.h"
+#include "core\jobsystem\concurrency.h"
+#include "core\memory\memory.h"
 
 /*  Multi-producer/multi-consumer bounded queue.
  *  Copyright (c) 2010-2011, Dmitry Vyukov. All rights reserved.
@@ -30,7 +31,7 @@ namespace Cjing3D
 		MPMCBoundedQueue() = default;
 
 		MPMCBoundedQueue(I32 size) :
-			mBuffer(new Cell[size]),
+			mBuffer(CJING_NEW_ARR(Cell, size)),
 			mBufferMask(size - 1)
 		{
 			assert((size >= 2) && ((size & (size - 1)) == 0));
@@ -61,16 +62,16 @@ namespace Cjing3D
 
 		~MPMCBoundedQueue()
 		{
-			SAFE_DELETE_ARRAY(mBuffer);
+			CJING_DELETE_ARR(mBuffer, mBufferMask + 1);
 		}
 
 		void Reset(I32 size)
 		{
 			if (mBuffer != nullptr) {
-				SAFE_DELETE_ARRAY(mBuffer);
+				CJING_DELETE_ARR(mBuffer, mBufferMask + 1);
 			}
 
-			mBuffer = new Cell[size];
+			mBuffer = CJING_NEW_ARR(Cell, size);
 			mBufferMask = size - 1;
 
 			Concurrency::Barrier();

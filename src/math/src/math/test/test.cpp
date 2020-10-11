@@ -1,5 +1,5 @@
 
-#include "maths.h"
+#include "math\maths.h"
 
 #define CATCH_CONFIG_MAIN
 #include "catch\catch.hpp"

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common\common.h"
-#include "filesystem\path.h"
+#include "core\common\common.h"
+#include "core\filesystem\path.h"
 
 namespace Cjing3D 
 {

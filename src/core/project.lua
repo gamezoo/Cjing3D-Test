@@ -28,7 +28,7 @@ project (PROJECT_CORE_NAME)
     setup_dependencies(PROJECT_CORE_NAME)
 
     -- Files
-    local SOURCE_DIR = "src/" .. PROJECT_CORE_NAME
+    local SOURCE_DIR = "src"
 	files 
 	{ 
         SOURCE_DIR .. "/**.c",

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "signal\event.h"
-#include "signal\signal.h"
+#include "core\signal\event.h"
+#include "core\signal\signal.h"
 
 #include <functional>
 

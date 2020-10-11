@@ -25,7 +25,7 @@ project (PROJECT_MATH_NAME)
     targetname(PROJECT_MATH_NAME)
 
     -- Files
-    local SOURCE_DIR = "src/math"
+    local SOURCE_DIR = "src"
 	files 
 	{ 
         SOURCE_DIR .. "/**.c",

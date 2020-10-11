@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common\definitions.h"
-#include "jobsystem\concurrency.h"
+#include "core\common\definitions.h"
+#include "core\jobsystem\concurrency.h"
 
 #include <memory>
 #include <functional>

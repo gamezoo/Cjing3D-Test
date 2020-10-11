@@ -25,7 +25,7 @@ project (PROJECT_LUA_BINDER_NAME)
     targetname(PROJECT_LUA_BINDER_NAME)
 
     -- Files
-    local SOURCE_DIR = "src/luabinder"
+    local SOURCE_DIR = "src"
 	files 
 	{ 
         SOURCE_DIR .. "/**.c",

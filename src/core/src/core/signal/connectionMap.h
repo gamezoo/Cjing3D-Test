@@ -1,9 +1,9 @@
 #pragma once
 
-#include "signal\signalInclude.h"
-#include "signal\connection.h"
-#include "signal\signal.h"
-#include "helper\stringID.h"
+#include "core\signal\signalInclude.h"
+#include "core\signal\connection.h"
+#include "core\signal\signal.h"
+#include "core\helper\stringID.h"
 
 namespace Cjing3D
 {

@@ -1,15 +1,15 @@
 #include "timer.h"
 #include "debug.h"
-#include "platform\platform.h"
+#include "core\platform\platform.h"
+
+#include <chrono>
 
 #ifndef CJING3D_PLATFORM_WIN32
-#include <chrono>
 std::chrono::time_point<std::chrono::high_resolution_clock> CounterStart;
 std::atomic_flag initialized = ATOMIC_FLAG_INIT;
 #endif
 
 namespace Cjing3D {
-
 
 #ifdef CJING3D_PLATFORM_WIN32
 	F64 mFrequency = 0;
@@ -103,6 +103,17 @@ namespace Cjing3D {
 		}
 
 		return { mDeltaTime, mTotalDeltaTime };
+	}
+
+	std::string Timer::GetSystemTimeString()
+	{
+		auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		tm ptm;
+		localtime_s(&ptm, &tt);
+		char date[60] = { 0 };
+		sprintf_s(date, "%02d:%02d:%02d ",
+			(int)ptm.tm_hour, (int)ptm.tm_min, (int)ptm.tm_sec);
+		return std::string(date);
 	}
 
 	TimeStamp Timer::GetAbsoluteTime()

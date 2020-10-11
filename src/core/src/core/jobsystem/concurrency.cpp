@@ -1,6 +1,7 @@
 #include "concurrency.h"
-#include "platform\platform.h"
-#include "helper\debug.h"
+#include "core\platform\platform.h"
+#include "core\helper\debug.h"
+#include "core\memory\memory.h"
 
 #ifdef CJING3D_PLATFORM_WIN32
 #include <array>
@@ -236,7 +237,7 @@ namespace Concurrency
 	Thread::Thread(EntryPointFunc entryPointFunc, void* userData, I32 stackSize, std::string debugName)
 	{
 #ifdef CJING3D_PLATFORM_WIN32
-		mImpl = new ThreadImpl();
+		mImpl = CJING_NEW(ThreadImpl);
 		mImpl->entryPointFunc_ = entryPointFunc;
 		mImpl->userData_ = userData;
 		mImpl->threadHandle_ = ::CreateThread(nullptr, stackSize, ThreadEntryPoint, mImpl, 0, &mImpl->threadID_);
@@ -287,7 +288,7 @@ namespace Concurrency
 			DWORD exitCode = 0;
 			::GetExitCodeThread(mImpl->threadHandle_, &exitCode);
 			::CloseHandle(mImpl->threadHandle_);
-			SAFE_DELETE(mImpl);
+			CJING_SAFE_DELETE(mImpl);
 			return exitCode;
 		}
 		return 0;
@@ -303,6 +304,7 @@ namespace Concurrency
 
 	Mutex::Mutex()
 	{
+		// mutex use default new
 		mImpl = new MutexImpl();
 		::InitializeCriticalSection(&mImpl->critSec_);
 	}
@@ -312,7 +314,9 @@ namespace Concurrency
 		if (mImpl != nullptr)
 		{
 			::DeleteCriticalSection(&mImpl->critSec_);
-			SAFE_DELETE(mImpl);
+
+			// mutex use default delete
+			delete mImpl;
 		}
 	}
 	void Mutex::Lock()
@@ -403,7 +407,7 @@ namespace Concurrency
 	// create fiber by entryPointFunc
 	Fiber::Fiber(EntryPointFunc entryPointFunc, void* userData, I32 stackSize, std::string debugName)
 	{
-		mImpl = new FiberImpl();
+		mImpl = CJING_NEW(FiberImpl);
 		mImpl->entryPointFunc_ = entryPointFunc;
 		mImpl->userData_ = userData;
 		mImpl->parent_ = this;
@@ -411,14 +415,14 @@ namespace Concurrency
 		mImpl->debugName_ = debugName;
 
 		if (mImpl == nullptr) {
-			SAFE_DELETE(mImpl);
+			CJING_SAFE_DELETE(mImpl);
 		}
 	}
 
 	// conver current thread to fiber
 	Fiber::Fiber(ThisThread, std::string debugName)
 	{
-		mImpl = new FiberImpl();
+		mImpl = CJING_NEW(FiberImpl);
 		mImpl->entryPointFunc_ = nullptr;
 		mImpl->userData_ = nullptr;
 		mImpl->parent_ = this;
@@ -426,7 +430,7 @@ namespace Concurrency
 		mImpl->debugName_ = debugName;
 
 		if (mImpl == nullptr) {
-			SAFE_DELETE(mImpl);
+			CJING_SAFE_DELETE(mImpl);
 		}
 	}
 
@@ -442,7 +446,7 @@ namespace Concurrency
 			{
 				::ConvertFiberToThread();
 			}
-			SAFE_DELETE(mImpl);
+			CJING_SAFE_DELETE(mImpl);
 		}
 	}
 
@@ -505,7 +509,7 @@ namespace Concurrency
 
 	Semaphore::Semaphore(I32 initialCount, I32 maximumCount, const std::string& debugName)
 	{
-		mImpl = new SemaphoreImpl();
+		mImpl = CJING_NEW(SemaphoreImpl);
 		mImpl->handle_ = ::CreateSemaphore(nullptr, initialCount, maximumCount, nullptr);
 		mImpl->debugName_ = debugName;
 	}
@@ -513,7 +517,7 @@ namespace Concurrency
 	Semaphore::~Semaphore()
 	{
 		::CloseHandle(mImpl->handle_);
-		SAFE_DELETE(mImpl);
+		CJING_SAFE_DELETE(mImpl);
 	}
 
 	bool Semaphore::Signal(I32 count)

@@ -69,11 +69,13 @@ function create_example_app(project_name, source_directory, root_directory, app_
         -- Debug config
         filter {"configurations:Debug"}
             targetname(project_name)
+            defines { "DEBUG" }
             setup_engine("Debug")
 
         -- Release config
         filter {"configurations:Release"}
             targetname(project_name .. "_d")
+            defines { "NDEBUG" }
             setup_engine("Release")
         --------------------------------------------------------------
 end

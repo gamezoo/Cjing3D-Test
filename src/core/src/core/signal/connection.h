@@ -1,6 +1,6 @@
 #pragma once
 
-#include "signal\signalInclude.h"
+#include "core\signal\signalInclude.h"
 
 namespace Cjing3D
 {

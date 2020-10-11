@@ -1,7 +1,7 @@
 #include "path.h"
-#include "string\stringUtils.h"
-#include "platform\platform.h"
-#include "filesystem\filesystem.h"
+#include "core\string\stringUtils.h"
+#include "core\platform\platform.h"
+#include "core\filesystem\filesystem.h"
 
 namespace Cjing3D
 {

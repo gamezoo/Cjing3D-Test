@@ -1,10 +1,10 @@
 
-#include "jobsystem\jobsystem.h"
-#include "jobsystem\concurrency.h"
+#include "core\jobsystem\jobsystem.h"
+#include "core\jobsystem\concurrency.h"
 
 #include "math\maths.h"
-#include "helper\timer.h"
-#include "helper\logger.h"
+#include "core\helper\timer.h"
+#include "core\helper\logger.h"
 
 //#define CATCH_CONFIG_MAIN
 #include "catch\catch.hpp"

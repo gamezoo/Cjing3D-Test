@@ -1,8 +1,8 @@
 #include "jobsystem.h"
-#include "container\mpmc_bounded_queue.h"
-#include "helper\debug.h"
-#include "helper\logger.h"
-#include "helper\timer.h"
+#include "core\container\mpmc_bounded_queue.h"
+#include "core\helper\debug.h"
+#include "core\helper\logger.h"
+#include "core\helper\timer.h"
 
 #include <string>
 #include <vector>
@@ -392,7 +392,7 @@ namespace JobSystem
 			return;
 		}
 
-		gManagerImpl = new ManagerImpl();
+		gManagerImpl = CJING_NEW(ManagerImpl);
 		gManagerImpl->mWorkerThreads.reserve(numThreads);
 		gManagerImpl->mFreeFibers.Reset(numFibers);
 		gManagerImpl->mFiberStackSize = fiberStackSize;
@@ -408,13 +408,13 @@ namespace JobSystem
 
 		// init workThread
 		for (I32 i = 0; i < numThreads; i++) {
-			gManagerImpl->mWorkerThreads.emplace_back(new WorkerThread(i, *gManagerImpl));
+			gManagerImpl->mWorkerThreads.emplace_back(CJING_NEW(WorkerThread(i, *gManagerImpl)));
 		}
 
 		// init fibers
 		for (I32 i = 0; i < numFibers; i++) 
 		{
-			gManagerImpl->mFreeFibers.Enqueue(new JobFiber(*gManagerImpl));
+			gManagerImpl->mFreeFibers.Enqueue(CJING_NEW(JobFiber(*gManagerImpl)));
 #ifdef DEBUG
 			Concurrency::AtomicIncrement(&gManagerImpl->mNumFreeFibers);
 #endif		
@@ -451,7 +451,7 @@ namespace JobSystem
 		{
 			fiber->mIsExiting = true;
 			fiber->SwitchTo(nullptr, nullptr);
-			SAFE_DELETE(fiber);
+			CJING_SAFE_DELETE(fiber);
 		}
 
 		// clear all work threads
@@ -459,11 +459,11 @@ namespace JobSystem
 		{
 			workerThread->mExiting = true;
 			workerThread->mThread.Join();
-			SAFE_DELETE(workerThread);
+			CJING_SAFE_DELETE(workerThread);
 		}
 		gManagerImpl->mWorkerThreads.clear();
 
-		SAFE_DELETE(gManagerImpl);
+		CJING_SAFE_DELETE(gManagerImpl);
 	}
 
 	bool IsInitialized()
@@ -498,7 +498,7 @@ namespace JobSystem
 		}
 
 		const bool jobShouldFreeCounter = (counter == nullptr);
-		Counter* localCounter = new Counter();
+		Counter* localCounter = CJING_NEW(Counter);
 		localCounter->value_ = numJobs;
 
 		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);
@@ -631,10 +631,7 @@ namespace JobSystem
 
 		Concurrency::AtomicAdd(&gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK].value_, numJobs);
 
-		//Counter* localCounter = new Counter();
-		//localCounter->value_ = numJobs;
 		const bool jobShouldFreeHandle = (jobHandle == nullptr);
-
 		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);
 
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
@@ -759,7 +756,7 @@ namespace JobSystem
 			}
 
 			if (value <= 0 && freeCounter) {
-				SAFE_DELETE(counter);
+				CJING_SAFE_DELETE(counter);
 			}
 		}
 	}

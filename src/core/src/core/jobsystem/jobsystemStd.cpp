@@ -1,8 +1,8 @@
 #include "jobsystem.h"
-#include "container\mpmc_bounded_queue.h"
-#include "helper\debug.h"
-#include "helper\logger.h"
-#include "helper\timer.h"
+#include "core\container\mpmc_bounded_queue.h"
+#include "core\helper\debug.h"
+#include "core\helper\logger.h"
+#include "core\helper\timer.h"
 
 #include <string>
 #include <vector>
@@ -50,7 +50,7 @@ namespace JobSystem
 		I32 numCores = std::thread::hardware_concurrency();
 		numThreads = std::min(numThreads, numCores - 1);
 
-		gManagerImpl = new ManagerImpl();
+		gManagerImpl = CJING_NEW(ManagerImpl);
 		gManagerImpl->mThreadPools.reserve(numThreads);
 		gManagerImpl->mPendingJobs.Reset(MAX_JOB_COUNT);
 
@@ -77,7 +77,7 @@ namespace JobSystem
 			return;
 		}
 
-		SAFE_DELETE(gManagerImpl);
+		CJING_SAFE_DELETE(gManagerImpl);
 	}
 
 	bool IsInitialized()

@@ -1,5 +1,6 @@
 #include "logger.h"
-#include "jobsystem\concurrency.h"
+#include "core\jobsystem\concurrency.h"
+#include "core\helper\timer.h"
 
 #include <fstream>
 #include <chrono>
@@ -41,23 +42,12 @@ namespace Cjing3D {
 				return loggerFile;
 			}
 
-			std::string GetCurSystemTimeStr()
-			{
-				auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-				tm ptm;
-				localtime_s(&ptm, &tt);
-				char date[60] = { 0 };
-				sprintf_s(date, "%02d:%02d:%02d ",
-					(int)ptm.tm_hour, (int)ptm.tm_min, (int)ptm.tm_sec);
-				return std::string(date);
-			}
-
 			Concurrency::Mutex mPrintMutex;
 
 			void PrintImpl(const string& msg, std::ostream& out = std::cout)
 			{
 				Concurrency::ScopedMutex lock(mPrintMutex);
-				auto timeStr = GetCurSystemTimeStr();
+				auto timeStr = Timer::GetSystemTimeString();
 				out << timeStr << "    " << msg << std::endl;
 			}
 		}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common\definitions.h"
+#include "core\common\definitions.h"
 
 #include <functional>
 

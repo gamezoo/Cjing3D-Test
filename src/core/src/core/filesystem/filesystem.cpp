@@ -1,5 +1,6 @@
 #include "fileSystem.h"
-#include "helper\debug.h"
+#include "core\helper\debug.h"
+#include "core\memory\memory.h"
 
 #include "physfs_3.0.2\physfs.h"
 
@@ -54,7 +55,7 @@ namespace FileSystem
 			}
 
 			size = static_cast<size_t>(PHYSFS_fileLength(file));
-			*buffer = new char[size];
+			*buffer = CJING_NEW_ARR(char, size);
 			PHYSFS_read(file, buffer, 1, (PHYSFS_uint32)size);
 			PHYSFS_close(file);
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "signal\signalInclude.h"
-#include "signal\connection.h"
-#include "helper\debug.h"
+#include "core\signal\signalInclude.h"
+#include "core\signal\connection.h"
+#include "core\helper\debug.h"
 
 namespace Cjing3D
 {

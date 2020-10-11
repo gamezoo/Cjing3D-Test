@@ -5,7 +5,7 @@
 #include <string>
 #include <functional>
 
-#include "common\version.h"
-#include "common\definitions.h"
+#include "core\common\version.h"
+#include "core\common\definitions.h"
 
 
