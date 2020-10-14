@@ -77,12 +77,12 @@ namespace Cjing3D
 	}
 #endif
 
-	void Memory::Memmove(void* dst, void* src, size_t size)
+	void Memory::Memmove(void* dst, const void* src, size_t size)
 	{
 		memmove_s(dst, size, src, size);
 	}
 
-	void Memory::Memcpy(void* dst, void* src, size_t size)
+	void Memory::Memcpy(void* dst, const void* src, size_t size)
 	{
 		memcpy_s(dst, size, src, size);
 	}

@@ -32,8 +32,8 @@ namespace Cjing3D
 		static void  AlignFree(void* ptr);
 
 #endif
-		static void  Memmove(void* dst, void* src, size_t size);
-		static void  Memcpy(void* dst, void* src, size_t size);
+		static void  Memmove(void* dst, const void* src, size_t size);
+		static void  Memcpy(void* dst, const void* src, size_t size);
 
 		template<typename T>
 		static void ObjectConstruct(T* ptr)

@@ -10,12 +10,15 @@ namespace Cjing3D
 {
 	namespace StringImpl
 	{
+		size_t StringLength(const char* str);
 		bool CopyString(Span<char> dst, const char* source);
 		bool CatString(Span<char> dst, const char* source);
 		bool CopyNString(Span<char> dst, const char* source, size_t n);
 		bool CatNString(Span<char> dst, const char* source, size_t n);
 		int  CompareString(const char* lhs, const char* rhs);
 		bool EqualString(const char* lhs, const char* rhs);
+		int  FindSubstring(const char* str, const char* substr);
+		int  ReverseFindSubstring(const char* str, const char* substr);
 
 		template<size_t N>
 		bool CopyString(char(&destination)[N], const char* source)
@@ -118,7 +121,80 @@ namespace Cjing3D
 	class String
 	{
 	public:
+		String();
+		String(const char* str);
+		String(const String& rhs);
+		String(String&& rhs);
+		String(const std::string& str);
+		String(Span<const char> str);
+		String(const char* str, size_t pos, size_t len);
+		~String();
 
+		String& operator=(const String& rhs);
+		String& operator=(String&& rhs);
+		String& operator=(Span<const char> str);
+		String& operator=(const char* str);
+		String& operator=(const std::string& str);
+
+		void resize(size_t size);
+		char* c_str() { return isSmall() ? mSmallData : mBigData; }
+		const char* c_str() const { return isSmall() ? mSmallData : mBigData; }
+		bool  empty() const { return c_str() == nullptr || c_str()[0] == '\0'; }
+		char* data() { return isSmall() ? mSmallData : mBigData; }
+		size_t length()const { return mSize; }
+
+		char operator[](size_t index) const;
+		bool operator!=(const String& rhs) const;
+		bool operator!=(const char* rhs) const;
+		bool operator==(const String& rhs) const;
+		bool operator==(const char* rhs) const;
+		bool operator<(const String& rhs) const;
+		bool operator>(const String& rhs) const;
+
+		String& operator+=(const char* str) {
+			cat(str);
+			return *this;
+		}
+
+		String operator+(const char* str) {
+			return cat(str);
+		}
+
+		operator const char* () const {
+			return c_str();
+		}
+
+		String& cat(Span<const char> value);
+		String& cat(char value);
+		String& cat(char* value);
+		String& cat(const char* value);
+		String& cat(const std::string& value);
+
+		String substr(size_t pos, size_t length);
+		void insert(size_t pos, const char* value);
+		void earse(size_t pos);
+		int find(const char* str);
+		int rfind(const char* str);
+
+		static const int npos = -1;
+
+		char* begin() {
+			return data();
+		}
+		char* end() {
+			return data() + mSize;
+		}
+
+	private:
+		bool isSmall()const;
+
+		// mininum buffer size
+		static const size_t BUFFER_MINIMUN_SIZE = 16;
+		size_t mSize = 0;
+		union {
+			char* mBigData;
+			char  mSmallData[BUFFER_MINIMUN_SIZE];
+		};
 	};
 #endif
 }
