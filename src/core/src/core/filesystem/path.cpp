@@ -14,7 +14,7 @@ const char Path::PATH_SLASH     = '/';
 const char Path::PATH_BACKSLASH = '\\';
 #endif
 
-bool Path::IsPathDir(const std::string& path)
+bool Path::IsPathDir(const String& path)
 {
 	if (path.empty()) {
 		return false;
@@ -24,20 +24,20 @@ bool Path::IsPathDir(const std::string& path)
 	return path[pos] == PATH_SLASH || path[pos] == PATH_BACKSLASH;
 }
 
-bool Path::IsPathFile(const std::string& path)
+bool Path::IsPathFile(const String& path)
 {
-	std::string filename = GetPathBaseName(path);
-	return filename.find(PATH_DOT) != std::string::npos;
+	String filename = GetPathBaseName(path);
+	return filename.find(PATH_DOT) != String::npos;
 }
 
-std::string Path::FormatPath(const std::string& path)
+String Path::FormatPath(const String& path)
 {
-	std::string ret = path;
+	String ret = path;
 	ret = StringUtils::ReplaceChar(ret, PATH_BACKSLASH, PATH_SEPERATOR);
 	return ret;
 }
 
-std::string Path::CombinePath(const std::string& path1, const std::string& path2)
+String Path::CombinePath(const String& path1, const String& path2)
 {
 	if (path1.empty()) {
 		return path2;
@@ -46,8 +46,8 @@ std::string Path::CombinePath(const std::string& path1, const std::string& path2
 		return path1;
 	}
 
-	auto CombineFunc = [](const std::string& path1, const std::string& path2) {
-		std::string ret = Path::FormatPath(path1);
+	auto CombineFunc = [](const String& path1, const String& path2) {
+		String ret = Path::FormatPath(path1);
 		if (ret.back() != PATH_SEPERATOR) {
 			ret += PATH_SEPERATOR;
 		}
@@ -77,50 +77,50 @@ std::string Path::CombinePath(const std::string& path1, const std::string& path2
 	}
 }
 
-std::string Path::GetPathParentPath(const std::string& path)
+String Path::GetPathParentPath(const String& path)
 {
 	if (path.empty() || path == INVALID_PATH) {
 		return INVALID_PATH;
 	}
 
 	auto lastIndex = path.find_last_of(PATH_SEPERATOR);
-	if (lastIndex == std::string::npos) {
+	if (lastIndex == String::npos) {
 		return INVALID_PATH;
 	}
 
 	return path.substr(0, lastIndex);
 }
 
-std::string Path::GetPathBaseName(const std::string& path)
+String Path::GetPathBaseName(const String& path)
 {
 	if (path.empty() || path == INVALID_PATH) {
 		return INVALID_PATH;
 	}
 
-	std::string ret = path;
+	String ret = path;
 	ret = StringUtils::ReplaceChar(ret, PATH_BACKSLASH, PATH_SEPERATOR);
 
 	auto lastIndex = ret.find_last_of(PATH_SEPERATOR);
-	if (lastIndex != std::string::npos) {
+	if (lastIndex != String::npos) {
 		ret = ret.substr(lastIndex + 1);
 	}
 	return ret;
 }
 
-std::string Path::GetPathExtension(const std::string& path)
+String Path::GetPathExtension(const String& path)
 {
 	if (path.empty() || path == INVALID_PATH) {
 		return INVALID_PATH;
 	}
 
 	auto lastIndex = path.find_last_of(PATH_DOT);
-	if (lastIndex != std::string::npos) {
+	if (lastIndex != String::npos) {
 		return path.substr(lastIndex, path.length());
 	}
 	return INVALID_PATH;
 }
 
-bool Path::IsAbsolutePath(const std::string& path)
+bool Path::IsAbsolutePath(const String& path)
 {
 	if (path.empty()) {
 		return false;
@@ -132,21 +132,21 @@ bool Path::IsAbsolutePath(const std::string& path)
 	}
 #endif
 
-	if (path.find(":") != std::string::npos) {
+	if (path.find(":") != String::npos) {
 		return true;
 	}
 
 	return false;
 }
 
-std::string Path::ConvertToAbsolutePath(const std::string& path)
+String Path::ConvertToAbsolutePath(const String& path)
 {
-	return std::string();
+	return String();
 }
 
-std::string Path::ConvertToRelativePath(const std::string& path)
+String Path::ConvertToRelativePath(const String& path)
 {
-	return std::string();
+	return String();
 }
 
 }

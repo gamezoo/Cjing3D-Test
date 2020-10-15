@@ -7,9 +7,9 @@
 namespace Cjing3D {
 namespace FileSystem 
 {
-	std::string mProgramName = "";
-	std::string mAssetPath = "";
-	std::string mAssetName = "";
+	String mProgramName = "";
+	String mAssetPath = "";
+	String mAssetName = "";
 
 	namespace FileSystemPhysfs
 	{
@@ -43,14 +43,14 @@ namespace FileSystem
 		{
 			if (!PHYSFS_exists(name))
 			{
-				Debug::Warning(std::string("[filesystem] The file : ") + name + " isn't exits.");
+				Debug::Warning(String("[filesystem] The file : ") + name + " isn't exits.");
 				return false;
 			}
 
 			PHYSFS_file* file = PHYSFS_openRead(name);
 			if (file == nullptr)
 			{
-				Debug::Warning(std::string("[filesystem] The file : ") + name + " read failed.");
+				Debug::Warning(String("[filesystem] The file : ") + name + " read failed.");
 				return false;
 			}
 
@@ -66,14 +66,14 @@ namespace FileSystem
 		{
 			if (!PHYSFS_exists(name))
 			{
-				Debug::Warning(std::string("[filesystem] The file : ") + name + " isn't exits.");
+				Debug::Warning(String("[filesystem] The file : ") + name + " isn't exits.");
 				return false;
 			}
 
 			PHYSFS_file* file = PHYSFS_openRead(name);
 			if (file == nullptr)
 			{
-				Debug::Warning(std::string("[filesystem] The file : ") + name + " read failed.");
+				Debug::Warning(String("[filesystem] The file : ") + name + " read failed.");
 				return false;
 			}
 
@@ -90,13 +90,13 @@ namespace FileSystem
 			PHYSFS_File* file = PHYSFS_openWrite(name);
 			if (file == nullptr) 
 			{
-				Debug::Warning(std::string("[filesystem] The file : ") + name + " write failed.");
+				Debug::Warning(String("[filesystem] The file : ") + name + " write failed.");
 				return false;
 			}
 
 			if (!PHYSFS_write(file, buffer, (PHYSFS_uint32)length, 1)) 
 			{
-				Debug::Warning(std::string("[filesystem] The file : ") + name + " write failed.");
+				Debug::Warning(String("[filesystem] The file : ") + name + " write failed.");
 				return false;
 			}
 
@@ -138,21 +138,21 @@ namespace FileSystem
 
 		if (!PHYSFS_mount(assetPath, nullptr, 1))
 		{
-			Debug::Error(std::string("[FileData] Failed to mount archive, path:") + assetPath + ", " + PHYSFS_getLastError());
+			Debug::Error(String("[FileData] Failed to mount archive, path:") + assetPath + ", " + PHYSFS_getLastError());
 			return false;
 		}
 	
-		const std::string assetFullPath = Path::CombinePath(assetPath, assetName);
+		const String assetFullPath = Path::CombinePath(assetPath, assetName);
 		if (!PHYSFS_mount(assetFullPath.c_str(), nullptr, 1))
 		{
-			Debug::Error(std::string("[FileData] Failed to mount archive, path") + assetFullPath + ", " + PHYSFS_getLastError());
+			Debug::Error(String("[FileData] Failed to mount archive, path") + assetFullPath + ", " + PHYSFS_getLastError());
 			return false;
 		}
-		const std::string baseDir = PHYSFS_getBaseDir();
-		std::string serachPath = Path::CombinePath(baseDir, assetFullPath);
+		const String baseDir = PHYSFS_getBaseDir();
+		String serachPath = Path::CombinePath(baseDir, assetFullPath);
 		if (!PHYSFS_mount(serachPath.c_str(), nullptr, 1))
 		{
-			Debug::Error(std::string("[FileData] Failed to mount archive, path") + baseDir + "/" + assetFullPath + ", " + PHYSFS_getLastError());
+			Debug::Error(String("[FileData] Failed to mount archive, path") + baseDir + "/" + assetFullPath + ", " + PHYSFS_getLastError());
 			return false;
 		}
 
@@ -179,7 +179,7 @@ namespace FileSystem
 		mAssetName.clear();
 
 		if (!PHYSFS_deinit()) {
-			Debug::Error(std::string("[FileData] Failed to deinit fhysfs:") +  PHYSFS_getLastError());
+			Debug::Error(String("[FileData] Failed to deinit fhysfs:") +  PHYSFS_getLastError());
 		}
 	}
 

@@ -4,7 +4,7 @@
 namespace Cjing3D {
 
 	StringID StringID::EMPTY = StringID();
-	std::map<unsigned int, std::string> StringID::mHashStringMap;
+	std::map<unsigned int, String> StringID::mHashStringMap;
 
 	StringID::StringID() :
 		mValue(0)
@@ -17,7 +17,7 @@ namespace Cjing3D {
 		mHashStringMap[mValue] = str;
 	}
 
-	StringID::StringID(const std::string & str) :
+	StringID::StringID(const String & str) :
 		mValue(CalculateHash(str.c_str()))
 	{
 		mHashStringMap[mValue] = str;
@@ -40,13 +40,13 @@ namespace Cjing3D {
 
 	StringID & StringID::operator=(StringID && rhs) = default;
 
-	std::string StringID::GetString() const
+	String StringID::GetString() const
 	{
 		auto it = mHashStringMap.find(mValue);
-		return it != mHashStringMap.end() ? it->second : "";
+		return it != mHashStringMap.end() ? it->second : String();
 	}
 
-	void StringID::SetString(const std::string & str)
+	void StringID::SetString(const String& str)
 	{
 		mValue = CalculateHash(str.data());
 		mHashStringMap[mValue] = str;

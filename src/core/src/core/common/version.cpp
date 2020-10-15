@@ -1,6 +1,5 @@
 #include "version.h"
-
-#include <string>
+#include "core\string\string.h"
 
 namespace CjingVersion
 {
@@ -11,7 +10,7 @@ namespace CjingVersion
 	// patch update; bug fixes [0-1000]
 	const int PatchVersion = 0;
 	// version string
-	const std::string VersionString = std::to_string(MajorVersion) + "." + std::to_string(MinorVersion) + "." + std::to_string(PatchVersion);
+	const Cjing3D::String VersionString = std::to_string(MajorVersion) + "." + std::to_string(MinorVersion) + "." + std::to_string(PatchVersion);
 
 	int GetVersion()
 	{

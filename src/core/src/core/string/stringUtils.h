@@ -1,13 +1,13 @@
 
-#include <string>
+#include "string.h"
 
 namespace Cjing3D
 {
 namespace StringUtils
 {
-	std::string  ReplaceString(const std::string& str, const std::string& src, const std::string& dst);
-	std::string  ReplaceChar(const std::string& str, char src, char dst);
-	std::string  WStringToString(const std::wstring& wstr);
-	std::wstring StringToWString(const std::string& str);
+	String  ReplaceString(const String& str, const String& src, const String& dst);
+	String  ReplaceChar(const String& str, char src, char dst);
+	String  WStringToString(const WString& wstr);
+	WString StringToWString(const String& str);
 }
 }

@@ -4,7 +4,6 @@
 #include "core\helper\logger.h"
 #include "core\helper\timer.h"
 
-#include <string>
 #include <vector>
 #include <array>
 

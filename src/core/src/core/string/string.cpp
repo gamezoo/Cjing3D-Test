@@ -2,16 +2,18 @@
 #include "core\memory\memory.h"
 #include "core\helper\debug.h"
 
+#include <string>
+
 namespace Cjing3D
 {
 #define CJING_STRING_ALLOCATOR	CJING_MEMORY_ALLOCATOR_DEFAULT
 
-	size_t StringImpl::StringLength(const char* str)
+	size_t StringLength(const char* str)
 	{
 		return strlen(str);
 	}
 
-	bool StringImpl::CopyString(Span<char> dst, const char* source)
+	bool CopyString(Span<char> dst, const char* source)
 	{
 		if (!source) {
 			return false;
@@ -30,7 +32,7 @@ namespace Cjing3D
 		return *source == '\0';
 	}
 
-	bool StringImpl::CatString(Span<char> dst, const char* source)
+	bool CatString(Span<char> dst, const char* source)
 	{
 		// 1. move to the last pos of string
 		size_t length = dst.length();
@@ -44,7 +46,7 @@ namespace Cjing3D
 		return CopyString(Span(temp, length), source);
 	}
 
-	bool StringImpl::CopyNString(Span<char> dst, const char* source, size_t n)
+	bool CopyNString(Span<char> dst, const char* source, size_t n)
 	{
 		if (!source || n <= 0) {
 			return false;
@@ -70,7 +72,7 @@ namespace Cjing3D
 		return false;
 	}
 
-	bool StringImpl::CatNString(Span<char> dst, const char* source, size_t n)
+	bool CatNString(Span<char> dst, const char* source, size_t n)
 	{
 		// 1. move to the last pos of string
 		size_t length = dst.length();
@@ -84,23 +86,35 @@ namespace Cjing3D
 		return CopyNString(Span(temp, length), source, n);
 	}
 
-	int StringImpl::CompareString(const char* lhs, const char* rhs)
+	int CompareString(const char* lhs, const char* rhs)
 	{
 		return strcmp(lhs, rhs);
 	}
 
-	bool StringImpl::EqualString(const char* lhs, const char* rhs)
+	bool EqualString(const char* lhs, const char* rhs)
 	{
 		return strcmp(lhs, rhs) == 0;
 	}
 
-	int StringImpl::FindSubstring(const char* str, const char* substr)
+	int FindStringChar(const char* str, const char c, int pos)
 	{
-		const char* ret = strstr(str, substr);
+		const char* ret = strchr(str + pos, c);
 		return ret != nullptr ? (int)(ret - str) : -1;
 	}
 
-	int StringImpl::ReverseFindSubstring(const char* str, const char* substr)
+	int ReverseFindChar(const char* str, const char c)
+	{
+		const char* ret = strrchr(str, c);
+		return ret != nullptr ? (int)(ret - str) : -1;
+	}
+
+	int FindSubstring(const char* str, const char* substr, int pos)
+	{
+		const char* ret = strstr(str + pos, substr);
+		return ret != nullptr ? (int)(ret - str) : -1;
+	}
+
+	int ReverseFindSubstring(const char* str, const char* substr)
 	{
 		return std::string(str).rfind(substr);
 	}
@@ -115,9 +129,16 @@ namespace Cjing3D
 		mSmallData[0] = '\0';
 	}
 
+	String::String(const char c)
+	{
+		mSize = 1;
+		mSmallData[0] = c;
+		mSmallData[1] = '\0';
+	}
+
 	String::String(const char* str)
 	{
-		mSize = StringImpl::StringLength(str);
+		mSize = StringLength(str);
 		if (mSize < BUFFER_MINIMUN_SIZE)
 		{
 			Memory::Memcpy(mSmallData, str, mSize + 1);
@@ -127,6 +148,12 @@ namespace Cjing3D
 			mBigData = (char*)gStringAllocator.Allocate(mSize + 1);
 			Memory::Memcpy(mBigData, str, mSize + 1);
 		}
+	}
+
+	String::String(size_t size, char initChar)
+	{
+		resize(size);
+		Memory::Memset(data(), initChar, size);
 	}
 
 	String::String(const String& rhs)
@@ -191,7 +218,8 @@ namespace Cjing3D
 			return *this;
 		}
 
-		if (!isSmall()) {
+		if (!isSmall()) 
+		{
 			gStringAllocator.Free(mBigData);
 		}
 
@@ -213,18 +241,19 @@ namespace Cjing3D
 
 	String& String::operator=(Span<const char> str)
 	{
+		if (!isSmall()) 
+		{
+			gStringAllocator.Free(mBigData);
+		}
+
 		if (str.length() < BUFFER_MINIMUN_SIZE)
 		{
-			if (!isSmall()) {
-				gStringAllocator.Free(mBigData);
-			}
-
 			Memory::Memcpy(mSmallData, str.data(), str.length());
 			mSmallData[str.length()] = '\0';
 		}
 		else
 		{
-			mBigData = (char*)gStringAllocator.Reallocate(mBigData, str.length() + 1);
+			mBigData = (char*)gStringAllocator.Allocate(str.length() + 1);
 			Memory::Memcpy(mBigData, str.data(), str.length());
 			mBigData[str.length()] = '\0';
 		}
@@ -235,7 +264,7 @@ namespace Cjing3D
 
 	String& String::operator=(const char* str)
 	{
-		*this = Span(str, StringImpl::StringLength(str));
+		*this = Span(str, StringLength(str));
 		return *this;
 	}
 
@@ -270,9 +299,10 @@ namespace Cjing3D
 		{
 			if (size < BUFFER_MINIMUN_SIZE)
 			{
-				memcpy(mSmallData, mBigData, BUFFER_MINIMUN_SIZE - 1);
+				char* tmp = mBigData;
+				memcpy(mSmallData, tmp, BUFFER_MINIMUN_SIZE - 1);
 				mSmallData[size] = '\0';
-				gStringAllocator.Free(mBigData);
+				gStringAllocator.Free(tmp);
 			}
 			else
 			{
@@ -283,7 +313,13 @@ namespace Cjing3D
 		}
 	}
 
-	char String::operator[](size_t index) const
+	char& String::operator[](size_t index)
+	{
+		DBG_ASSERT(index >= 0 && index < mSize);
+		return isSmall() ? mSmallData[index] : mBigData[index];
+	}
+
+	const char& String::operator[](size_t index) const
 	{
 		DBG_ASSERT(index >= 0 && index < mSize);
 		return isSmall() ? mSmallData[index] : mBigData[index];
@@ -291,35 +327,35 @@ namespace Cjing3D
 
 	bool String::operator!=(const String& rhs) const
 	{
-		return !StringImpl::EqualString(c_str(), rhs.c_str());
+		return !EqualString(c_str(), rhs.c_str());
 	}
 
 	bool String::operator!=(const char* rhs) const
 	{
-		return !StringImpl::EqualString(c_str(), rhs);
+		return !EqualString(c_str(), rhs);
 	}
 
 	bool String::operator==(const String& rhs) const
 	{
-		return StringImpl::EqualString(c_str(), rhs.c_str());
+		return EqualString(c_str(), rhs.c_str());
 	}
 
 	bool String::operator==(const char* rhs) const
 	{
-		return StringImpl::EqualString(c_str(), rhs);
+		return EqualString(c_str(), rhs);
 	}
 
 	bool String::operator<(const String& rhs) const
 	{
-		return StringImpl::CompareString(c_str(), rhs.c_str()) < 0;
+		return CompareString(c_str(), rhs.c_str()) < 0;
 	}
 
 	bool String::operator>(const String& rhs) const
 	{
-		return StringImpl::CompareString(c_str(), rhs.c_str()) > 0;
+		return CompareString(c_str(), rhs.c_str()) > 0;
 	}
 
-	String& String::cat(Span<const char> value)
+	String& String::append(Span<const char> value)
 	{
 		if (value.length() == 0) {
 			return *this;
@@ -332,30 +368,31 @@ namespace Cjing3D
 		return *this;
 	}
 
-	String& String::cat(char value)
+	String& String::append(char value)
 	{
-		return cat((const char*)&value);
+		return append(Span(&value, 1));
 	}
 
-	String& String::cat(char* value)
+	String& String::append(char* value)
 	{
-		return cat((const char*)value);
+		return append((const char*)value);
 	}
 
-	String& String::cat(const std::string& value)
+	String& String::append(const std::string& value)
 	{
-		return cat(value.c_str());
+		return append(value.c_str());
 	}
 
-	String String::substr(size_t pos, size_t length)
+	String String::substr(size_t pos, int length)const
 	{
-		return String(c_str(), pos, length);
+		length = length < 0 ? mSize - pos : std::min((int)mSize - (int)pos, length);
+		return String(c_str(), pos, std::max(0, length));
 	}
 
 	void String::insert(size_t pos, const char* value)
 	{
 		const size_t oldSize = mSize;
-		size_t len = StringImpl::StringLength(value);
+		size_t len = StringLength(value);
 		resize(oldSize + len);
 
 		char* temp = data();
@@ -375,19 +412,90 @@ namespace Cjing3D
 		temp[mSize] = '\0';
 	}
 
-	int String::find(const char* str)
+	int String::find(const char* str, size_t pos)const
 	{
-		return StringImpl::FindSubstring(c_str(), str);
+		pos = std::min(mSize - 1, pos);
+		return FindSubstring(c_str(), str, pos);
 	}
 
-	int String::rfind(const char* str)
+	int String::find(const char c, size_t pos)const
 	{
-		return StringImpl::ReverseFindSubstring(c_str(), str);
+		pos = std::min(mSize - 1, pos);
+		return FindStringChar(c_str(), c, pos);
 	}
 
-	String& String::cat(const char* value)
+	int String::find_last_of(const char* str)const
 	{
-		const size_t len = StringImpl::StringLength(value);
+		return ReverseFindSubstring(c_str(), str);
+	}
+
+	int String::find_last_of(const char c)const
+	{
+		return ReverseFindChar(c_str(), c);
+	}
+
+	char String::back() const
+	{
+		return mSize > 0 ? c_str()[mSize - 1] : '\0';
+	}
+
+	void String::clear()
+	{
+		if (!isSmall()) 
+		{
+			gStringAllocator.Free(mBigData);
+		}
+
+		mSize = 0;
+		mSmallData[0] = '\0';
+	}
+
+	void String::replace(size_t pos, size_t len, const char* str)
+	{
+		if (pos >= mSize ||
+			len > mSize - pos) {
+			return;
+		}
+
+		const size_t srcLen = StringLength(str);
+		if (srcLen == len)
+		{
+			// if same length, just copy new str to dest
+			Memory::Memcpy(data() + pos, str, len);
+		}
+		else if (pos + len < mSize)
+		{
+			const size_t oldSize = mSize;
+			if (srcLen > len)
+			{
+				resize(oldSize + (srcLen - len));
+				char* temp = data();
+				Memory::Memmove(temp + pos + srcLen, temp + pos + len, oldSize - pos - len);
+				Memory::Memcpy(temp + pos, str, srcLen);
+			}
+			else
+			{
+				char* temp = data();
+				Memory::Memmove(temp + pos + srcLen, temp + pos + len, oldSize - pos - len);
+				resize(oldSize + (srcLen - len));
+				Memory::Memcpy(data() + pos, str, srcLen);
+			}
+		}
+		else
+		{
+			resize(mSize + (srcLen - len));
+			Memory::Memcpy(data() + pos, str, srcLen);
+		}
+	}
+
+	std::string String::toString() const
+	{
+		return std::string(c_str());
+	}
+
+	String& String::append(const char* value)
+	{
+		const size_t len = StringLength(value);
 		if (len == 0) {
 			return *this;
 		}

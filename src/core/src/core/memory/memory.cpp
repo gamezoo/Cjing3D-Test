@@ -87,4 +87,9 @@ namespace Cjing3D
 		memcpy_s(dst, size, src, size);
 	}
 
+	void Memory::Memset(void* dst, int c, int count)
+	{
+		memset(dst, c, count);
+	}
+
 }

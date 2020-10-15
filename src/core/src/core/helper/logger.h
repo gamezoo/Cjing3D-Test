@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include "core\string\string.h"
 
 namespace Cjing3D {
 	namespace Logger

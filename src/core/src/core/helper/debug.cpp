@@ -62,16 +62,24 @@ namespace Cjing3D
 			AbortOnDie = t;
 		}
 
-		void Warning(const std::string & warningMsg)
+		void Warning(const char* format, ...)
 		{
-			Logger::Warning(warningMsg.c_str());
+			va_list args;
+			va_start(args, format);
+			Logger::Info(format, args);
+			va_end(args);
 		}
 
-		void Error(const std::string & errorMsg)
+		void Error(const char* format, ...)
 		{
-			Logger::Error(errorMsg.c_str());
-			if (DieOnError)
+			va_list args;
+			va_start(args, format);
+			Logger::Error(format, args);
+			va_end(args);
+
+			if (DieOnError) {
 				abort();
+			}
 		}
 
 		void CheckAssertion(bool asertion)
@@ -80,7 +88,7 @@ namespace Cjing3D
 				std::abort();
 		}
 
-		void CheckAssertion(bool assertion, const std::string & errorMsg)
+		void CheckAssertion(bool assertion, const char* errorMsg)
 		{
 			if (!assertion) {
 				Die(errorMsg);
@@ -142,18 +150,23 @@ namespace Cjing3D
 #endif
 		}
 
-		void Die(const std::string & dieMsg)
+		void Die(const char* format, ...)
 		{
-			Logger::Fatal(dieMsg.c_str());
+			String128 buffer;
+			va_list args;
+			va_start(args, format);
+			vsprintf_s(buffer.data(), buffer.size(), format, args);
+			va_end(args);
+
 			if (ShowMsgBox) {
-				MessageBox("ERROR", dieMsg.c_str(), MessageBoxType::OK, MessageBoxIcon::ICON_ERROR);
+				MessageBox("ERROR", buffer.c_str(), MessageBoxType::OK, MessageBoxIcon::ICON_ERROR);
 			}
 
 			if (AbortOnDie) {
 				std::abort();
 			}
 
-			Exception exception(dieMsg.c_str());
+			Exception exception(buffer.c_str());
 			throw exception;
 		}
 

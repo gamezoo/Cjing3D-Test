@@ -1,6 +1,7 @@
 #include "logger.h"
 #include "core\jobsystem\concurrency.h"
 #include "core\helper\timer.h"
+#include "core\string\string.h"
 
 #include <fstream>
 #include <chrono>
@@ -10,13 +11,12 @@
 
 namespace Cjing3D {
 	namespace Logger {
-		using std::string;
 
 		namespace {
-			const string errorLogFileName = "error.txt";
+			const String32 errorLogFileName = "error.txt";
 			std::ofstream errorFile;
 
-			const string generalLogFileName = "logger.txt";
+			const String32 generalLogFileName = "logger.txt";
 			std::ofstream loggerFile;
 
 			struct LogContext
@@ -44,7 +44,7 @@ namespace Cjing3D {
 
 			Concurrency::Mutex mPrintMutex;
 
-			void PrintImpl(const string& msg, std::ostream& out = std::cout)
+			void PrintImpl(const String& msg, std::ostream& out = std::cout)
 			{
 				Concurrency::ScopedMutex lock(mPrintMutex);
 				auto timeStr = Timer::GetSystemTimeString();
@@ -70,7 +70,7 @@ namespace Cjing3D {
 			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), format, args);
 			va_end(args);
 
-			string msg = "[Debug]  " + std::string(logContext->buffer_.data());
+			String msg = String("[Debug]  ") + String(logContext->buffer_.data());
 			PrintImpl(msg);
 		}
 
@@ -82,8 +82,8 @@ namespace Cjing3D {
 			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), format, args);
 			va_end(args);
 
-			PrintImpl("[Info]  " + std::string(logContext->buffer_.data()));
-			PrintImpl("[Info]  " + std::string(logContext->buffer_.data()), GetLoggerFile());
+			PrintImpl(String("[Info]  ") + String(logContext->buffer_.data()));
+			PrintImpl(String("[Info]  ") + String(logContext->buffer_.data()), GetLoggerFile());
 		}
 
 		void Warning(const char* format, ...)
@@ -94,7 +94,7 @@ namespace Cjing3D {
 			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), format, args);
 			va_end(args);
 
-			string warningMsg = "[Warning]  " + std::string(logContext->buffer_.data());
+			String warningMsg = String("[Warning]  ") + String(logContext->buffer_.data());
 			PrintImpl(warningMsg);
 			PrintImpl(warningMsg, GetLoggerFile());
 		}
@@ -107,7 +107,7 @@ namespace Cjing3D {
 			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), format, args);
 			va_end(args);
 
-			string warningMsg = "[Error]  " + std::string(logContext->buffer_.data());
+			String warningMsg = String("[Error]  ") + String(logContext->buffer_.data());
 			PrintImpl(warningMsg);
 			PrintImpl(warningMsg, GetErrorFile());
 			PrintImpl(warningMsg, GetLoggerFile());
@@ -121,7 +121,7 @@ namespace Cjing3D {
 			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), format, args);
 			va_end(args);
 
-			string warningMsg = "[Fatal]  " + std::string(logContext->buffer_.data());;
+			String warningMsg = String("[Fatal]  ") + String(logContext->buffer_.data());;
 			PrintImpl(warningMsg);
 			PrintImpl(warningMsg, GetErrorFile());
 			PrintImpl(warningMsg, GetLoggerFile());

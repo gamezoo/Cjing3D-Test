@@ -1,8 +1,7 @@
 #pragma once
 
 #include "core\common\definitions.h"
-
-#include <string>
+#include "core\string\string.h"
 
 namespace Cjing3D {
 
@@ -31,7 +30,7 @@ namespace Cjing3D {
 		TimeStamp GetRecordedTimeStamp()const;
 		EngineTime GetTime()const;
 
-		static std::string GetSystemTimeString();
+		static String GetSystemTimeString();
 		static TimeStamp GetAbsoluteTime();
 
 	private:

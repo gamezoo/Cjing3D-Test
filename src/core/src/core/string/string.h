@@ -8,29 +8,28 @@
 
 namespace Cjing3D
 {
-	namespace StringImpl
+	size_t StringLength(const char* str);
+	bool CopyString(Span<char> dst, const char* source);
+	bool CatString(Span<char> dst, const char* source);
+	bool CopyNString(Span<char> dst, const char* source, size_t n);
+	bool CatNString(Span<char> dst, const char* source, size_t n);
+	int  CompareString(const char* lhs, const char* rhs);
+	bool EqualString(const char* lhs, const char* rhs);
+	int  FindStringChar(const char* str, const char c, int pos);
+	int  ReverseFindChar(const char* str, const char c);
+	int  FindSubstring(const char* str, const char* substr, int pos);
+	int  ReverseFindSubstring(const char* str, const char* substr);
+
+	template<size_t N>
+	bool CopyString(char(&destination)[N], const char* source)
 	{
-		size_t StringLength(const char* str);
-		bool CopyString(Span<char> dst, const char* source);
-		bool CatString(Span<char> dst, const char* source);
-		bool CopyNString(Span<char> dst, const char* source, size_t n);
-		bool CatNString(Span<char> dst, const char* source, size_t n);
-		int  CompareString(const char* lhs, const char* rhs);
-		bool EqualString(const char* lhs, const char* rhs);
-		int  FindSubstring(const char* str, const char* substr);
-		int  ReverseFindSubstring(const char* str, const char* substr);
+		return CopyString(Span(destination, N), source);
+	}
 
-		template<size_t N>
-		bool CopyString(char(&destination)[N], const char* source)
-		{
-			return CopyString(Span(destination, N), source);
-		}
-
-		template<size_t N>
-		bool CatString(char(&destination)[N], const char* source)
-		{
-			return CatString(Span(destination, N), source);
-		}
+	template<size_t N>
+	bool CatString(char(&destination)[N], const char* source)
+	{
+		return CatString(Span(destination, N), source);
 	}
 
 	// fixed size string 
@@ -41,7 +40,7 @@ namespace Cjing3D
 		StaticString() = default;
 		StaticString(const char* str)
 		{
-			StringImpl::CopyString(mData, str);
+			CopyString(mData, str);
 		}
 
 		template<typename... Args>
@@ -52,46 +51,63 @@ namespace Cjing3D
 
 		template<size_t RHS_N>
 		void append(const StaticString<RHS_N>& rhs) {
-			StringImpl::CatString(mData, rhs.mData);
+			CatString(mData, rhs.mData);
 		}
 		void append(const char* str) {
-			StringImpl::CatString(mData, str);
+			CatString(mData, str);
 		}
 		void append(char* str) {
-			StringImpl::CatString(mData, str);
+			CatString(mData, str);
 		}
 		void append(char c) 
 		{
 			char temp[2] = { c, 0 };
-			StringImpl::CatString(mData, temp);
+			CatString(mData, temp);
 		}
 		void append(const Span<char>& rhs)
 		{
-			StringImpl::CatNString(mData, rhs.data(), rhs.length());
+			CatNString(mData, rhs.data(), rhs.length());
 		}
 		void append(const std::string& rhs)
 		{
-			StringImpl::CatString(mData, rhs.data());
+			CatString(mData, rhs.data());
 		}
 
 		bool empty()const {
 			return mData[0] == '\0';
 		}
 
+		char* data() {
+			return mData;
+		}
+		const char* data()const {
+			return mData;
+		}
+		char* c_str() { 
+			return mData;
+		}
+		const char* c_str() const { 
+			return mData;
+		}
+
+		size_t size()const {
+			return N;
+		}
+
 		void operator=(const char* str) {
-			StringImpl::CatString(mData, str);
+			CatString(mData, str);
 		}
 
 		bool operator<(const char* str) const {
-			return StringImpl::CompareString(mData, str) < 0;
+			return CompareString(mData, str) < 0;
 		}
 
 		bool operator==(const char* str) const {
-			return StringImpl::EqualString(mData, str);
+			return EqualString(mData, str);
 		}
 
 		bool operator!=(const char* str) const {
-			return !StringImpl::EqualString(mData, str);
+			return !EqualString(mData, str);
 		}
 
 		StaticString<N> operator+(const char* str) {
@@ -111,6 +127,7 @@ namespace Cjing3D
 		char mData[N] = "\0";
 	};
 
+	using String16  = StaticString<16>;
 	using String32  = StaticString<32>;
 	using String64  = StaticString<64>;
 	using String128 = StaticString<128>;
@@ -122,7 +139,9 @@ namespace Cjing3D
 	{
 	public:
 		String();
+		String(const char c);
 		String(const char* str);
+		String(size_t size, char initChar);
 		String(const String& rhs);
 		String(String&& rhs);
 		String(const std::string& str);
@@ -136,14 +155,18 @@ namespace Cjing3D
 		String& operator=(const char* str);
 		String& operator=(const std::string& str);
 
-		void resize(size_t size);
 		char* c_str() { return isSmall() ? mSmallData : mBigData; }
 		const char* c_str() const { return isSmall() ? mSmallData : mBigData; }
 		bool  empty() const { return c_str() == nullptr || c_str()[0] == '\0'; }
 		char* data() { return isSmall() ? mSmallData : mBigData; }
+		const char* data()const { return isSmall() ? mSmallData : mBigData; }
 		size_t length()const { return mSize; }
+		size_t size()const { return mSize; }
+		std::string toString()const;
 
-		char operator[](size_t index) const;
+		char& operator[](size_t index);
+		const char& operator[](size_t index) const;
+
 		bool operator!=(const String& rhs) const;
 		bool operator!=(const char* rhs) const;
 		bool operator==(const String& rhs) const;
@@ -152,31 +175,40 @@ namespace Cjing3D
 		bool operator>(const String& rhs) const;
 
 		String& operator+=(const char* str) {
-			cat(str);
+			append(str);
 			return *this;
 		}
-
-		String operator+(const char* str) {
-			return cat(str);
+		String& operator+=(const char c) {
+			append(c);
+			return *this;
 		}
-
+		String operator+(const char* str) {
+			return String(*this).append(str);
+		}
+		String operator+(const char c) {
+			return String(*this).append(c);
+		}
 		operator const char* () const {
 			return c_str();
 		}
 
-		String& cat(Span<const char> value);
-		String& cat(char value);
-		String& cat(char* value);
-		String& cat(const char* value);
-		String& cat(const std::string& value);
+		String& append(Span<const char> value);
+		String& append(char value);
+		String& append(char* value);
+		String& append(const char* value);
+		String& append(const std::string& value);
 
-		String substr(size_t pos, size_t length);
-		void insert(size_t pos, const char* value);
-		void earse(size_t pos);
-		int find(const char* str);
-		int rfind(const char* str);
-
-		static const int npos = -1;
+		void   resize(size_t size);
+		String substr(size_t pos, int length = -1)const;
+		void   insert(size_t pos, const char* value);
+		void   earse(size_t pos);
+		int    find(const char* str, size_t pos = 0)const;
+		int    find(const char c, size_t pos = 0)const;
+		int    find_last_of(const char* str)const;
+		int    find_last_of(const char c)const;
+		char   back()const;
+		void   clear();
+		void   replace(size_t pos, size_t len, const char* str);
 
 		char* begin() {
 			return data();
@@ -185,6 +217,8 @@ namespace Cjing3D
 			return data() + mSize;
 		}
 
+		static const int npos = -1;
+
 	private:
 		bool isSmall()const;
 
@@ -192,9 +226,11 @@ namespace Cjing3D
 		static const size_t BUFFER_MINIMUN_SIZE = 16;
 		size_t mSize = 0;
 		union {
-			char* mBigData;
+			char* mBigData = nullptr;
 			char  mSmallData[BUFFER_MINIMUN_SIZE];
 		};
 	};
+
+	using WString = std::wstring;
 #endif
 }

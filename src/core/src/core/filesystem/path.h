@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include "core\string\string.h"
 
 namespace Cjing3D
 {
@@ -13,15 +13,15 @@ public:
 	static const char  PATH_SLASH;
 	static const char  PATH_BACKSLASH;
 
-	static bool IsPathDir(const std::string& path);
-	static bool IsPathFile(const std::string& path);
-	static std::string FormatPath(const std::string& path);
-	static std::string CombinePath(const std::string& path1, const std::string& path2);
-	static std::string GetPathParentPath(const std::string& path);
-	static std::string GetPathBaseName(const std::string& path);
-	static std::string GetPathExtension(const std::string& path);
-	static bool IsAbsolutePath(const std::string& path);
-	static std::string ConvertToAbsolutePath(const std::string& path);
-	static std::string ConvertToRelativePath(const std::string& path);
+	static bool IsPathDir(const String& path);
+	static bool IsPathFile(const String& path);
+	static String FormatPath(const String& path);
+	static String CombinePath(const String& path1, const String& path2);
+	static String GetPathParentPath(const String& path);
+	static String GetPathBaseName(const String& path);
+	static String GetPathExtension(const String& path);
+	static bool IsAbsolutePath(const String& path);
+	static String ConvertToAbsolutePath(const String& path);
+	static String ConvertToRelativePath(const String& path);
 };
 }

@@ -1,3 +1,4 @@
+#ifdef CJING_TEST_JOBSYSTEM
 
 #include "core\jobsystem\jobsystem.h"
 #include "core\jobsystem\concurrency.h"
@@ -6,7 +7,7 @@
 #include "core\helper\timer.h"
 #include "core\helper\logger.h"
 
-//#define CATCH_CONFIG_MAIN
+#define CATCH_CONFIG_MAIN
 #include "catch\catch.hpp"
 
 using namespace Cjing3D;
@@ -191,3 +192,5 @@ TEST_CASE("jobsystem-worker-8-job-1000", "[jobsystem]")
     JobSystem::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
     JobTest(1000, "jobsystem-worker-8-job-1000");
 }
+
+#endif

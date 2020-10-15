@@ -111,7 +111,7 @@ namespace StringUtils
 			}
 		}
 
-		std::wstring utf8ToUcs2(const std::string& utf8Str)
+		std::wstring utf8ToUcs2(const String& utf8Str)
 		{
 			std::wstring ucs2Result;
 			wchar_t ucs2CharToStrBuf[] = { 0, 0 };
@@ -129,9 +129,9 @@ namespace StringUtils
 			return ucs2Result;
 		}
 
-		std::string ucs2ToUtf8(const std::wstring& ucs2Str)
+		String ucs2ToUtf8(const std::wstring& ucs2Str)
 		{
-			std::string utf8Result;
+			String utf8Result;
 			char utf8Sequence[] = { 0, 0, 0, 0, 0 };
 			const wchar_t* cursor = ucs2Str.c_str();
 			const wchar_t* const end = ucs2Str.c_str() + ucs2Str.length();
@@ -149,15 +149,15 @@ namespace StringUtils
 #endif
 	}
 
-	std::string ReplaceString(const std::string& str, const std::string& src, const std::string& dst)
+	String ReplaceString(const String& str, const String& src, const String& dst)
 	{
 		if (src == dst) {
 			return str;
 		}
 
-		std::string out = str;
+		String out = str;
 		size_t pos = str.find(src, 0);
-		while (pos != std::string::npos)
+		while (pos != String::npos)
 		{
 			out.replace(pos, src.size(), dst);
 			pos = out.find(src, pos + dst.size());
@@ -166,9 +166,9 @@ namespace StringUtils
 		return out;
 	}
 
-	std::string ReplaceChar(const std::string& str, char src, char dst)
+	String ReplaceChar(const String& str, char src, char dst)
 	{
-		std::string out = str;
+		String out = str;
 		if (out.empty())
 		{
 			return out;
@@ -184,12 +184,12 @@ namespace StringUtils
 		return out;
 	}
 
-	std::string WStringToString(const std::wstring& wstr)
+	String WStringToString(const WString& wstr)
 	{
 #ifdef CJING3D_PLATFORM_WIN32
-		if (wstr.empty()) return std::string();
+		if (wstr.empty()) return String();
 		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
-		std::string strTo(size_needed, 0);
+		String strTo(size_needed, 0);
 		WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
 		return strTo;
 #else
@@ -197,7 +197,7 @@ namespace StringUtils
 #endif
 	}
 
-	std::wstring StringToWString(const std::string& str)
+	WString StringToWString(const String& str)
 	{
 #ifdef CJING3D_PLATFORM_WIN32
 		if (str.empty()) return std::wstring();

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "core\common\definitions.h"
+#include "core\string\string.h"
 
 #include <algorithm>
-#include <string>
 #include <map>
 
 namespace Cjing3D {
@@ -16,7 +16,7 @@ namespace Cjing3D {
 	public:
 		StringID();
 		StringID(const char* str);
-		StringID(const std::string& str);
+		StringID(const String& str);
 		StringID(const StringID& rhs);
 		StringID(StringID&& rhs);
 		~StringID();
@@ -25,8 +25,8 @@ namespace Cjing3D {
 		StringID& operator= (StringID&& rhs);
 
 		inline unsigned int HashValue()const { return mValue; }
-		std::string GetString()const;
-		void SetString(const std::string& str);
+		String GetString()const;
+		void SetString(const String& str);
 
 		operator bool()const { return mValue != 0; }
 
@@ -48,7 +48,7 @@ namespace Cjing3D {
 
 		static unsigned int	CalculateHash(const char* str);
 		static StringID EMPTY;
-		static std::map<unsigned int, std::string> mHashStringMap;
+		static std::map<unsigned int, String> mHashStringMap;
 
 	private:
 		unsigned int mValue;

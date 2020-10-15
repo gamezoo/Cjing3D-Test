@@ -105,7 +105,7 @@ namespace Cjing3D {
 		return { mDeltaTime, mTotalDeltaTime };
 	}
 
-	std::string Timer::GetSystemTimeString()
+	String Timer::GetSystemTimeString()
 	{
 		auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		tm ptm;
@@ -113,7 +113,7 @@ namespace Cjing3D {
 		char date[60] = { 0 };
 		sprintf_s(date, "%02d:%02d:%02d ",
 			(int)ptm.tm_hour, (int)ptm.tm_min, (int)ptm.tm_sec);
-		return std::string(date);
+		return String(date);
 	}
 
 	TimeStamp Timer::GetAbsoluteTime()

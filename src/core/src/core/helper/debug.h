@@ -1,11 +1,10 @@
 #pragma once
 
 #include "core\common\definitions.h"
+#include "core\string\string.h"
 
-#include <string>
 #include <exception>
 #include <sstream>
-
 
 namespace Cjing3D {
 
@@ -29,12 +28,12 @@ namespace Cjing3D {
 		void SetPopBoxOnDie(bool t);
 		void SetAbortOnDie(bool t);
 
-		void Warning(const std::string& warningMsg);
-		void Error(const std::string& errorMsg);
-		void Die(const std::string& dieMsg);
+		void Warning(const char* format, ...);
+		void Error(const char* format, ...);
+		void Die(const char* format, ...);
 
 		void CheckAssertion(bool assertion);
-		void CheckAssertion(bool assertion, const std::string& errorMsg);
+		void CheckAssertion(bool assertion, const char* errorMsg);
 
 		void ThrowIfFailed(bool result);
 		void ThrowIfFailed(bool result, const char* format, ...);
