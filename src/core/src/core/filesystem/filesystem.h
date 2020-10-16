@@ -19,7 +19,7 @@ namespace FileSystem
 
 	bool IsFileExists(const char* path);
 	bool ReadFileBytes(const char* path, std::vector<char>& data);
-	bool ReadFileBytes(const char* path, void** buffer, U32& size);
+	bool ReadFileBytes(const char* path, char** buffer, U32& size);
 	bool SaveFile(const char* path, const char* buffer, size_t length);
 	bool DeleteFile(const char* path);
 }

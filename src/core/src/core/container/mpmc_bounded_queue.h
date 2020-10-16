@@ -24,6 +24,7 @@
 
 namespace Cjing3D
 {
+	// based on atomic operation
 	template<typename T>
 	class MPMCBoundedQueue
 	{

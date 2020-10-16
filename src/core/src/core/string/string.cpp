@@ -145,7 +145,8 @@ namespace Cjing3D
 		}
 		else
 		{
-			mBigData = (char*)gStringAllocator.Allocate(mSize + 1);
+	
+			mBigData = (char*)CJING_ALLOCATOR_MALLOC(gStringAllocator, mSize + 1);
 			Memory::Memcpy(mBigData, str, mSize + 1);
 		}
 	}
@@ -199,7 +200,7 @@ namespace Cjing3D
 	String::~String()
 	{
 		if (!isSmall()) {
-			gStringAllocator.Free(mBigData);
+			CJING_ALLOCATOR_FREE(gStringAllocator, mBigData);
 		}
 	}
 
@@ -220,7 +221,7 @@ namespace Cjing3D
 
 		if (!isSmall()) 
 		{
-			gStringAllocator.Free(mBigData);
+			CJING_ALLOCATOR_FREE(gStringAllocator, mBigData);
 		}
 
 		if (rhs.isSmall())
@@ -243,7 +244,7 @@ namespace Cjing3D
 	{
 		if (!isSmall()) 
 		{
-			gStringAllocator.Free(mBigData);
+			CJING_ALLOCATOR_FREE(gStringAllocator, mBigData);
 		}
 
 		if (str.length() < BUFFER_MINIMUN_SIZE)
@@ -253,7 +254,7 @@ namespace Cjing3D
 		}
 		else
 		{
-			mBigData = (char*)gStringAllocator.Allocate(str.length() + 1);
+			mBigData = (char*)CJING_ALLOCATOR_MALLOC(gStringAllocator, str.length() + 1);
 			Memory::Memcpy(mBigData, str.data(), str.length());
 			mBigData[str.length()] = '\0';
 		}
@@ -289,7 +290,7 @@ namespace Cjing3D
 			}
 			else
 			{
-				char* tmp = (char*)gStringAllocator.Allocate(size + 1);
+				char* tmp = (char*)CJING_ALLOCATOR_MALLOC(gStringAllocator, size + 1);
 				Memory::Memcpy(tmp, mSmallData, mSize + 1);
 				mBigData = tmp;
 			}
@@ -306,7 +307,7 @@ namespace Cjing3D
 			}
 			else
 			{
-				mBigData = (char*)gStringAllocator.Reallocate(mBigData, size + 1);
+				mBigData = (char*)CJING_ALLOCATOR_REMALLOC(gStringAllocator, mBigData, size + 1);
 				mBigData[size] = '\0';
 			}
 			mSize = size;
@@ -443,7 +444,7 @@ namespace Cjing3D
 	{
 		if (!isSmall()) 
 		{
-			gStringAllocator.Free(mBigData);
+			CJING_ALLOCATOR_FREE(gStringAllocator, mBigData);
 		}
 
 		mSize = 0;

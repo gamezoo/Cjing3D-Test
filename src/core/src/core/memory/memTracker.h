@@ -1,12 +1,11 @@
 #pragma once
 
-#ifdef DEBUG
-#define CJING_MEMORY_TRACKER
-#define CJING_MEMORY_LEAK_FILE "memory_leaks.txt"
-#endif
+#include "mem_def.h"
 
 #ifdef CJING_MEMORY_TRACKER
 #include <unordered_map>
+
+#define CJING_MEMORY_LEAK_FILE "memory_leaks.txt"
 
 namespace Cjing3D
 {
@@ -18,7 +17,7 @@ namespace Cjing3D
 		}
 
 		void RecordAlloc(void* ptr, size_t size, const char* filename, int line);
-		void RecordRealloc(void* ptr, size_t size, const char* filename, int line);
+		void RecordRealloc(void* ptr, void* old, size_t size, const char* filename, int line);
 		void RecordFree(void* ptr);
 		void ReportMemoryLeak();
 

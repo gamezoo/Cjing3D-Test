@@ -80,7 +80,7 @@ namespace Cjing3D {
 		std::ostringstream oss;																		\
 		oss << __FUNCTION__; oss << __FILE__; oss << __LINE__;										\
 		oss << "Condition \"" _STR(mCond) "\" is true. returned: " _STR(mRet);					    \
-		Debug::Error(oss.str());																	\
+		Debug::Error(oss.str().c_str());																	\
 	} else                                                                                          \
 		((void)0)
 
@@ -89,7 +89,7 @@ namespace Cjing3D {
 		std::ostringstream oss;																		\
 		oss << __FUNCTION__; oss << __FILE__; oss << __LINE__;										\
 		oss << "Condition \"" _STR(mCond) "\" is true. returned: " _STR(mRet);					    \
-		Debug::Error(oss.str());																	\
+		Debug::Error(oss.str().c_str());																	\
 		return mRet;                                                                                \
 	} else                                                                                          \
 		((void)0)

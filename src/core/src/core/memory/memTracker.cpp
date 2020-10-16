@@ -20,16 +20,39 @@ namespace Cjing3D
 	void MemoryTracker::RecordAlloc(void* ptr, size_t size, const char* filename, int line)
 	{
 		Concurrency::ScopedMutex lock(mMutex);
-		DBG_ASSERT_MSG(mAllocNodeMap.find(ptr) == mAllocNodeMap.end(), "The address is already allocated");
+		if (mAllocNodeMap.find(ptr) != mAllocNodeMap.end())
+		{
+			auto kvp = mAllocNodeMap.find(ptr);
+			AllocNode& allocNode = kvp->second;
+			std::stringstream os;
+			os << (allocNode.filename_ ? allocNode.filename_ : "(unknown)");
+			os << "(" << allocNode.line_ << ")";
+			os << ": alloc size:" << allocNode.size_;
+			os << std::endl;
+			Logger::Info(os.str().c_str());
+
+			DBG_ASSERT_MSG(mAllocNodeMap.find(ptr) == mAllocNodeMap.end(), "The address is already allocated");
+		}
+
 
 		mAllocNodeMap.insert(std::pair(ptr, AllocNode(size, filename, line)));
 		mMemUsage += size;
 		mMaxMemUsage = std::max(mMaxMemUsage, mMemUsage);
 	}
 
-	void MemoryTracker::RecordRealloc(void* ptr, size_t size, const char* filename, int line)
+	void MemoryTracker::RecordRealloc(void* ptr, void* old, size_t size, const char* filename, int line)
 	{
 		Concurrency::ScopedMutex lock(mMutex);
+		if (ptr != old)
+		{
+			auto it = mAllocNodeMap.find(old);
+			if (it != mAllocNodeMap.end())
+			{
+				mMemUsage -= it->second.size_;
+				mAllocNodeMap.erase(it);
+			}
+		}
+
 		auto it = mAllocNodeMap.find(ptr);
 		if (it == mAllocNodeMap.end())
 		{

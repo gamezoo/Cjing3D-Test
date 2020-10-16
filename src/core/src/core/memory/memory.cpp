@@ -7,41 +7,31 @@ namespace Cjing3D
 #ifdef CJING_MEMORY_TRACKER
 	void* Memory::Alloc(size_t size, const char* filename, int line)
 	{
-		void* ptr = allocator.Allocate(size);
-		MemoryTracker::Get().RecordAlloc(ptr, size, filename, line);
-		return ptr;
+		return allocator.Allocate(size, filename, line);
 	}
 
 	void* Memory::Realloc(void* ptr, size_t newBytes, const char* filename, int line)
 	{
-		ptr = allocator.Reallocate(ptr, newBytes);
-		MemoryTracker::Get().RecordRealloc(ptr, newBytes, filename, line);
-		return ptr;
+		return allocator.Reallocate(ptr, newBytes, filename, line);
 	}
 
 	void Memory::Free(void* ptr)
 	{
-		MemoryTracker::Get().RecordFree(ptr);
 		allocator.Free(ptr);
 	}
 
 	void* Memory::AlignAlloc(size_t size, size_t align, const char* filename, int line)
 	{
-		void* ptr = allocator.AlignAllocate(size, align);
-		MemoryTracker::Get().RecordAlloc(ptr, size, filename, line);
-		return ptr;
+		return allocator.AlignAllocate(size, align, filename, line);
 	}
 
 	void* Memory::AlignRealloc(void* ptr, size_t newBytes, size_t align, const char* filename, int line)
 	{
-		ptr = allocator.AlignReallocate(ptr, newBytes, align);
-		MemoryTracker::Get().RecordRealloc(ptr, newBytes, filename, line);
-		return ptr;
+		return allocator.AlignReallocate(ptr, newBytes, align, filename, line);
 	}
 
 	void Memory::AlignFree(void* ptr)
 	{
-		MemoryTracker::Get().RecordFree(ptr);
 		allocator.AlignFree(ptr);
 	}
 

@@ -39,7 +39,7 @@ namespace FileSystem
 			return PHYSFS_exists(name);
 		}
 
-		bool ReadFileBytes(const char* name, void** buffer, U32& size)
+		bool ReadFileBytes(const char* name, char** buffer, U32& size)
 		{
 			if (!PHYSFS_exists(name))
 			{
@@ -243,7 +243,7 @@ namespace FileSystem
 		return false;
 	}
 
-	bool ReadFileBytes(const char* path, void** buffer, U32& size)
+	bool ReadFileBytes(const char* path, char** buffer, U32& size)
 	{
 		if (!Path::IsAbsolutePath(path))
 		{

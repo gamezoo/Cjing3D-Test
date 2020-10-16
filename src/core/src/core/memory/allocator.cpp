@@ -1,7 +1,50 @@
 #include "allocator.h"
+#include "memTracker.h"
 
 namespace Cjing3D
 {
+#ifdef CJING_MEMORY_TRACKER
+	void* DefaultAllocator::Allocate(size_t size, const char* filename, int line)
+	{
+		void* ptr = malloc(size);
+		MemoryTracker::Get().RecordAlloc(ptr, size, filename, line);
+		return ptr;
+	}
+
+	void* DefaultAllocator::Reallocate(void* ptr, size_t newBytes, const char* filename, int line)
+	{
+		void* ret = realloc(ptr, newBytes);
+		MemoryTracker::Get().RecordRealloc(ret, ptr, newBytes, filename, line);
+		return ret;
+	}
+
+	void DefaultAllocator::Free(void* ptr)
+	{
+		MemoryTracker::Get().RecordFree(ptr);
+		free(ptr);
+	}
+
+	void* DefaultAllocator::AlignAllocate(size_t size, size_t align, const char* filename, int line)
+	{
+		void* ptr = _aligned_malloc(size, align);
+		MemoryTracker::Get().RecordAlloc(ptr, size, filename, line);
+		return ptr;
+	}
+
+	void* DefaultAllocator::AlignReallocate(void* ptr, size_t newBytes, size_t align, const char* filename, int line)
+	{
+		void* ret = _aligned_realloc(ptr, newBytes, align);
+		MemoryTracker::Get().RecordRealloc(ret, ptr, newBytes, filename, line);
+		return ret;
+	}
+
+	void DefaultAllocator::AlignFree(void* ptr)
+	{
+		MemoryTracker::Get().RecordFree(ptr);
+		return _aligned_free(ptr);
+	}
+
+#else
 	void* DefaultAllocator::Allocate(size_t size)
 	{
 		return malloc(size);
@@ -31,4 +74,5 @@ namespace Cjing3D
 	{
 		return _aligned_free(ptr);
 	}
+#endif
 }

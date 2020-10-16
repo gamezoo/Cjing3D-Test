@@ -1,9 +1,8 @@
 #pragma once
 
-#include "core\memory\allocator.h"
-#include "core\memory\memTracker.h"
-
-#define CJING_MEMORY_ALLOCATOR	CJING_MEMORY_ALLOCATOR_DEFAULT
+#include "mem_def.h"
+#include "allocator.h"
+#include "memTracker.h"
 
 namespace Cjing3D
 {
@@ -11,6 +10,10 @@ namespace Cjing3D
 
 #if (CJING_MEMORY_ALLOCATOR == CJING_MEMORY_ALLOCATOR_DEFAULT)
 	using MemoryAllocator = DefaultAllocator;
+#endif
+
+#if (CJING_CONTAINER_ALLOCATOR == CJING_MEMORY_ALLOCATOR_DEFAULT)
+	using ContainerAllocator = DefaultAllocator;
 #endif
 
 	class Memory
@@ -89,8 +92,17 @@ inline void operator delete(void*, Cjing3D::NewPlaceHolder, void*) { }
 
 #define CJING_MALLOC(size)  Cjing3D::Memory::Alloc(size, __FILE__, __LINE__);
 #define CJING_MALLOC_ALIGN(size, align)  Cjing3D::Memory::AlignAlloc(size, align, __FILE__, __LINE__);
+#define CJING_REMALLOC(ptr, size)  Cjing3D::Memory::Realloc(ptr, size, __FILE__, __LINE__);
+#define CJING_REMALLOC_ALIGN(ptr, size, align)  Cjing3D::Memory::AlignRealloc(ptr, size, align, __FILE__, __LINE__);
 #define CJING_FREE(ptr) Cjing3D::Memory::Free(ptr);
 #define CJING_FREE_ALIGN(ptr) Cjing3D::Memory::AlignFree(ptr); 
+
+#define CJING_ALLOCATOR_MALLOC(allocator, size)  allocator.Allocate(size, __FILE__, __LINE__);
+#define CJING_ALLOCATOR_MALLOC_ALIGN(allocator, size, align)  allocator.AlignAllocate(size, align, __FILE__, __LINE__);
+#define CJING_ALLOCATOR_REMALLOC(allocator, ptr, size)  allocator.Reallocate(ptr, size, __FILE__, __LINE__);
+#define CJING_ALLOCATOR_REMALLOC_ALIGN(allocator, ptr, size, align)  allocator.AlignReallocate(ptr, size, align, __FILE__, __LINE__);
+#define CJING_ALLOCATOR_FREE(allocator, ptr) allocator.Free(ptr);
+#define CJING_ALLOCATOR_FREE_ALIGN(allocator, ptr) allocator.AlignFree(ptr); 
 
 #else
 #define CJING_NEW(T) new (Cjing3D::NewPlaceHolder(), Cjing3D::Memory::Alloc(sizeof(T))) T
@@ -100,10 +112,20 @@ inline void operator delete(void*, Cjing3D::NewPlaceHolder, void*) { }
 
 #define CJING_MALLOC(size)  Cjing3D::Memory::Alloc(size);
 #define CJING_MALLOC_ALIGN(size, align)  Cjing3D::Memory::AlignAlloc(size, align);
+#define CJING_REMALLOC(ptr, size)  Cjing3D::Memory::Realloc(ptr, size);
+#define CJING_REMALLOC_ALIGN(ptr, size, align)  Cjing3D::Memory::AlignRealloc(ptr, size, align);
 #define CJING_FREE(ptr) Cjing3D::Memory::Free(ptr);
 #define CJING_FREE_ALIGN(ptr) Cjing3D::Memory::AlignFree(ptr); 
+
+#define CJING_ALLOCATOR_MALLOC(allocator, size)  allocator.Allocate(size);
+#define CJING_ALLOCATOR_MALLOC_ALIGN(allocator, size, align)  allocator.AlignAllocate(size, align);
+#define CJING_ALLOCATOR_REMALLOC(allocator, ptr, size)  allocator.Reallocate(ptr, size);
+#define CJING_ALLOCATOR_REMALLOC_ALIGN(allocator, ptr, size, align)  allocator.AlignReallocate(ptr, size, align);
+#define CJING_ALLOCATOR_FREE(allocator, ptr) allocator.Free(ptr);
+#define CJING_ALLOCATOR_FREE_ALIGN(allocator, ptr) allocator.AlignFree(ptr); 
 
 #endif
 
 #define CJING_SAFE_DELETE(ptr) { if (ptr) { CJING_DELETE(ptr); ptr = nullptr; } }
+#define CJING_SAFE_DELETE_ARR(ptr, count) { if (ptr) { CJING_DELETE_ARR(ptr, count); ptr = nullptr; } }
 #define CJING_SAFE_FREE(ptr) { if (ptr) { CJING_FREE(ptr); ptr = nullptr; } }

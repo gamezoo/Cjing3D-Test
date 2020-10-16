@@ -1,7 +1,9 @@
 #pragma once
 
 #include "math\maths_common.h"
+
 #include <assert.h>
+#include <functional>
 
 #define NOMINMAX
 #undef min
