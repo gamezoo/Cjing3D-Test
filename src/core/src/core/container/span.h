@@ -8,45 +8,49 @@ namespace Cjing3D
 	class Span
 	{
 	public:
-		Span() = default;
-		Span(T* begin, size_t len) :
+		constexpr Span() noexcept = default;
+		constexpr Span(T* begin, size_t len)noexcept :
 			mBegin(begin),
 			mEnd(begin + len)
 		{}
-		Span(T* begin, T* end) :
+		constexpr Span(T* begin, T* end)noexcept :
 			mBegin(begin),
 			mEnd(end)
 		{}
 		template<size_t N>
-		Span(T(&data)[N]) :
+		constexpr Span(T(&data)[N])noexcept :
 			mBegin(data),
 			mEnd(data + N)
 		{}
 
-		operator Span<const T>() const
+		constexpr operator Span<const T>() const noexcept
 		{
 			return Span<const T>(mBegin, mEnd);
 		}
 
-		T& operator[](const size_t idx) const
+		constexpr T& operator[](const size_t idx) const noexcept
 		{
 			assert(mBegin + idx < mEnd);
 			return mBegin[idx];
 		}
-		bool empty()const {
+
+		constexpr bool empty()const noexcept {
 			return length() <= 0;
 		}
 
-		size_t length()const { 
+		constexpr size_t length()const noexcept {
 			return size_t(mEnd - mBegin);
 		}
-		T* begin()const {
+
+		constexpr T* begin()const noexcept {
 			return mBegin;
 		}
-		T* end()const {
+
+		constexpr T* end()const noexcept {
 			return mEnd;
 		}
-		T* data() {
+
+		constexpr T* data()const noexcept {
 			return mBegin;
 		}
 
