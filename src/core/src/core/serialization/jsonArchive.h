@@ -4,7 +4,6 @@
 #include "archive.h"
 #include "core\common\common.h"
 #include "math\maths.h"
-#include "core\helper\variant.h"
 #include "json\json.hpp"
 
 #include <stack>
@@ -40,7 +39,7 @@ namespace Cjing3D
 				return;
 			}
 
-			auto it = currentJson->emplace(std::make_pair(key, nlohmann::json())).first;
+			auto it = currentJson->emplace(std::make_pair(key.toString(), nlohmann::json())).first;
 			mJsonStack.push(&it.value());
 			func(*this);
 			mJsonStack.pop();
@@ -74,7 +73,7 @@ namespace Cjing3D
 				return *this;
 			}
 
-			auto it = currentJson->emplace(std::make_pair(key, nlohmann::json())).first;
+			auto it = currentJson->emplace(std::make_pair(key.toString(), nlohmann::json())).first;
 			mJsonStack.push(&it.value());
 			JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
 			mJsonStack.pop();
@@ -106,7 +105,7 @@ namespace Cjing3D
 				return *this;
 			}
 
-			nlohmann::json::iterator it = currentJson->find(key);
+			nlohmann::json::iterator it = currentJson->find(key.toString());
 			if (it != currentJson->end())
 			{
 				mJsonStack.push(&it.value());

@@ -23,11 +23,5 @@ enum EnumTest
 
 int main()
 {
-    std::cout << EnumTraits::Impl::EnumRange<EnumTest>() << std::endl;
-    EnumTraits::Impl::IndexT<EnumTest> a = 10;
-
-    auto str = EnumTraits::EnumToName(Enum4);
-    std::cout << str << std::endl;
-
     return 0;
 }

@@ -2,6 +2,8 @@
 
 #include "core\common\definitions.h"
 #include "core\helper\stringID.h"
+#include "core\string\string.h"
+#include "core\serialization\serializedObject.h"
 #include "math\maths.h"
 
 #include <variant>
@@ -9,7 +11,6 @@
 
 namespace Cjing3D 
 {
-
 #define _VARIANT_TYPES				\
 	std::monostate,                 \
 	char,							\
@@ -19,7 +20,7 @@ namespace Cjing3D
 	bool,							\
 	float,							\
 	double,							\
-    std::string,                    \
+    String,                    \
 	void*,							\
     I32x2,							\
     I32x3,							\
@@ -30,7 +31,7 @@ namespace Cjing3D
 	/**
 	*	\brief the class of Variant
 	*/
-	class Variant
+	class Variant : public SerializedObject
 	{
 	public:
 		Variant(){}		
@@ -97,6 +98,10 @@ namespace Cjing3D
 			return mType;
 		}
 
+		// json serialize
+		void Serialize(JsonArchive& archive)override;
+		void Unserialize(JsonArchive& archive)const override;
+
 	private:
 		VariantType mVariant;
 		Type mType = TYPE_UNKNOW;
@@ -142,7 +147,7 @@ namespace Cjing3D
 		return TYPE_FLOAT;
 	}
 	template<>
-	inline Variant::Type Variant::MappingType<std::string>()
+	inline Variant::Type Variant::MappingType<String>()
 	{
 		return TYPE_STRING;
 	}

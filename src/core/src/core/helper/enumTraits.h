@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 #include <string_view>
+#include <optional>
 
 // based on the Magic Enum C++:
 // https://github.com/Neargye/magic_enum
@@ -322,12 +323,41 @@ namespace EnumTraits
 	constexpr auto EnumToName(E value)noexcept -> Impl::enable_if_enum_t<E, StringView>
 	{
 		using D = std::decay_t<E>;
-
 		const auto index = Impl::EnumToIndex<D>(value);
 		if (index != Impl::InvalidIndex<D>) {
 			return Impl::EnumNamesValue<D>[index];
 		}
 
+		return {};
+	}
+
+
+	template<typename E>
+	constexpr auto EnumValue(size_t index)noexcept-> Impl::enable_if_enum_t<E, std::decay_t<E>>
+	{
+		using D = std::decay_t<E>;
+		if constexpr (Impl::IsEnumSparse<D>())
+		{
+			assert(index < Impl::CountEnum<D>);
+			return Impl::EnumValuesV<D>[index];
+		}
+		else
+		{
+			assert(index < Impl::CountEnum<D>);
+			return Impl::EnumValue<D, Impl::EnumMinValue<D>>(index);
+		}
+	}
+
+	template<typename E>
+	constexpr auto NameToEnum(StringView name) noexcept-> Impl::enable_if_enum_t<E, std::optional<std::decay_t<E>>>
+	{
+		using D = std::decay_t<E>;
+		for (size_t i = 0; i < Impl::CountEnum<D>; i++)
+		{
+			if (name == Impl::EnumNamesValue<D>[i]) {
+				return EnumValue<D>(i);
+			}
+		}
 		return {};
 	}
 }
