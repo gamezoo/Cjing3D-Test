@@ -28,6 +28,9 @@ namespace Cjing3D
 		virtual void  AlignFree(void* ptr) = 0;
 #endif
 
+		// Get the maximum size of a single allocation
+		virtual size_t GetMaxAllocationSize() = 0;
+
 		template<typename T, typename... Args>
 		T* New(Args&&... args)
 		{
@@ -70,5 +73,8 @@ namespace Cjing3D
 		void* AlignReallocate(void* ptr, size_t newSize, size_t align)override;
 		void  AlignFree(void* ptr)override;
 #endif
+
+		// Get the maximum size of a single allocation
+		size_t GetMaxAllocationSize()override;
 	};
 }

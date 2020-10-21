@@ -6,13 +6,15 @@
 
 namespace Cjing3D
 {
+namespace LuaTools
+{
 	Exception::Exception() :
 		std::exception(),
 		mMsg{}
 	{
 	}
 
-	Exception::Exception(const char * format, ...) :
+	Exception::Exception(const char* format, ...) :
 		Exception()
 	{
 		va_list args;
@@ -23,7 +25,7 @@ namespace Cjing3D
 		Debug::Error(mMsg);
 	}
 
-	Exception::Exception(const char * format, va_list args) :
+	Exception::Exception(const char* format, va_list args) :
 		Exception()
 	{
 		vsnprintf_s(mMsg, std::size(mMsg), format, args);
@@ -55,12 +57,12 @@ namespace Cjing3D
 			AbortOnDie = t;
 		}
 
-		void Warning(const std::string & warningMsg)
+		void Warning(const std::string& warningMsg)
 		{
 			Logger::Warning(warningMsg);
 		}
 
-		void Error(const std::string & errorMsg)
+		void Error(const std::string& errorMsg)
 		{
 			Logger::Error(errorMsg);
 			if (DieOnError)
@@ -73,7 +75,7 @@ namespace Cjing3D
 				std::abort();
 		}
 
-		void CheckAssertion(bool assertion, const std::string & errorMsg)
+		void CheckAssertion(bool assertion, const std::string& errorMsg)
 		{
 			if (!assertion) {
 				Die(errorMsg);
@@ -87,7 +89,7 @@ namespace Cjing3D
 			}
 		}
 
-		void ThrowIfFailed(bool result, const char * format, ...)
+		void ThrowIfFailed(bool result, const char* format, ...)
 		{
 			if (false == result) {
 				va_list args;
@@ -109,7 +111,7 @@ namespace Cjing3D
 			throw std::invalid_argument(msg);
 		}
 
-		void Die(const std::string & dieMsg)
+		void Die(const std::string& dieMsg)
 		{
 			Logger::Fatal(dieMsg);
 			if (AbortOnDie) {
@@ -121,4 +123,5 @@ namespace Cjing3D
 		}
 
 	}
+}
 }

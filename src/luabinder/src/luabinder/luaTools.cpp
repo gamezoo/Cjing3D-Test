@@ -52,7 +52,7 @@ namespace Cjing3D
 				}
 				oss << std::endl;
 			}
-			Logger::Debug(oss.str());
+			LuaTools::Logger::Debug(oss.str());
 		}
 
 		void PrintInIndex(lua_State * l, int index)
@@ -74,7 +74,7 @@ namespace Cjing3D
 				oss << lua_typename(l, lua_type(l, index));
 				break;
 			}
-			Logger::Debug(oss.str());
+			LuaTools::Logger::Debug(oss.str());
 		}
 
 		int GetCallDepth(lua_State * l)
@@ -104,7 +104,7 @@ namespace Cjing3D
 				std::string errMsg = std::string("In ") + functionName + ": " + lua_tostring(l, -1) + "\n";
 				luaL_traceback(l, l, NULL, 1);
 				errMsg += lua_tostring(l, -1);
-				Debug::Error(errMsg);
+				LuaTools::Debug::Error(errMsg);
 				lua_pop(l, 2);
 				return false;
 			}

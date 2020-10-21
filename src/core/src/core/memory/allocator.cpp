@@ -75,4 +75,9 @@ namespace Cjing3D
 		return _aligned_free(ptr);
 	}
 #endif
+
+	size_t DefaultAllocator::GetMaxAllocationSize()
+	{
+		return std::numeric_limits<size_t>::max();
+	}
 }

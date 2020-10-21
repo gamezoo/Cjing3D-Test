@@ -6,6 +6,8 @@
 #include <stdarg.h>
 
 namespace Cjing3D {
+namespace LuaTools
+{
 	namespace Logger {
 		using std::string;
 
@@ -42,18 +44,18 @@ namespace Cjing3D {
 			}
 		}
 
-		void Logger::Print(const string & msg, std::ostream & out)
+		void Logger::Print(const string& msg, std::ostream& out)
 		{
 			auto timeStr = GetCurSystemTimeStr();
 			out << timeStr << "    " << msg << std::endl;
 		}
 
-		void Debug(const string & msg)
+		void Debug(const string& msg)
 		{
 			Print("Debug: " + msg);
 		}
 
-		void Logger::Info(const string & msg)
+		void Logger::Info(const string& msg)
 		{
 			Print("[Info]  " + msg);
 			Print("[Info]  " + msg, GetLoggerFile());
@@ -71,14 +73,14 @@ namespace Cjing3D {
 			Print("[Info]  " + std::string(msg), GetLoggerFile());
 		}
 
-		void Logger::Warning(const string & msg)
+		void Logger::Warning(const string& msg)
 		{
 			string warningMsg = "[Warning]  " + msg;
 			Print(warningMsg);
 			Print(warningMsg, GetLoggerFile());
 		}
 
-		void Logger::Error(const string & msg)
+		void Logger::Error(const string& msg)
 		{
 			string warningMsg = "[Error]  " + msg;
 			Print(warningMsg);
@@ -94,4 +96,5 @@ namespace Cjing3D {
 			Print(warningMsg, GetLoggerFile());
 		}
 	}
+}
 }

@@ -55,7 +55,7 @@ namespace Cjing3D {
 			LuaRef superClass = registry.RawGetp(superClassID);
 
 			if (superClass.IsEmpty()) {
-				Debug::Error("The super class dosen't registered:" + name);
+				LuaTools::Debug::Error("The super class dosen't registered:" + name);
 			}
 
 			currentMeta.RawGet("__CLASS").RawSet("__SUPER", superClass);

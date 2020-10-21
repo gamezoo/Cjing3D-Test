@@ -18,3 +18,7 @@
 
 // container allocator
 #define CJING_CONTAINER_ALLOCATOR  CJING_MEMORY_ALLOCATOR_DEFAULT
+
+///////////////////////////////////////////////////////////////////////
+// use stl smart pointer
+#define USE_STL_SMART_POINTER

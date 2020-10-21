@@ -3,6 +3,7 @@
 #include "maths_common.h"
 #include "vec_facade.h"
 #include "mat_facade.h"
+#include "random.h"
 
 namespace Cjing3D
 {

@@ -47,7 +47,7 @@ namespace Cjing3D
 			}
 			catch (const LuaException& ex)
 			{
-				Debug::Error(ex.what());
+				LuaTools::Debug::Error(ex.what());
 				luaL_error(l, ex.what());
 			}
 			catch (const std::exception&ex)

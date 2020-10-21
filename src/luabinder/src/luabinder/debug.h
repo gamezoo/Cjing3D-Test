@@ -5,7 +5,8 @@
 #include <sstream>
 
 namespace Cjing3D {
-
+namespace LuaTools
+{
 	class Exception : public std::exception
 	{
 	public:
@@ -55,5 +56,5 @@ namespace Cjing3D {
 		return mRet;                                                                                \
 	} else                                                                                          \
 		((void)0)
-
+}
 }
