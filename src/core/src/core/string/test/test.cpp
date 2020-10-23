@@ -111,7 +111,7 @@ TEST_CASE("string method", "[string]")
 	REQUIRE(RequireFunc(bigTest.size(), 24));
 	REQUIRE(RequireFunc(bigTest.c_str(), "1Hello234567890987654321"));
 
-	bigTest.earse(1);
+	bigTest.erase(1);
 
 	REQUIRE(RequireFunc(bigTest.size(), 23));
 	REQUIRE(RequireFunc(bigTest.c_str(), "1ello234567890987654321"));

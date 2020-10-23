@@ -2,6 +2,7 @@
 
 #include "core\container\span.h"
 
+#include <string_view>
 #include <string>
 
 #define USE_CUSTOM_STRING
@@ -134,6 +135,7 @@ namespace Cjing3D
 
 #ifndef USE_CUSTOM_STRING
 	using String = std::string;
+	using StringView = std::string_view;
 #else
 	class String
 	{
@@ -201,7 +203,8 @@ namespace Cjing3D
 		void   resize(size_t size);
 		String substr(size_t pos, int length = -1)const;
 		void   insert(size_t pos, const char* value);
-		void   earse(size_t pos);
+		void   erase(size_t pos);
+		void   erase(size_t pos, size_t count);
 		int    find(const char* str, size_t pos = 0)const;
 		int    find(const char c, size_t pos = 0)const;
 		int    find_last_of(const char* str)const;
@@ -232,5 +235,8 @@ namespace Cjing3D
 	};
 
 	using WString = std::wstring;
+	using StringView = std::string_view;
 #endif
+
+
 }

@@ -401,7 +401,7 @@ namespace Cjing3D
 		Memory::Memcpy(temp + pos, value, len);
 	}
 
-	void String::earse(size_t pos)
+	void String::erase(size_t pos)
 	{
 		if (pos >= mSize) {
 			return;
@@ -410,6 +410,19 @@ namespace Cjing3D
 		char* temp = data();
 		Memory::Memmove(temp + pos, temp + pos + 1, mSize - pos - 1);
 		mSize--;
+		temp[mSize] = '\0';
+	}
+
+	void String::erase(size_t pos, size_t count)
+	{
+		if (pos >= mSize || count <= 0) {
+			return;
+		}
+		count = std::min(count, mSize - pos);
+
+		char* temp = data();
+		Memory::Memmove(temp + pos, temp + pos + count, mSize - pos - count);
+		mSize -= count;
 		temp[mSize] = '\0';
 	}
 

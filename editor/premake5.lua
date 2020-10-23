@@ -30,4 +30,5 @@ dofile "../src/project.lua"
 
 -- example projects
 print(get_current_script_path())
-create_example_app("test", "src", get_current_script_path(), "ConsoleApp")
+--create_example_app("test", "src", get_current_script_path(), "ConsoleApp")
+create_example_app("test", "src", get_current_script_path(), "WindowedApp")

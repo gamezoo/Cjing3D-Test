@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core\memory\memory.h"
+#include "core\helper\debug.h"
 
 namespace Cjing3D
 {

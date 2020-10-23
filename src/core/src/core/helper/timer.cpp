@@ -11,6 +11,15 @@ std::atomic_flag initialized = ATOMIC_FLAG_INIT;
 
 namespace Cjing3D {
 
+	F32 EngineTime::GetDeltaTime()
+	{
+		return F32(deltaTime / 1000.0f);
+	}
+	F32 EngineTime::GetTotalTime()
+	{
+		return F32(totalDeltaTime / 1000.0f);
+	}
+
 #ifdef CJING3D_PLATFORM_WIN32
 	F64 mFrequency = 0;
 	U64 mCounterStart = 0;
@@ -28,6 +37,12 @@ namespace Cjing3D {
 
 	Timer::~Timer()
 	{
+	}
+
+	Timer& Timer::Instance()
+	{
+		static Timer instance;
+		return instance;
 	}
 
 	void Timer::Start()

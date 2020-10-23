@@ -12,6 +12,9 @@ namespace Cjing3D {
 	{
 		TimeInterval deltaTime;
 		TimeInterval totalDeltaTime;
+
+		F32 GetDeltaTime();
+		F32 GetTotalTime();
 	};
 
 	class Timer
@@ -19,6 +22,8 @@ namespace Cjing3D {
 	public:
 		Timer();
 		~Timer();
+
+		static Timer& Instance();
 
 		void Start();
 		void Stop();

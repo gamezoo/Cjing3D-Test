@@ -2,6 +2,7 @@
 #include "core\jobsystem\concurrency.h"
 #include "core\helper\timer.h"
 #include "core\string\string.h"
+#include "core\common\version.h"
 
 #include <fstream>
 #include <chrono>
@@ -125,6 +126,13 @@ namespace Cjing3D {
 			PrintImpl(warningMsg);
 			PrintImpl(warningMsg, GetErrorFile());
 			PrintImpl(warningMsg, GetLoggerFile());
+		}
+
+		void PrintConsoleHeader()
+		{
+			std::cout << "Cjing3D Version " << CjingVersion::GetVersionString() << std::endl;
+			std::cout << "Copyright (c) 2019-2020 by ZZZY" << std::endl;
+			std::cout << std::endl;
 		}
 	}
 }

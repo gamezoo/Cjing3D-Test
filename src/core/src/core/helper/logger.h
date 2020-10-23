@@ -11,6 +11,8 @@ namespace Cjing3D {
 		void Warning(const char* format, ...);
 		void Error(const char* format, ...);
 		void Fatal(const char* format, ...);
+
+		void PrintConsoleHeader();
 	}
 
 }

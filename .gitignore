@@ -12,6 +12,7 @@ src/core/build
 src/core/lib
 tools/pre_parser/lua_bind/__pycache__/lua_bind.cpython-37.pyc
 tools/pre_parser/lua_bind/code_gen_utils/__pycache__/code_gen_utils.cpython-37.pyc
-src/client
+src/client/build
+src/client/lib
 src/shaders
 src/resource

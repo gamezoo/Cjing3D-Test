@@ -1,12 +1,17 @@
 
+#include <windows.h>
 #include <iostream>
 
-#include "core\common\common.h"
-
-using namespace Cjing3D;
+//int WINAPI WinMain(
+//	_In_ HINSTANCE hInstance,
+//	_In_opt_ HINSTANCE hPrevInstance,
+//	_In_ LPSTR lpCmdLine,
+//	_In_ int nShowCmd)
+//{
+//	return 0;
+//}
 
 int main()
 {
-    std::cout << "Hello Cjing3D!" << std::endl;
-    return 0;
+	return 0;
 }

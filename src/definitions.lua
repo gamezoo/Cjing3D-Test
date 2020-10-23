@@ -2,17 +2,27 @@
 PROJECT_LUA_BINDER_NAME = "luaBinder"
 PROJECT_MATH_NAME       = "math"
 PROJECT_CORE_NAME       = "core"
+PROJECT_RENDERER_NAME   = "renderer"
+PROJECT_CLIENT_NAME     = "client"
 
 all_project_table = 
 {
     PROJECT_MATH_NAME,
     PROJECT_LUA_BINDER_NAME,
     PROJECT_CORE_NAME,
+    PROJECT_CLIENT_NAME,
 }
 
 dependencies_mapping = 
 {
-    [PROJECT_CORE_NAME] = { PROJECT_MATH_NAME }
+    [PROJECT_CORE_NAME]   = { 
+        PROJECT_MATH_NAME 
+    },
+
+    [PROJECT_CLIENT_NAME] = { 
+        PROJECT_MATH_NAME, 
+        PROJECT_CORE_NAME 
+    },
 }
 
 -----------------------------------------------------------------------------
