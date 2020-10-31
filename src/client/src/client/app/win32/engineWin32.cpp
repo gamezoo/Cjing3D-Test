@@ -1,7 +1,7 @@
 #include "engineWin32.h"
 #include "core\platform\platform.h"
-#include "client\platform\systemEvent.h"
-#include "client\platform\win32\gameWindowWin32.h"
+#include "client\app\systemEvent.h"
+#include "client\app\win32\gameWindowWin32.h"
 
 namespace Cjing3D::Win32
 {

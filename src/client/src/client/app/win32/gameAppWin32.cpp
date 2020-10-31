@@ -1,6 +1,6 @@
 #include "gameAppWin32.h"
-#include "client\platform\win32\gameWindowWin32.h"
-#include "client\platform\win32\engineWin32.h"
+#include "client\app\win32\gameWindowWin32.h"
+#include "client\app\win32\engineWin32.h"
 #include "client\app\mainComponent.h"
 
 namespace Cjing3D::Win32
@@ -33,6 +33,7 @@ namespace Cjing3D::Win32
 	void GameAppWin32::Run(const CreateGameFunc& createGame)
 	{
 #ifdef DEBUG
+		Debug::SetDebugConsoleEnable(true);
 		Debug::SetDieOnError(true);
 #endif
 		Logger::PrintConsoleHeader();
@@ -80,5 +81,52 @@ namespace Cjing3D::Win32
 		// uninitialize
 		game->Uninitialize();
 		engine->Uninitialize();
+	}
+
+	void GameAppWin32::Run()
+	{
+		PresentConfig config = {};
+		config.mScreenSize = mScreenSize;
+		config.mIsFullScreen = false;
+		config.mIsLockFrameRate = true;
+		config.mTargetFrameRate = 60;
+		config.mFlag |= PresentFlag_WinApp;
+		//config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
+
+		if (mTitleName == "") {
+			mTitleName = String("Cjing3D ") + CjingVersion::GetVersionString();
+		}
+
+#ifdef DEBUG
+		Debug::SetDebugConsoleEnable(true);
+		Debug::SetDieOnError(true);
+
+		///////////////////////////////////////////////////////////////////////////////
+// show debug console
+		if (config.mFlag & PresentFlag_WinApp &&
+			Debug::IsDebugConsoleEnable())
+		{
+			// console for std output..
+			if (!AttachConsole(ATTACH_PARENT_PROCESS))
+			{
+				AllocConsole();
+			}
+
+			freopen("CONIN$", "r", stdin);
+			freopen("CONOUT$", "w", stdout);
+			freopen("CONOUT$", "w", stderr);
+		}
+#endif
+		// print console header
+		Logger::PrintConsoleHeader();
+
+		// system event queue
+		SharedPtr<EventQueue> eventQueue = CJING_MAKE_SHARED<EventQueue>();
+
+		// create game window
+		auto gameWindow = CJING_MAKE_SHARED<GameWindowWin32>(mHinstance, mTitleName, eventQueue, config);
+
+		// run game
+		while (gameWindow->Tick()) {}
 	}
 }

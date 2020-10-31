@@ -3,10 +3,10 @@
 #include "core\platform\platform.h"
 #include "core\input\InputSystem.h"
 
-#include "client\platform\win32\gameWindowWin32.h"
-#include "client\platform\win32\input\keyboardWin32.h"
-#include "client\platform\win32\input\mouseWin32.h"
-#include "client\platform\win32\input\gamepadXInput.h"
+#include "client\app\win32\gameWindowWin32.h"
+#include "client\app\win32\input\keyboardWin32.h"
+#include "client\app\win32\input\mouseWin32.h"
+#include "client\app\win32\input\gamepadXInput.h"
 
 namespace Cjing3D::Win32
 {

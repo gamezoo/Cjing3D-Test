@@ -27,6 +27,8 @@ namespace Cjing3D {
 		void SetDieOnError(bool t);
 		void SetPopBoxOnDie(bool t);
 		void SetAbortOnDie(bool t);
+		void SetDebugConsoleEnable(bool t);
+		bool IsDebugConsoleEnable();
 
 		void Warning(const char* format, ...);
 		void Error(const char* format, ...);

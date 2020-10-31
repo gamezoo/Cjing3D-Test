@@ -225,6 +225,17 @@ namespace Cjing3D
 		return append((const char*)value);
 	}
 
+	UTF8String& UTF8String::append(const char* value)
+	{
+		if (!CheckUTF8StringValid(value))
+		{
+			Debug::Warning("Invalid utf8 string:%s", value);
+			return *this;
+		}
+		mString.append(value);
+		mLength = utf8len(mString.data());
+	}
+
 	size_t UTF8String::size() const
 	{
 		return utf8size(mString.data());

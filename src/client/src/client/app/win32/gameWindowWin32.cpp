@@ -2,7 +2,7 @@
 
 #include "gameWindowWin32.h"
 #include "client\app\presentConfig.h"
-#include "client\platform\systemEvent.h"
+#include "client\app\systemEvent.h"
 #include "core\string\stringUtils.h"
 
 namespace Cjing3D::Win32 {
@@ -54,9 +54,9 @@ namespace Cjing3D::Win32 {
 		mEventQueue(eventQueue),
 		mIsFullScreen(config.mIsFullScreen)
 	{
-		
+		///////////////////////////////////////////////////////////////////////////////
+		// init window
 		std::wstring nameWStr = StringUtils::StringToWString(mTitleName.toString());
-
 		LONG adjustedWidth = static_cast<LONG>(mScreenSize[0]);
 		LONG adjustedHeight = static_cast<LONG>(mScreenSize[1]);
 		DWORD windowStyle = 0;
@@ -132,7 +132,7 @@ namespace Cjing3D::Win32 {
 			mScreenPos[1] = static_cast<std::int32_t>(point.y);
 		}
 
-		Logger::Info("[Video] Initialize GameWindowWin32 Size:%d, %d", std::to_string(adjustedWidth), std::to_string(adjustedHeight));
+		Logger::Info("[Video] Initialize GameWindowWin32 Size:%d, %d", mScreenSize[0], mScreenSize[1]);
 		mIsInitialized = true;
 	}
 

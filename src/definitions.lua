@@ -4,6 +4,7 @@ PROJECT_MATH_NAME       = "math"
 PROJECT_CORE_NAME       = "core"
 PROJECT_RENDERER_NAME   = "renderer"
 PROJECT_CLIENT_NAME     = "client"
+PROJECT_RESOURCE_NAME   = "resource"
 
 all_project_table = 
 {
@@ -11,6 +12,7 @@ all_project_table =
     PROJECT_LUA_BINDER_NAME,
     PROJECT_CORE_NAME,
     PROJECT_CLIENT_NAME,
+    PROJECT_RESOURCE_NAME
 }
 
 dependencies_mapping = 
@@ -19,9 +21,15 @@ dependencies_mapping =
         PROJECT_MATH_NAME 
     },
 
-    [PROJECT_CLIENT_NAME] = { 
+    [PROJECT_RESOURCE_NAME] = { 
         PROJECT_MATH_NAME, 
         PROJECT_CORE_NAME 
+    },
+
+    [PROJECT_CLIENT_NAME] = { 
+        PROJECT_MATH_NAME, 
+        PROJECT_CORE_NAME,
+        PROJECT_RESOURCE_NAME
     },
 }
 

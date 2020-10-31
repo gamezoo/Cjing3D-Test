@@ -29,6 +29,7 @@ namespace Cjing3D::Win32
 
 		using CreateGameFunc = std::function<std::unique_ptr<MainComponent>(const SharedPtr<Engine>)>;
 		void Run(const CreateGameFunc& createGame);
+		void Run();
 
 	private:
 		HINSTANCE   mHinstance;

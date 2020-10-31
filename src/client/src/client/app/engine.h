@@ -2,7 +2,7 @@
 
 #include "client\common\common.h"
 #include "client\app\presentConfig.h"
-#include "client\platform\gameWindow.h"
+#include "client\app\gameWindow.h"
 
 namespace Cjing3D
 {

@@ -84,7 +84,7 @@ inline void* operator new(size_t size, Cjing3D::NewPlaceHolder, void* pointer) {
 }
 inline void operator delete(void*, Cjing3D::NewPlaceHolder, void*) { }
 
-#ifdef CJING_MEMORY_TRACKER
+#ifdef  CJING_MEMORY_TRACKER
 #define CJING_NEW(T) new (Cjing3D::NewPlaceHolder(), Cjing3D::Memory::Alloc(sizeof(T), __FILE__, __LINE__)) T
 #define CJING_DELETE(ptr) Cjing3D::Memory::ObjectConstruct(ptr); Cjing3D::Memory::Free(ptr);
 #define CJING_NEW_ARR(T, count) Cjing3D::Memory::ArrayConstructFunc(static_cast<T*>(Cjing3D::Memory::Alloc(sizeof(T) * count, __FILE__, __LINE__)), count)

@@ -369,6 +369,19 @@ namespace Cjing3D
 		return *this;
 	}
 
+	String& String::append(const char* value)
+	{
+		const size_t len = StringLength(value);
+		if (len == 0) {
+			return *this;
+		}
+
+		size_t oldSize = mSize;
+		resize(oldSize + len);
+		Memory::Memcpy(data() + oldSize, value, len + 1);
+		return *this;
+	}
+
 	String& String::append(char value)
 	{
 		return append(Span(&value, 1));
@@ -505,19 +518,6 @@ namespace Cjing3D
 	std::string String::toString() const
 	{
 		return std::string(c_str());
-	}
-
-	String& String::append(const char* value)
-	{
-		const size_t len = StringLength(value);
-		if (len == 0) {
-			return *this;
-		}
-
-		size_t oldSize = mSize;
-		resize(oldSize + len);
-		Memory::Memcpy(data() + oldSize, value, len + 1);
-		return *this;
 	}
 
 	bool String::isSmall() const

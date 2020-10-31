@@ -40,6 +40,7 @@ namespace Cjing3D
 
 	namespace Debug {
 		namespace {
+			bool ShowDebugConsole = false;
 			bool ShowMsgBox = false;
 			bool AbortOnDie = false;
 			bool DieOnError = false;
@@ -60,6 +61,16 @@ namespace Cjing3D
 		void SetAbortOnDie(bool t)
 		{
 			AbortOnDie = t;
+		}
+
+		void SetDebugConsoleEnable(bool t)
+		{
+			ShowDebugConsole = t;
+		}
+
+		bool IsDebugConsoleEnable()
+		{
+			return ShowDebugConsole;
 		}
 
 		void Warning(const char* format, ...)

@@ -51,3 +51,19 @@
 #define PLATFORM_ALIGNMENT 16
 #define ALIGN_TO(n, a)((n + a)&~a)
 
+template<class To, class From>
+To CJING_DOWN_CAST(From* parent)
+{
+#ifdef DEBUG
+	To to = dynamic_cast<To>(parent);
+	return to;
+#else
+	return static_cast<To>(parent);
+#endif
+}
+
+#ifdef CJING3D_PLATFORM_WIN32
+#include <wrl.h>
+template<typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
+#endif
