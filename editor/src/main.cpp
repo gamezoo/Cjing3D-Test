@@ -29,15 +29,13 @@ class TestA
 {
 public:
 	TestA() = default;
-
-	TestA(const TestA& rhs)
-	{
-		std::cout << "TestA Copy Constructor" << std::endl;
+	TestA(int value) : mValue(value) {
+		std::cout << "TestA Constructor" << value << std::endl;
 	}
 
-	TestA(TestA&& rhs)
+	static void Destroy(TestA& testA)
 	{
-		std::cout << "TestA Move Constructor" << std::endl;
+		std::cout << "Destroy!" << std::endl;
 	}
 
 	int mValue = 0;
@@ -45,6 +43,11 @@ public:
 	int mArray[10];
 
 	static int mStaticValue;
+
+	int FuncA(int b)
+	{
+		return b * 3;
+	}
 };
 
 int TestA::mStaticValue = 10;
@@ -52,10 +55,23 @@ int TestA::mStaticValue = 10;
 int main()
 {
 	Reflection::Reflect<TestA>(UID_HASH("TestA"))
-		.AddVar<&TestA::mStaticValue>(UID_HASH("mStaticValue"));
+		.AddCtor<int>()
+		.AddDtor<&TestA::Destroy>()
+		.AddVar<&TestA::mStaticValue>(UID_HASH("mStaticValue"))
+		.AddFunc<&TestA::FuncA>(UID_HASH("FuncA"));
 
 	TestA::mStaticValue = 12;
 
+	TestA testA;
+
+	Reflection::Any aaa(testA);
+	Reflection::Any bbb(testA);
+	if (aaa == bbb) {
+	
+	}
+
+	//////////////////////////////////////////////////
+	// variable
 	auto typeInfo = Reflection::Resolve<TestA>();
 	auto varInfo = typeInfo.Var(UID_HASH("mStaticValue"));
 	if (varInfo)
@@ -67,8 +83,41 @@ int main()
 
 		varInfo.Set({}, 4);
 	}
-
 	std::cout << TestA::mStaticValue << std::endl;
+
+	//////////////////////////////////////////////////
+	// function
+	auto funcInfo = typeInfo.Func(UID_HASH("FuncA"));
+	if (funcInfo)
+	{
+		auto ret = funcInfo.Invoke(testA, 4);
+		if (ret)
+		{
+			std::cout << "FuncA ret: " << *ret.TryCast<int>() << std::endl;
+		}
+	}
+
+	//////////////////////////////////////////////////
+	// constructor
+	auto ctor = typeInfo.Ctor<int>();
+	if (ctor)
+	{
+		auto ret = ctor.Invoke(2);
+		if (ret)
+		{
+			auto& testA = *ret.TryCast<TestA>();
+			std::cout << "Ctor ret: " << testA.mValue << std::endl;
+		}
+	}
+
+	//////////////////////////////////////////////////
+	// destructor
+	auto dtor = typeInfo.Dtor();
+	if (dtor)
+	{
+		dtor.Invoke(testA);
+	}
+
 	std::cout << "Hello world!" << std::endl;
 	return 0;
 }

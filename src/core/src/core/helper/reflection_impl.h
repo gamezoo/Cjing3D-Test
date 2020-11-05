@@ -15,6 +15,9 @@ namespace Reflection
 	class  Any;
 	class  Type;
 	class  Variable;
+	class  Function;
+	class  Constructor;
+	class  Destructor;
 
 	template<typename T>
 	using RemoveCVR = std::remove_cv_t<std::remove_reference_t<T>>;
@@ -54,12 +57,18 @@ namespace Reflection
 		///////////////////////////////////////////////////////////////////////////////
 		struct CtorInfo
 		{
-
+			const TypeInfo* mParent;
+			const size_t mArgSize;
+			TypeInfo* (* const ArgType)(size_t)noexcept;
+			Any(* const Invoke)(Any*);
+			Constructor(* const ToCtor)() noexcept;
 		};
 
 		struct DtorInfo
 		{
-
+			const TypeInfo* mParent;
+			bool(* const Invoke)(Handle);
+			Destructor(* const ToDtor)() noexcept;
 		};
 
 		struct VarInfo
@@ -77,6 +86,14 @@ namespace Reflection
 		struct FuncInfo
 		{
 			UID mIdentifier;
+			const TypeInfo* mParent;
+			const bool mIsConst;
+			const bool mIsStatic;
+			const size_t mArgSize;
+			TypeInfo* (* const RetType)()noexcept;
+			TypeInfo* (* const ArgType)(size_t)noexcept;
+			Any(* const Invoke)(Handle, Any*);
+			Function(* const ToFunc)() noexcept;
 		};
 
 		struct TypeInfo
@@ -89,6 +106,7 @@ namespace Reflection
 			std::vector<CtorInfo*> mCtors;
 			DtorInfo* mDtor = nullptr;
 			Type(* const ToType)() noexcept;
+			bool (* const Compare)(const void*, const void*);
 			std::map<UID, VarInfo*>  mVars;
 			std::map<UID, FuncInfo*> mFuncs;
 		};
@@ -113,6 +131,91 @@ namespace Reflection
 				// check 
 				return nullptr;
 			}
+		}
+
+		inline bool CanCast(const TypeInfo* from, const TypeInfo* to)noexcept
+		{
+			return (from == to);
+		}
+
+		/////////////////////////////////////////////////////////////////////////////
+		// Function Helper
+		/////////////////////////////////////////////////////////////////////////////
+		template<typename FuncT>
+		struct FuncHelper;
+
+		template<typename Ret, typename... Args>
+		struct FuncHelper<Ret(Args...)>
+		{
+			using RetType = RemoveCVR<Ret>;
+			using ArgsType = std::tuple<RemoveCVR<Args>...>;
+
+			static constexpr bool IsConst = false;
+			static constexpr size_t ArgSize = sizeof...(Args);
+
+			static TypeInfo* ArgType(size_t index)noexcept
+			{
+				return std::array<TypeInfo*, sizeof...(Args)>{ {InfoFactory<Args>::Resolve()...}} [index] ;
+			}
+		};
+
+		template<typename Ret, typename... Args>
+		struct FuncHelper<Ret(Args...) const> : FuncHelper<Ret(Args...)>
+		{
+			static constexpr bool IsConst = true;
+		};
+
+		template<typename Ret, typename... Args, typename T>
+		constexpr FuncHelper<Ret(Args...)> GetFunctoinHelper(Ret(T::*)(Args...));
+
+		template<typename Ret, typename... Args, typename T>
+		constexpr FuncHelper<Ret(Args...)const> GetFunctoinHelper(Ret(T::*)(Args...)const);
+
+		template<typename Ret, typename... Args>
+		constexpr FuncHelper<Ret(Args...)> GetFunctoinHelper(Ret(*)(Args...));
+
+		constexpr void GetFunctoinHelper(...);
+
+		template<typename Func>
+		using FunctionHelperT = decltype(GetFunctoinHelper(std::declval<Func>()));
+
+
+		/////////////////////////////////////////////////////////////////////////////
+		// Compare Helper
+		/////////////////////////////////////////////////////////////////////////////
+		// 如果T类型不是void类型，且不是function类型，则静态转换后比较
+		// SFINAE判断当对象本身无法直接比较时，也使用不同的Compre函数
+		template<typename T, typename = std::enable_if_t<!std::is_void_v<T> && !std::is_function_v<T>>>
+		static auto Compare(int, const void* lhs, const void* rhs) 
+			-> decltype(std::declval<T>() == std::declval<T>(), bool{})
+		{
+			return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+		}
+
+		template<typename>
+		static bool Compare(char, const void* lhs, const void* rhs)
+		{
+			return lhs == rhs;
+		}
+
+		/////////////////////////////////////////////////////////////////////////////
+		// Ctor Helper
+		/////////////////////////////////////////////////////////////////////////////
+		template<typename... Args, size_t... Indexes>
+		inline const CtorInfo* FindCtor(std::index_sequence<Indexes...>, const TypeInfo* typeInfo)
+		{
+			for (const CtorInfo* info : typeInfo->mCtors)
+			{
+				// 当参数数量一致，且每个参数类型都可转换时返回
+				if (info->mArgSize == sizeof...(Args) &&
+					(([](const TypeInfo* from, const TypeInfo* to) {
+						return CanCast(from, to);
+					}(Impl::InfoFactory<Args>::Resolve(), info->ArgType(Indexes))) && ...))
+				{
+					return info;
+				}
+			}
+			return nullptr;
 		}
 	}
 
@@ -302,9 +405,9 @@ namespace Reflection
 			std::swap(lhs.mMoveFunc, rhs.mMoveFunc);
 		}
 
-		bool operator==(const Any&& rhs) const noexcept
+		bool operator==(const Any& rhs) const noexcept
 		{
-			return mTypeInfo == rhs.mTypeInfo;
+			return mTypeInfo == rhs.mTypeInfo && (!mTypeInfo || mTypeInfo->Compare(mInstance, rhs.mInstance));
 		}
 
 		explicit operator bool() const noexcept
@@ -358,9 +461,11 @@ namespace Reflection
 			return mTypeInfo;
 		}
 
+		Type GetType()const noexcept;
 		const Impl::TypeInfo* TypeInfo() const noexcept { return mTypeInfo; }
 		void* Instance()noexcept { return mInstance; }
 		const void* Instance()const noexcept { return mInstance; }
+
 	private:
 		const Impl::TypeInfo* mTypeInfo;
 		void* mInstance;
@@ -425,6 +530,111 @@ namespace Reflection
 	};
 
 	///////////////////////////////////////////////////////////////////////////////
+	// Constructor
+	///////////////////////////////////////////////////////////////////////////////
+	// impl::CtorInfo wrapper
+	class Constructor
+	{
+	public:
+		Constructor() noexcept {}
+		Constructor(const Impl::CtorInfo* ctorInfo) :
+			mCtorInfo(ctorInfo)
+		{}
+
+		size_t ArgSize()const { return mCtorInfo->mArgSize; }
+
+		template<typename... Args>
+		Any Invoke(Args&&... args)
+		{
+			if (sizeof...(args) != ArgSize()) {
+				return Any();
+			}
+
+			std::array<Any, sizeof...(Args)> anyArray{ {Handle(args)...} };
+			return mCtorInfo->Invoke(anyArray.data());
+		}
+
+		explicit operator bool() const noexcept {
+			return mCtorInfo;
+		}
+
+		bool operator==(const Constructor& rhs) const noexcept {
+			return mCtorInfo == rhs.mCtorInfo;
+		}
+
+	private:
+		const Impl::CtorInfo* mCtorInfo = nullptr;
+	};
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Destructor
+	///////////////////////////////////////////////////////////////////////////////
+	// impl::CtorInfo wrapper
+	class Destructor
+	{
+	public:
+		Destructor() noexcept {}
+		Destructor(const Impl::DtorInfo* dtorInfo) :
+			mDtorInfo(dtorInfo)
+		{}
+
+		bool Invoke(Handle handle)
+		{
+			return mDtorInfo->Invoke(handle);
+		}
+
+		explicit operator bool() const noexcept {
+			return mDtorInfo;
+		}
+
+		bool operator==(const Destructor& rhs) const noexcept {
+			return mDtorInfo == rhs.mDtorInfo;
+		}
+
+	private:
+		const Impl::DtorInfo* mDtorInfo = nullptr;
+	};
+
+	///////////////////////////////////////////////////////////////////////////////
+	// Function
+	///////////////////////////////////////////////////////////////////////////////
+	// impl::FuncInfo wrapper
+	class Function
+	{
+	public:
+		Function() noexcept {}
+		Function(const Impl::FuncInfo* varInfo) :
+			mFuncInfo(varInfo)
+		{}
+
+		bool IsConst()const { return mFuncInfo->mIsConst; }
+		bool IsStatic()const { return mFuncInfo->mIsStatic; }
+		size_t ArgSize()const { return mFuncInfo->mArgSize; }
+
+		template<typename... Args>
+		Any Invoke(Handle handle, Args&&... args)
+		{
+			if (sizeof...(args) != ArgSize()) {
+				return Any();
+			}
+
+			std::array<Any, sizeof...(Args)> anyArray{{Handle(args)...}};
+			return mFuncInfo->Invoke(handle, anyArray.data());
+		}
+
+		explicit operator bool() const noexcept {
+			return mFuncInfo;
+		}
+
+		bool operator==(const Function& rhs) const noexcept {
+			return mFuncInfo == rhs.mFuncInfo;
+		}
+
+	private:
+		const Impl::FuncInfo* mFuncInfo = nullptr;
+	};
+
+	///////////////////////////////////////////////////////////////////////////////
 	// Type
 	///////////////////////////////////////////////////////////////////////////////
 	// impl::TypeInfo wrapper
@@ -440,6 +650,18 @@ namespace Reflection
 			return mTypeInfo->mIsClass;
 		}
 
+		template<typename... Args>
+		Constructor Ctor()const
+		{
+			const Impl::CtorInfo* info = Impl::FindCtor<Args...>(std::make_index_sequence<sizeof...(Args)>(), mTypeInfo);
+			return info != nullptr ? info->ToCtor() : Constructor();
+		}
+
+		Destructor Dtor()const
+		{
+			return mTypeInfo->mDtor != nullptr ? mTypeInfo->mDtor->ToDtor() : Destructor();
+		}
+
 		Variable Var(UID uid)const
 		{
 			if (!mTypeInfo) {
@@ -450,6 +672,16 @@ namespace Reflection
 			return it != mTypeInfo->mVars.end() ? it->second->ToVar() : Variable();
 		}
 
+		Function Func(UID uid)const
+		{
+			if (!mTypeInfo) {
+				return Function();
+			}
+
+			auto it = mTypeInfo->mFuncs.find(uid);
+			return it != mTypeInfo->mFuncs.end() ? it->second->ToFunc() : Function();
+		}
+
 		explicit operator bool() const noexcept {
 			return mTypeInfo;
 		}
@@ -458,9 +690,18 @@ namespace Reflection
 			return mTypeInfo == rhs.mTypeInfo;
 		}
 
+		bool operator!=(const Type& rhs) const noexcept {
+			return mTypeInfo != rhs.mTypeInfo;
+		}
+
 	private:
 		const Impl::TypeInfo* mTypeInfo = nullptr;
 	};
+
+	Type Handle::GetType() const noexcept
+	{
+		return mTypeInfo != nullptr ? mTypeInfo->ToType() : Type();
+	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Info Factory
@@ -480,6 +721,9 @@ namespace Reflection
 				nullptr,
 				[]()noexcept ->Type {
 					return Type(&typeInfo);
+				},
+				[](const void* lhs, const void* rhs) {
+					return Impl::Compare<T>(0, lhs, rhs);
 				}
 			};
 			mTypeInfo = &typeInfo;

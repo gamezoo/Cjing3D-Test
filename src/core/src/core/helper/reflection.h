@@ -4,6 +4,16 @@
 
 // simple runtime reflection system
 // based on https://github.com/skypjack/meta.git
+//
+// Feature:
+//	1.member variable
+//	2.function
+//	3.constuctor
+//	4.destructor
+//
+// Todo:
+//  1.base type
+//  2.type convert
 
 namespace Cjing3D
 {
@@ -12,6 +22,28 @@ namespace Reflection
 	///////////////////////////////////////////////////////////////////////////////
 	// function
 	///////////////////////////////////////////////////////////////////////////////
+	template<typename T, typename... Args, size_t... Indexes>
+	Any Construct(Any* const args, std::index_sequence<Indexes...>)
+	{
+		Any ret;
+		auto realArgs = std::make_tuple((args + Indexes)->TryCast<Args>()...);
+		if ((std::get<Indexes>(realArgs) && ...)) {
+			ret = T{(*std::get<Indexes>(realArgs))... };
+		}
+		return ret;
+	}
+
+	template<typename T, auto Dtor>
+	bool Destruct(Handle handle)
+	{
+		if (handle.GetType() != Impl::InfoFactory<T>::Resolve()) {
+			return false;
+		}
+
+		std::invoke(Dtor, *Any(handle).TryCast<T>());
+		return true;
+	}
+
 	template<bool IsConst, typename T, auto Var>
 	bool VarSetter(Handle instance, size_t index, Any value)
 	{
@@ -110,6 +142,46 @@ namespace Reflection
 		return Any();
 	}
 
+	template<typename T, auto Func, size_t... Indexes>
+	Any Invoke([[maybe_unused]] Handle instance, Any* args, std::index_sequence<Indexes...>)
+	{
+		using FunctionHelperT = Impl::FunctionHelperT<decltype(Func)>;
+		auto DispatchValue = [](auto *... args) {
+			if constexpr (std::is_void_v<typename FunctionHelperT::RetType>)
+			{
+				std::invoke(Func, *args...);
+				return Any{std::in_place_type_t<void> };
+			}
+			else
+			{
+				return Any{std::invoke(Func, *args...) };
+			}
+		};
+
+		// 从AnyArray中获取类型转换后的ArgArray
+		const auto realArgs = std::make_tuple(
+			[](Any* any, auto* instance) {
+				using ArgType = std::remove_reference_t<decltype(*instance)>;
+				// try convert
+				return instance;
+			}(
+				args + Indexes, 
+			   (args + Indexes)->TryCast<std::tuple_element_t<Indexes, typename FunctionHelperT::ArgsType>>()
+			)...
+		);
+
+		if constexpr (std::is_function_v<std::remove_pointer_t<decltype(Func)>>)
+		{
+			// 所有参数都转换成功了才执行对应函数
+			return (std::get<Indexes>(realArgs) && ...) ? DispatchValue(std::get<Indexes>(realArgs)...) : Any{};
+		}
+		else
+		{	
+			auto* obj = Any(instance).TryCast<T>();
+			return (obj && (std::get<Indexes>(realArgs) && ...)) ? DispatchValue(obj, std::get<Indexes>(realArgs)...) : Any{};
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////
 	// MetaFactory
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -126,18 +198,68 @@ namespace Reflection
 			return *this;
 		}
 
-		MetaFactory& AddCtor(UID uid)
+		template<typename... Args>
+		MetaFactory& AddCtor()
 		{
+			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
+			using FunctionHelperT = Impl::FunctionHelperT<T(*)(Args...)>;
+
+			static Impl::CtorInfo ctorInfo{
+				typeInfo,
+				FunctionHelperT::ArgSize,
+				&FunctionHelperT::ArgType,
+				[](Any* const any) {
+					return Construct<T, RemoveCVR<Args>...>(any, std::make_index_sequence<FunctionHelperT::ArgSize>());
+				},
+				[]()noexcept ->Constructor {
+					return Constructor(&ctorInfo);
+				},
+			};
+
+			typeInfo->mCtors.push_back(&ctorInfo);
 			return *this;
 		}
 
-		MetaFactory& AddDtor(UID uid)
+		template<auto Dtor>
+		MetaFactory& AddDtor()
 		{
+			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
+
+			static Impl::DtorInfo dtorInfo{
+				typeInfo,
+				&Destruct<T, Dtor>,
+				[]()noexcept ->Destructor {
+					return Destructor(&dtorInfo);
+				},
+			};
+
+			typeInfo->mDtor = &dtorInfo;
 			return *this;
 		}
 
+		template<auto Func>
 		MetaFactory& AddFunc(UID uid)
 		{
+			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
+			using FunctionHelperT = Impl::FunctionHelperT<decltype(Func)>;
+
+			static Impl::FuncInfo funcInfo{
+				uid,
+				typeInfo,
+				FunctionHelperT::IsConst,
+				!std::is_member_function_pointer_v<decltype(Func)>,
+				FunctionHelperT::ArgSize,
+				Impl::InfoFactory<FunctionHelperT::RetType>::Resolve,
+				&FunctionHelperT::ArgType,
+				[](Handle handle, Any* any) {
+					return Invoke<T, Func>(handle, any, std::make_index_sequence<FunctionHelperT::ArgSize>{});
+				},
+				[]()noexcept ->Function {
+					return Function(&funcInfo);
+				},
+			};
+
+			typeInfo->mFuncs.insert(std::make_pair(uid, &funcInfo));
 			return *this;
 		}
 
