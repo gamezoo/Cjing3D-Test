@@ -18,6 +18,7 @@ namespace Reflection
 	class  Function;
 	class  Constructor;
 	class  Destructor;
+	class  BaseType;
 
 	template<typename T>
 	using RemoveCVR = std::remove_cv_t<std::remove_reference_t<T>>;
@@ -55,6 +56,14 @@ namespace Reflection
 		///////////////////////////////////////////////////////////////////////////////
 		// Info definition
 		///////////////////////////////////////////////////////////////////////////////
+		struct BaseInfo
+		{
+			const TypeInfo* mParent;
+			TypeInfo* (* const GetTypeInfo)()noexcept;
+			BaseType(* const ToBaseType)() noexcept;
+			void* (* const Cast)(void*) noexcept;
+		};
+
 		struct CtorInfo
 		{
 			const TypeInfo* mParent;
@@ -109,6 +118,8 @@ namespace Reflection
 			bool (* const Compare)(const void*, const void*);
 			std::map<UID, VarInfo*>  mVars;
 			std::map<UID, FuncInfo*> mFuncs;
+			// 只支持单继承
+			BaseInfo* mBase;
 		};
 
 		template<typename T>
@@ -117,6 +128,11 @@ namespace Reflection
 			inline static TypeInfo* mTypeInfo = nullptr;
 			inline static TypeInfo* Resolve()noexcept;
 		};
+
+
+		/////////////////////////////////////////////////////////////////////////////
+		// cast Helper
+		/////////////////////////////////////////////////////////////////////////////
 
 		template<typename T>
 		const T* TryCast(const TypeInfo* typeInfo, void* ptr) noexcept
@@ -128,8 +144,18 @@ namespace Reflection
 			}
 			else
 			{
-				// check 
-				return nullptr;
+				// 检查base类型是否与typeInfo匹配
+				const BaseInfo* base = nullptr;
+				const auto* node = typeInfo->mBase;
+				while (node && !base)
+				{
+					if (node->GetTypeInfo() == tInfo) {
+						base = node;
+						break;
+					}
+					node = node->GetTypeInfo()->mBase;
+				}
+				return base ? static_cast<const T*>(base->Cast(ptr)) : nullptr;
 			}
 		}
 
@@ -477,6 +503,37 @@ namespace Reflection
 		mInstance = instance.Instance();
 	}
 
+	///////////////////////////////////////////////////////////////////////////////
+	// BaseType
+	///////////////////////////////////////////////////////////////////////////////
+	// impl::BaseInfo wrapper
+	class BaseType
+	{
+	public:
+		BaseType() noexcept {}
+		BaseType(const Impl::BaseInfo* baseInfo) :
+			mBaseInfo(baseInfo)
+		{}
+
+		Type Parent()const noexcept;
+		Type GetType()const noexcept;
+
+		void* Cast(void* instance)const noexcept
+		{
+			return mBaseInfo ? mBaseInfo->Cast(instance) : nullptr;
+		}
+
+		explicit operator bool() const noexcept {
+			return mBaseInfo;
+		}
+
+		bool operator==(const BaseType& rhs) const noexcept {
+			return mBaseInfo == rhs.mBaseInfo;
+		}
+
+	private:
+		const Impl::BaseInfo* mBaseInfo = nullptr;
+	};
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Variable
@@ -650,19 +707,24 @@ namespace Reflection
 			return mTypeInfo->mIsClass;
 		}
 
+		BaseType Base()const noexcept
+		{
+			return mTypeInfo->mBase ? mTypeInfo->mBase->ToBaseType() : BaseType();
+		}
+
 		template<typename... Args>
-		Constructor Ctor()const
+		Constructor Ctor()const noexcept
 		{
 			const Impl::CtorInfo* info = Impl::FindCtor<Args...>(std::make_index_sequence<sizeof...(Args)>(), mTypeInfo);
 			return info != nullptr ? info->ToCtor() : Constructor();
 		}
 
-		Destructor Dtor()const
+		Destructor Dtor()const noexcept
 		{
 			return mTypeInfo->mDtor != nullptr ? mTypeInfo->mDtor->ToDtor() : Destructor();
 		}
 
-		Variable Var(UID uid)const
+		Variable Var(UID uid)const noexcept
 		{
 			if (!mTypeInfo) {
 				return Variable();
@@ -672,7 +734,7 @@ namespace Reflection
 			return it != mTypeInfo->mVars.end() ? it->second->ToVar() : Variable();
 		}
 
-		Function Func(UID uid)const
+		Function Func(UID uid)const noexcept
 		{
 			if (!mTypeInfo) {
 				return Function();
@@ -701,6 +763,16 @@ namespace Reflection
 	Type Handle::GetType() const noexcept
 	{
 		return mTypeInfo != nullptr ? mTypeInfo->ToType() : Type();
+	}
+
+	Type BaseType::Parent()const noexcept
+	{
+		return mBaseInfo != nullptr ? mBaseInfo->mParent : Type();
+	}
+
+	Type BaseType::GetType()const noexcept 
+	{
+		return mBaseInfo != nullptr ? mBaseInfo->GetTypeInfo() : Type();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////

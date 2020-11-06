@@ -10,10 +10,10 @@
 //	2.function
 //	3.constuctor
 //	4.destructor
+//  5.base type
 //
 // Todo:
-//  1.base type
-//  2.type convert
+//  1.type convert
 
 namespace Cjing3D
 {
@@ -198,8 +198,27 @@ namespace Reflection
 			return *this;
 		}
 
+		template<typename BaseT>
+		MetaFactory& Base() noexcept
+		{
+			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
+			static Impl::BaseInfo baseInfo {
+				typeInfo,
+				&Impl::InfoFactory<BaseT>::Resolve,
+				[]()noexcept ->BaseType {
+					return BaseType(&baseInfo);
+				},
+				[](void* instance)noexcept ->void* {
+					return static_cast<BaseT*>(static_cast<T*>(instance));
+				}
+			};
+
+			typeInfo->mBase = &baseInfo;
+			return *this;
+		}
+
 		template<typename... Args>
-		MetaFactory& AddCtor()
+		MetaFactory& AddCtor() noexcept
 		{
 			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
 			using FunctionHelperT = Impl::FunctionHelperT<T(*)(Args...)>;
@@ -221,7 +240,7 @@ namespace Reflection
 		}
 
 		template<auto Dtor>
-		MetaFactory& AddDtor()
+		MetaFactory& AddDtor() noexcept
 		{
 			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
 
@@ -238,7 +257,7 @@ namespace Reflection
 		}
 
 		template<auto Func>
-		MetaFactory& AddFunc(UID uid)
+		MetaFactory& AddFunc(UID uid) noexcept
 		{
 			Impl::TypeInfo* typeInfo = Impl::InfoFactory<T>::Resolve();
 			using FunctionHelperT = Impl::FunctionHelperT<decltype(Func)>;
