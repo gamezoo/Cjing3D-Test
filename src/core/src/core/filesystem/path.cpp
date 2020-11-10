@@ -2,9 +2,13 @@
 #include "core\string\stringUtils.h"
 #include "core\platform\platform.h"
 #include "core\filesystem\filesystem.h"
+#include "core\string\stringUtils.h"
 
 namespace Cjing3D
 {
+
+/// ///////////////////////////////////////////////////////////////////
+/// common function
 const char* Path::INVALID_PATH = "N/A";
 
 #ifdef CJING3D_PLATFORM_WIN32
@@ -147,6 +151,50 @@ String Path::ConvertToAbsolutePath(const String& path)
 String Path::ConvertToRelativePath(const String& path)
 {
 	return String();
+}
+
+/// ///////////////////////////////////////////////////////////////////
+/// path definition
+Path::Path() :
+	mHash(0),
+	mPath()
+{
+}
+
+Path::Path(const char* path):
+	mPath(path),
+	mHash(StringUtils::StringToHash(path))
+{
+}
+
+Path::Path(const Path& rhs) :
+	mPath(rhs.mPath),
+	mHash(rhs.mHash)
+{
+}
+
+Path& Path::operator=(const Path& rhs)
+{
+	mPath = rhs.mPath;
+	mHash = rhs.mHash;
+	return *this;
+}
+
+Path& Path::operator=(const char* rhs)
+{
+	mPath = rhs;
+	mHash = StringUtils::StringToHash(rhs);
+	return *this;
+}
+
+bool Path::operator==(const Path& rhs) const
+{
+	return mHash == rhs.mHash;
+}
+
+bool Path::operator!=(const Path& rhs) const
+{
+	return mHash != mHash;
 }
 
 }

@@ -23,6 +23,8 @@ using namespace Cjing3D;
 //	return 0;
 //}
 
+#include "resource\resource.h"
+
 int main()
 {
 	std::cout << "Hello world!" << std::endl;

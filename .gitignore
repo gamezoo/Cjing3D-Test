@@ -15,4 +15,5 @@ tools/pre_parser/lua_bind/code_gen_utils/__pycache__/code_gen_utils.cpython-37.p
 src/client/build
 src/client/lib
 src/shaders
-src/resource
+src/resource/build
+src/resource/lib

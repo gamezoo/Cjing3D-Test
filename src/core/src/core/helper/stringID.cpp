@@ -1,5 +1,5 @@
 #include "stringID.h"
-#include "math\maths.h"
+#include "math\hash.h"
 
 namespace Cjing3D {
 

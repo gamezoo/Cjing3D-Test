@@ -1,5 +1,6 @@
 #include "stringUtils.h"
 #include "core\platform\platform.h"
+#include "math\hash.h"
 
 namespace Cjing3D
 {
@@ -210,5 +211,17 @@ namespace StringUtils
 #endif
 	}
 
+	unsigned int StringToHash(const char* str)
+	{
+		if (str == nullptr)
+			return 0;
+
+		unsigned int  hashValue = 0;
+		while (*str != 0) {
+			hashValue = SDBMHash(hashValue, (unsigned char)*str++);
+		}
+
+		return hashValue;
+	}
 }
 }

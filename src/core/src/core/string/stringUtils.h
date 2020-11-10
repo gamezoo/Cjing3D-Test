@@ -9,5 +9,6 @@ namespace StringUtils
 	String  ReplaceChar(const String& str, char src, char dst);
 	String  WStringToString(const WString& wstr);
 	WString StringToWString(const String& str);
+	unsigned int StringToHash(const char* str);
 }
 }

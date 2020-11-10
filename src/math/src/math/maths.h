@@ -43,18 +43,4 @@ namespace Cjing3D
 	{
 		return (1 - f) * value0 + f * value1;
 	}
-
-
-	// SDBM Hash
-	inline unsigned int SDBMHash(unsigned int hash, unsigned char c)
-	{
-		return c + (hash << 6) + (hash << 16) - hash;
-	}
-
-	template<typename T>
-	inline void HashCombine(U32& seed, const T& value)
-	{
-		std::hash<T> hasher;
-		seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-	}
 }
