@@ -67,3 +67,25 @@ To CJING_DOWN_CAST(From* parent)
 template<typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
 #endif
+
+template<typename ENUM>
+constexpr inline bool FLAG_ALL(ENUM value, ENUM Flags)
+{
+	static_assert(sizeof(ENUM) <= sizeof(int), "Enum size too large.");
+	return ((int)value & (int)Flags) == (int)Flags;
+}
+
+constexpr inline bool FLAG_ALL(int value, int Flags) { 
+	return ((int)value & (int)Flags) == (int)Flags; 
+}
+
+template<typename ENUM>
+constexpr inline bool FLAG_ANY(ENUM value, ENUM Flags)
+{
+	static_assert(sizeof(ENUM) <= sizeof(int), "Enum size too large.");
+	return ((int)value & (int)Flags) != 0;
+}
+
+constexpr inline bool FLAG_ANY(int value, int Flags) {
+	return ((int)value & (int)Flags) != 0; 
+}

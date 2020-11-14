@@ -4,9 +4,10 @@
 
 namespace Cjing3D
 {
-	ArchiveBase::ArchiveBase(const String& path, ArchiveMode mode) :
+	ArchiveBase::ArchiveBase(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
 		mFilePath(path),
-		mMode(mode)
+		mMode(mode),
+		mFileSystem(fileSystem)
 	{
 	}
 
@@ -27,12 +28,12 @@ namespace Cjing3D
 
 	bool ArchiveBase::Load(const String& path)
 	{
-		if (!FileSystem::IsFileExists(mFilePath.c_str())) {
+		if (!mFileSystem.IsFileExists(mFilePath.c_str())) {
 			return false;
 		}
 
 		U32 dataSize = 0;
-		if (!FileSystem::ReadFileBytes(path.c_str(), &mDataBuffer, dataSize)) 
+		if (!mFileSystem.ReadFileBytes(path.c_str(), &mDataBuffer, dataSize)) 
 		{
 			Debug::Warning("Fail to open file:%s", path.c_str());
 			return false;
@@ -48,11 +49,13 @@ namespace Cjing3D
 			return false;
 		}
 
-		return FileSystem::SaveFile(mFilePath.c_str(), mDataBuffer, static_cast<size_t> (mDataSize));
+		return mFileSystem.SaveFile(mFilePath.c_str(), mDataBuffer, static_cast<size_t> (mDataSize));
 	}
 
 	String ArchiveBase::GetDirectory() const
 	{
-		return Path::GetPathParentPath(mFilePath) + "/";
+		String path(Path::MAX_PATH_LENGTH, '\0');
+		Path::GetPathParentPath(mFilePath, path.toSpan());
+		return path;
 	}
 }

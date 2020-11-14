@@ -1,0 +1,11 @@
+#pragma once
+
+#include "resource.h"
+#include "core\container\hashMap.h"
+
+namespace Cjing3D
+{
+	/////////////////////////////////////////////////////////////////////////////////
+	// Resource Factory
+
+}

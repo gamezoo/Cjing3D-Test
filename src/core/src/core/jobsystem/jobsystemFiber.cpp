@@ -628,7 +628,7 @@ namespace JobSystem
 			*jobHandle = localHandle;
 		}
 
-		Concurrency::AtomicAdd(&gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK].value_, numJobs);
+		Concurrency::AtomicAdd(&gManagerImpl->mCounterPool[localHandle & HANDLE_ID_MASK].value_, numJobs);
 
 		const bool jobShouldFreeHandle = (jobHandle == nullptr);
 		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);

@@ -15,7 +15,7 @@ namespace Cjing3D
 	class BinaryArchive : public ArchiveBase
 	{
 	public:
-		BinaryArchive(const String& path, ArchiveMode mode);
+		BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
 		~BinaryArchive();
 
 		template<typename T>

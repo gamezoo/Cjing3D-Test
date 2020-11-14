@@ -1,273 +1,235 @@
-#include "fileSystem.h"
+#include "filesystem.h"
 #include "core\helper\debug.h"
 #include "core\memory\memory.h"
+#include "core\platform\platform.h"
 
 #include "physfs_3.0.2\physfs.h"
 
 namespace Cjing3D {
-namespace FileSystem 
-{
-	String mProgramName = "";
-	String mAssetPath = "";
-	String mAssetName = "";
 
-	namespace FileSystemPhysfs
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////
+	/// FileSystemGeneric
+	FileSystemGeneric::FileSystemGeneric(const char* basePath)
 	{
-		bool CreateDirectory(const char* name)
-		{
-			if (PHYSFS_isDirectory(name)) {
-				return true;
-			}
-			return PHYSFS_mkdir(name) != 0;
+		SetBasePath(basePath);
+	}
+
+	FileSystemGeneric::~FileSystemGeneric()
+	{
+	}
+
+	void FileSystemGeneric::SetBasePath(const char* path)
+	{
+		Path::FormatPath(path, mBasePath.toSpan());
+		if (mBasePath.back() != '/' && mBasePath.back() != '\\') {
+			mBasePath.append(Path::PATH_SEPERATOR);
 		}
+	}
 
-		bool DeleteDirectory(const char* name)
+	char* FileSystemGeneric::GetBasePath()
+	{
+		return mBasePath.c_str();
+	}
+
+	bool FileSystemGeneric::CreateDirectory(const char* path)
+	{
+		return Platform::CreateDir(path);
+	}
+
+	bool FileSystemGeneric::DeleteDirectory(const char* path)
+	{
+		return Platform::DeleteFile(path);
+	}
+
+	bool FileSystemGeneric::IsDirectoryExists(const char* path)
+	{
+		return Platform::DirExists(path);
+	}
+
+	bool FileSystemGeneric::IsFileExists(const char* path)
+	{
+		return Platform::FileExists(path);
+	}
+
+	bool FileSystemGeneric::DeleteFile(const char* path)
+	{
+		return Platform::DeleteFile(path);
+	}
+
+	bool FileSystemGeneric::ReadFileBytes(const char* path, std::vector<char>& data)
+	{
+		if (auto file = Platform::File(path, Platform::FileFlags::DEFAULT_READ))
 		{
-			if (!PHYSFS_isDirectory(name)) {
-				return true;
-			}
-			return PHYSFS_delete(name) != 0;
+			size_t size = file.Size();
+			data.reserve(size);
+			size_t readed = file.Read(data.data(), size);
+			return readed == size;
 		}
+		return false;
+	}
 
-		bool IsDirectoryExists(const char* name)
+	bool FileSystemGeneric::ReadFileBytes(const char* path, char** buffer, U32& size)
+	{
+		if (auto file = Platform::File(path, Platform::FileFlags::DEFAULT_READ))
 		{
-			return PHYSFS_isDirectory(name);
-		}
-
-		bool IsFileExists(const char* name)
-		{
-			return PHYSFS_exists(name);
-		}
-
-		bool ReadFileBytes(const char* name, char** buffer, U32& size)
-		{
-			if (!PHYSFS_exists(name))
-			{
-				Debug::Warning(String("[filesystem] The file : ") + name + " isn't exits.");
-				return false;
-			}
-
-			PHYSFS_file* file = PHYSFS_openRead(name);
-			if (file == nullptr)
-			{
-				Debug::Warning(String("[filesystem] The file : ") + name + " read failed.");
-				return false;
-			}
-
-			size = static_cast<size_t>(PHYSFS_fileLength(file));
+			size = file.Size();
 			*buffer = CJING_NEW_ARR(char, size);
-			PHYSFS_read(file, buffer, 1, (PHYSFS_uint32)size);
-			PHYSFS_close(file);
-
-			return true;
+			size_t readed = file.Read(*buffer, size);
+			return readed == size;
 		}
+		return false;
+	}
 
-		bool ReadFileBytes(const char* name, std::vector<char>& data)
-		{
-			if (!PHYSFS_exists(name))
-			{
-				Debug::Warning(String("[filesystem] The file : ") + name + " isn't exits.");
-				return false;
-			}
-
-			PHYSFS_file* file = PHYSFS_openRead(name);
-			if (file == nullptr)
-			{
-				Debug::Warning(String("[filesystem] The file : ") + name + " read failed.");
-				return false;
-			}
-
-			size_t size = static_cast<size_t>(PHYSFS_fileLength(file));
-			data.resize(size);
-			PHYSFS_read(file, data.data(), 1, (PHYSFS_uint32)size);
-			PHYSFS_close(file);
-
-			return true;
-		}
-
-		bool WriteFileBytes(const char* name, const char* buffer, size_t length)
-		{
-			PHYSFS_File* file = PHYSFS_openWrite(name);
-			if (file == nullptr) 
-			{
-				Debug::Warning(String("[filesystem] The file : ") + name + " write failed.");
-				return false;
-			}
-
-			if (!PHYSFS_write(file, buffer, (PHYSFS_uint32)length, 1)) 
-			{
-				Debug::Warning(String("[filesystem] The file : ") + name + " write failed.");
-				return false;
-			}
-
-			PHYSFS_close(file);
-			return true;
-		}
-
-		bool DeleteFile(const char* name)
-		{
-			if (PHYSFS_delete(name)) {
-				return false;
-			}
-			return true;
-		}
-
-		void EnumerateFiles(const char* path, std::vector<const char*>& fileList)
-		{
-			char** rc = PHYSFS_enumerateFiles(path);
-			for (char** i = rc; *i != NULL; i++) {
-				fileList.push_back(*i);
-			}
-			PHYSFS_freeList(rc);
-		}
-	};
-
-	bool OpenData(const char* programName, const char* assetPath, const char* assetName)
+	bool FileSystemGeneric::SaveFile(const char* path, const char* buffer, size_t length)
 	{
-		if (IsDataOpened()) {
-			CloseData();
+		if (!path || !buffer || length <= 0) {
+			return false;
 		}
 
-		// init physfs
-		if (programName == nullptr) {
-			PHYSFS_init(nullptr);
-		} else {
-			PHYSFS_init(programName);
+		if (auto file = Platform::File(path, Platform::FileFlags::DEFAULT_WRITE))
+		{
+			size_t wrote = file.Write(buffer, length);
+			return wrote == length;
 		}
+		return false;
+	}
+  
+	/// //////////////////////////////////////////////////////////////////////////////////////////////////
+	/// FileSystemPhysfs
+	FileSystemPhysfs::FileSystemPhysfs(const char* basePath)
+	{
+		PHYSFS_init(nullptr);
 		PHYSFS_permitSymbolicLinks(1);
+	}
 
-		if (!PHYSFS_mount(assetPath, nullptr, 1))
-		{
-			Debug::Error(String("[FileData] Failed to mount archive, path:") + assetPath + ", " + PHYSFS_getLastError());
-			return false;
+	FileSystemPhysfs::~FileSystemPhysfs()
+	{
+		if (!PHYSFS_deinit()) {
+			Debug::Error(String("[FileData] Failed to deinit fhysfs:") + PHYSFS_getLastError());
 		}
-	
-		const String assetFullPath = Path::CombinePath(assetPath, assetName);
-		if (!PHYSFS_mount(assetFullPath.c_str(), nullptr, 1))
-		{
-			Debug::Error(String("[FileData] Failed to mount archive, path") + assetFullPath + ", " + PHYSFS_getLastError());
-			return false;
+	}
+
+	void FileSystemPhysfs::SetBasePath(const char* path)
+	{
+		if (!PHYSFS_mount(path, nullptr, 1)) {
+			Debug::Error(String("[FileData] Failed to mount archive, path:") + path + ", " + PHYSFS_getLastError());
 		}
-		const String baseDir = PHYSFS_getBaseDir();
-		String serachPath = Path::CombinePath(baseDir, assetFullPath);
-		if (!PHYSFS_mount(serachPath.c_str(), nullptr, 1))
+		mBasePath = path;
+	}
+
+	char* FileSystemPhysfs::GetBasePath()
+	{
+		return mBasePath.c_str();
+	}
+
+	bool FileSystemPhysfs::CreateDirectory(const char* name)
+	{
+		if (PHYSFS_isDirectory(name)) {
+			return true;
+		}
+		return PHYSFS_mkdir(name) != 0;
+	}
+
+	bool FileSystemPhysfs::DeleteDirectory(const char* name)
+	{
+		if (!PHYSFS_isDirectory(name)) {
+			return true;
+		}
+		return PHYSFS_delete(name) != 0;
+	}
+
+	bool FileSystemPhysfs::IsDirectoryExists(const char* name)
+	{
+		return PHYSFS_isDirectory(name);
+	}
+
+	bool FileSystemPhysfs::IsFileExists(const char* name)
+	{
+		return PHYSFS_exists(name);
+	}
+
+	bool FileSystemPhysfs::ReadFileBytes(const char* name, char** buffer, U32& size)
+	{
+		if (!PHYSFS_exists(name))
 		{
-			Debug::Error(String("[FileData] Failed to mount archive, path") + baseDir + "/" + assetFullPath + ", " + PHYSFS_getLastError());
+			Debug::Warning(String("[fileData] The file : ") + name + " isn't exits.");
 			return false;
 		}
 
-		mProgramName = programName != nullptr ? programName : "";
-		mAssetPath   = assetPath   != nullptr ? assetPath : "";
-		mAssetName   = assetName   != nullptr ? assetName : "";
+		PHYSFS_file* file = PHYSFS_openRead(name);
+		if (file == nullptr)
+		{
+			Debug::Warning(String("[fileData] The file : ") + name + " read failed.");
+			return false;
+		}
+
+		size = static_cast<size_t>(PHYSFS_fileLength(file));
+		*buffer = CJING_NEW_ARR(char, size);
+		PHYSFS_read(file, buffer, 1, (PHYSFS_uint32)size);
+		PHYSFS_close(file);
 
 		return true;
 	}
 
-	bool IsDataOpened()
+	bool FileSystemPhysfs::ReadFileBytes(const char* name, std::vector<char>& data)
 	{
-		return PHYSFS_isInit();
-	}
-
-	void CloseData()
-	{
-		if (!IsDataOpened()) {
-			return;
-		}
-
-		mProgramName.clear();
-		mAssetPath.clear();
-		mAssetName.clear();
-
-		if (!PHYSFS_deinit()) {
-			Debug::Error(String("[FileData] Failed to deinit fhysfs:") +  PHYSFS_getLastError());
-		}
-	}
-
-	const char* GetBasePath()
-	{
-		return PHYSFS_getBaseDir();
-	}
-
-	bool CreateDirectory(const char* path)
-	{
-		if (!Path::IsAbsolutePath(path))
+		if (!PHYSFS_exists(name))
 		{
-			return FileSystemPhysfs::CreateDirectory(path);
+			Debug::Warning(String("[fileData] The file : ") + name + " isn't exits.");
+			return false;
 		}
-		return false;
+
+		PHYSFS_file* file = PHYSFS_openRead(name);
+		if (file == nullptr)
+		{
+			Debug::Warning(String("[fileData] The file : ") + name + " read failed.");
+			return false;
+		}
+
+		size_t size = static_cast<size_t>(PHYSFS_fileLength(file));
+		data.resize(size);
+		PHYSFS_read(file, data.data(), 1, (PHYSFS_uint32)size);
+		PHYSFS_close(file);
+
+		return true;
 	}
 
-	bool DeleteDirectory(const char* path)
+	bool FileSystemPhysfs::DeleteFile(const char* name)
 	{
-		if (!Path::IsAbsolutePath(path))
-		{
-			return FileSystemPhysfs::DeleteDirectory(path);
+		if (PHYSFS_delete(name)) {
+			return false;
 		}
-		return false;
+		return true;
 	}
 
-	bool IsDirectoryExists(const char* path)
+	DynamicArray<const char*> FileSystemPhysfs::EnumerateFiles(const char* path)
 	{
-		if (!Path::IsAbsolutePath(path))
-		{
-			return FileSystemPhysfs::IsDirectoryExists(path);
+		DynamicArray<const char*> ret;
+		char** rc = PHYSFS_enumerateFiles(path);
+		for (char** i = rc; *i != NULL; i++) {
+			ret.push(*i);
 		}
-		return false;
-	}
-
-	std::vector<const char*> EnumerateFiles(const char* path)
-	{
-		std::vector<const char*> ret;
-		if (!Path::IsAbsolutePath(path))
-		{
-			FileSystemPhysfs::EnumerateFiles(path, ret);
-		}
+		PHYSFS_freeList(rc);
 		return ret;
 	}
 
-	bool IsFileExists(const char* path)
-	{
-		if (!Path::IsAbsolutePath(path))
-		{
-			return FileSystemPhysfs::IsFileExists(path);
-		}
-		return false;
-	}
-
-	bool ReadFileBytes(const char* path, std::vector<char>& data)
-	{
-		if (!Path::IsAbsolutePath(path))
-		{
-			return FileSystemPhysfs::ReadFileBytes(path, data);
-		}
-		return false;
-	}
-
-	bool ReadFileBytes(const char* path, char** buffer, U32& size)
-	{
-		if (!Path::IsAbsolutePath(path))
-		{
-			return FileSystemPhysfs::ReadFileBytes(path, buffer, size);
-		}
-		return false;
-	}
 
 	bool SaveFile(const char* path, const char* buffer, size_t length)
 	{
-		if (!Path::IsAbsolutePath(path))
+		PHYSFS_File* file = PHYSFS_openWrite(path);
+		if (file == nullptr)
 		{
-			return FileSystemPhysfs::WriteFileBytes(path, buffer, length);
+			Debug::Warning(String("[fileData] The file : ") + path + " write failed.");
+			return false;
 		}
-		return false;
-	}
 
-	bool DeleteFile(const char* path)
-	{
-		if (!Path::IsAbsolutePath(path))
+		if (!PHYSFS_write(file, buffer, (PHYSFS_uint32)length, 1))
 		{
-			return FileSystemPhysfs::DeleteFile(path);
+			Debug::Warning(String("[fileData] The file : ") + path + " write failed.");
+			return false;
 		}
-		return false;
+
+		PHYSFS_close(file);
+		return true;
 	}
-}
 }

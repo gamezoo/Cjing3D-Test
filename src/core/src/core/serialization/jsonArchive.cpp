@@ -6,8 +6,8 @@ namespace Cjing3D
 {
 	const U32 JsonArchive::currentArchiveVersion = 1;
 
-	JsonArchive::JsonArchive(const String& path, ArchiveMode mode) :
-		ArchiveBase(path, mode)
+	JsonArchive::JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
+		ArchiveBase(path, mode, fileSystem)
 	{
 		if (mMode == ArchiveMode::ArchiveMode_Read)
 		{
@@ -45,7 +45,7 @@ namespace Cjing3D
 			return false;
 		}
 
-		return FileSystem::SaveFile(path, jsonString.c_str(), jsonString.size());
+		return mFileSystem.SaveFile(path, jsonString.c_str(), jsonString.size());
 	}
 
 	nlohmann::json* JsonArchive::GetCurrentJson()

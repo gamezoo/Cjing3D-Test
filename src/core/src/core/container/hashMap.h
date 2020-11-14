@@ -320,7 +320,9 @@ namespace Cjing3D
 
 			// allocate
 			mCapacity *= 2;
-			mKeys = mValues = mHashTable = nullptr;
+			mKeys = nullptr;
+			mValues = nullptr;
+			mHashTable = nullptr;
 			Alloc();
 
 			// 将oldkeys和oldValue重新插入
@@ -359,7 +361,9 @@ namespace Cjing3D
 				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mValues);
 				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mHashTable);
 
-				mKeys = mValues = mHashTable = nullptr;
+				mKeys = nullptr;
+				mValues = nullptr;
+				mHashTable = nullptr;
 				mCapacity = rhs.mCapacity;
 
 				for (U32 i = 0; i < rhs.mCapacity; i++)

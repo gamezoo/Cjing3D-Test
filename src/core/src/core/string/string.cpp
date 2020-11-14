@@ -32,6 +32,19 @@ namespace Cjing3D
 		return *source == '\0';
 	}
 
+	bool CatChar(Span<char> dst, char source)
+	{
+		size_t length = dst.length();
+		size_t size = strlen(dst.begin());
+		if (size < length - 1)
+		{
+			dst[size] = source;
+			dst[size + 1] = '\0';
+			return true;
+		}
+		return false;
+	}
+
 	bool CatString(Span<char> dst, const char* source)
 	{
 		// 1. move to the last pos of string
@@ -513,6 +526,16 @@ namespace Cjing3D
 			resize(mSize + (srcLen - len));
 			Memory::Memcpy(data() + pos, str, srcLen);
 		}
+	}
+
+	Span<char> String::toSpan()
+	{
+		return Span<char>(data(), mSize);
+	}
+
+	Span<const char> String::toSpan() const
+	{
+		return Span<const char>(c_str(), mSize);
 	}
 
 	std::string String::toString() const

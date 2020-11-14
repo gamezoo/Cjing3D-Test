@@ -23,7 +23,7 @@ namespace Cjing3D
 	public:
 		using JsonSerializerFunc = std::function<void(JsonArchive& archive)>;
 
-		JsonArchive(const String& path, ArchiveMode mode);
+		JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
 		~JsonArchive();
 
 		bool Save(const String& path) override;

@@ -18,139 +18,159 @@ const char Path::PATH_SLASH     = '/';
 const char Path::PATH_BACKSLASH = '\\';
 #endif
 
-bool Path::IsPathDir(const String& path)
+bool Path::IsPathDir(const char* path)
 {
-	if (path.empty()) {
+	if (path == nullptr) {
 		return false;
 	}
 
-	size_t pos = path.length() - 1;
-	return path[pos] == PATH_SLASH || path[pos] == PATH_BACKSLASH;
-}
-
-bool Path::IsPathFile(const String& path)
-{
-	String filename = GetPathBaseName(path);
-	return filename.find(PATH_DOT) != String::npos;
-}
-
-String Path::FormatPath(const String& path)
-{
-	String ret = path;
-	ret = StringUtils::ReplaceChar(ret, PATH_BACKSLASH, PATH_SEPERATOR);
-	return ret;
-}
-
-String Path::CombinePath(const String& path1, const String& path2)
-{
-	if (path1.empty()) {
-		return path2;
-	}
-	if (path2.empty()) {
-		return path1;
+	size_t length = StringLength(path);
+	if (length <= 0) {
+		return false;
 	}
 
-	auto CombineFunc = [](const String& path1, const String& path2) {
-		String ret = Path::FormatPath(path1);
-		if (ret.back() != PATH_SEPERATOR) {
-			ret += PATH_SEPERATOR;
+	return path[length - 1] == PATH_SLASH || path[length - 1] == PATH_BACKSLASH;
+}
+
+bool Path::IsPathFile(const char* path)
+{
+	MaxPathString basename;
+	GetPathBaseName(path, Span(basename.data(), basename.size()));
+	return FindStringChar(basename.c_str(), PATH_DOT, 0) != -1;
+}
+
+void Path::FormatPath(const char* path, Span<char> outPath)
+{
+	if (path == nullptr) {
+		return;
+	}
+
+	char* out = outPath.begin();
+	U32 maxLength = outPath.length();
+	U32 i = 0;
+	bool isPrevSlash = false;
+
+	if (path[0] == '.' && (path[1] == '\\' || path[1] == '/')) {
+		path += 2;
+	}
+#ifdef CJING3D_PLATFORM_WIN32
+	if (path[0] == '\\' || path[0] == '/') {
+		++path;
+	}
+#endif
+	while (*path != '\0' && i < maxLength)
+	{
+		bool isCurrentSlash = *path == '\\' || *path == '/';
+		if (isCurrentSlash && isPrevSlash)
+		{
+			++path;
+			continue;
 		}
-		return Path::FormatPath(ret + path2);
-	};
+		*out = *path == '\\' ? '/' : *path;
 
-	bool isPath1Absoluted = IsAbsolutePath(path1);
-	bool isPath2Absoluted = IsAbsolutePath(path2);
-
-	if (isPath1Absoluted && isPath2Absoluted)
-	{
-		// 如果两个路径都是绝对路径则无法拼接
-		return INVALID_PATH;
+		path++;
+		out++;
+		i++;
+		isPrevSlash = isCurrentSlash;
 	}
-	else if (isPath1Absoluted == isPath2Absoluted) 
-	{
-		// 如果两个路径都是相对路径则直接拼接
-		return CombineFunc(path1, path2);
-	}
-	else if (isPath1Absoluted)
-	{
-		return CombineFunc(path1, path2);
-	}
-	else if (isPath2Absoluted)
-	{
-		return CombineFunc(path2, path1);
-	}
+	(i < maxLength ? *out : *(out - 1)) = '\0';
 }
 
-String Path::GetPathParentPath(const String& path)
+void Path::CombinePath(Span<const char> path1, Span<const char> path2, Span<char> out)
 {
-	if (path.empty() || path == INVALID_PATH) {
-		return INVALID_PATH;
+	if (path1.empty() || path2.empty()) {
+		return;
 	}
 
-	auto lastIndex = path.find_last_of(PATH_SEPERATOR);
-	if (lastIndex == String::npos) {
-		return INVALID_PATH;
+	FormatPath(path1.data(), out);
+	if (StringLength(path1.data()) > 0) {
+		CatChar(out, PATH_SEPERATOR);
 	}
 
-	return path.substr(0, lastIndex);
+	CatString(out, path2.data());
 }
 
-String Path::GetPathBaseName(const String& path)
+void Path::GetPathParentPath(const char* path, Span<char> out)
 {
-	if (path.empty() || path == INVALID_PATH) {
-		return INVALID_PATH;
+	CopyString(out, path);
+	for (int i = StringLength(path) - 1; i >= 0; --i)
+	{
+		if (out[i] == '\\' || out[i] == '/')
+		{
+			++i;
+			out[i] = '\0';
+			return;
+		}
 	}
-
-	String ret = path;
-	ret = StringUtils::ReplaceChar(ret, PATH_BACKSLASH, PATH_SEPERATOR);
-
-	auto lastIndex = ret.find_last_of(PATH_SEPERATOR);
-	if (lastIndex != String::npos) {
-		ret = ret.substr(lastIndex + 1);
-	}
-	return ret;
+	out[0] = '\0';
 }
 
-String Path::GetPathExtension(const String& path)
+void Path::GetPathBaseName(const char* path, Span<char> basename)
 {
-	if (path.empty() || path == INVALID_PATH) {
-		return INVALID_PATH;
-	}
+	basename[0] = '\0';
+	for (int i = StringLength(path) - 1; i >= 0; --i)
+	{
+		if (path[i] == '\\' || path[i] == '/' || i == 0)
+		{
+			if (path[i] == '\\' || path[i] == '/') {
+				++i;
+			}
 
-	auto lastIndex = path.find_last_of(PATH_DOT);
-	if (lastIndex != String::npos) {
-		return path.substr(lastIndex, path.length());
+			U32 j = 0;
+			basename[j] = path[i];
+			while (j < basename.length() - 1 && path[i + j] && path[i + j] != '.')
+			{
+				++j;
+				basename[j] = path[j + i];
+			}
+			basename[j] = '\0';
+			return;
+		}
 	}
-	return INVALID_PATH;
 }
 
-bool Path::IsAbsolutePath(const String& path)
+void Path::GetPathExtension(Span<const char> path, Span<char> out)
 {
 	if (path.empty()) {
-		return false;
+		return;
 	}
 
+	for (int i = path.length() - 1; i >= 0; --i)
+	{
+		if (path[i] == '.')
+		{
+			++i;
+			Span<const char> tmp = { path.begin() + i, path.end() };
+			CopyString(out, tmp.data());
+			return;
+		}
+	}
+	out[0] = '\0';
+}
+
+bool Path::IsAbsolutePath(const char* path)
+{
+	if (path == nullptr) {
+		return false;
+	}
+	
 #ifdef CJING3D_PLATFORM_WIN32
 	if (path[0] == PATH_SLASH) {
 		return true;
 	}
 #endif
-
-	if (path.find(":") != String::npos) {
+	if (FindStringChar(path, ':', 0) != -1) {
 		return true;
 	}
-
 	return false;
 }
 
-String Path::ConvertToAbsolutePath(const String& path)
+void Path::ConvertToAbsolutePath(Span<char> path, Span<char> out)
 {
-	return String();
 }
 
-String Path::ConvertToRelativePath(const String& path)
+void Path::ConvertToRelativePath(Span<char> path, Span<char> out)
 {
-	return String();
 }
 
 /// ///////////////////////////////////////////////////////////////////
@@ -195,6 +215,116 @@ bool Path::operator==(const Path& rhs) const
 bool Path::operator!=(const Path& rhs) const
 {
 	return mHash != mHash;
+}
+
+bool Path::SplitPath(char* outPath, size_t pathLen, char* outFile, size_t fileLen, char* outExt, size_t extLen)const
+{
+	if (IsEmpty()) {
+		return false;
+	}
+
+	StaticString<MAX_PATH_LENGTH> temp = mPath;
+	size_t length = (size_t)temp.length();
+	size_t spos = length;
+
+	// extension
+	if (spos > 0)
+	{
+		for (size_t i = spos - 1; i >= 0; i--)
+		{
+			char c = temp[i];
+			if (c == '\\' || c == '/')
+			{
+				outExt[0] = '\0';
+				spos = length;
+				break;
+			}
+			// Found extension.
+			else if (c == '.')
+			{
+				if (outExt && extLen > 0) {
+					strcpy_s(outExt, extLen, &temp[i + 1]);
+				}
+				temp[i] = '\0';
+				spos = i;
+				break;
+			}
+		}
+	}
+
+	// filename
+	if (spos > 0)
+	{
+		for (size_t i = spos - 1; i >= 0; --i)
+		{
+			char c = temp[i];
+			if (i == 0)
+			{
+				if (outFile && fileLen > 0) {
+					strcpy_s(outFile, fileLen, &temp[i]);
+				}
+				spos = i;
+				break;
+			}
+			else if (c == '\\' || c == '/')
+			{
+				if (outFile && fileLen > 0) {
+					strcpy_s(outFile, fileLen, &temp[i + 1]);
+				}
+				temp[i] = '\0';
+				spos = i;
+				break;
+			}
+		}
+	}
+
+	// path
+	if (outPath && pathLen > 0 && spos > 0)
+	{
+		strcpy_s(outPath, pathLen, temp.data());
+	}
+
+	return true;
+}
+
+void Path::AppendPath(const Path& path)
+{
+	if (path.IsEmpty()) {
+		return;
+	}
+
+	if (IsEmpty()) {
+		*this = path;
+		return;
+	}
+
+	bool isPath1Absoluted = IsAbsolutePath();
+	bool isPath2Absoluted = path.IsAbsolutePath();
+	if (isPath1Absoluted && isPath2Absoluted) {
+		return;
+	}
+	
+	Normalize();
+
+	if (mPath.back() != PATH_SEPERATOR) {
+		mPath.append(PATH_SEPERATOR);
+	}
+	mPath.append(path.mPath);
+}
+
+void Path::Normalize()
+{
+	if (IsEmpty()) {
+		return;
+	}
+
+	StaticString<MAX_PATH_LENGTH> tempPath = mPath;
+	FormatPath(tempPath.c_str(), Span(mPath.data(), mPath.size()));
+}
+
+bool Path::IsAbsolutePath() const
+{
+	return FindStringChar(mPath.c_str(), ':', 0) != -1;
 }
 
 }

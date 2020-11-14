@@ -11,6 +11,7 @@ namespace Cjing3D
 {
 	size_t StringLength(const char* str);
 	bool CopyString(Span<char> dst, const char* source);
+	bool CatChar(Span<char> dst, char source);
 	bool CatString(Span<char> dst, const char* source);
 	bool CopyNString(Span<char> dst, const char* source, size_t n);
 	bool CatNString(Span<char> dst, const char* source, size_t n);
@@ -91,8 +92,16 @@ namespace Cjing3D
 			return mData;
 		}
 
+		const char back()const {
+			return mData[StringLength(mData) - 1];
+		}
+
 		size_t size()const {
 			return N;
+		}
+
+		size_t length()const {
+			return StringLength(mData);
 		}
 
 		void operator=(const char* str) {
@@ -122,6 +131,26 @@ namespace Cjing3D
 
 		operator const char* () const { 
 			return mData;
+		}
+
+		char& operator[](size_t index)
+		{
+			assert(index >= 0 && index < N);
+			return mData[index];
+		}
+
+		const char& operator[](size_t index) const
+		{
+			assert(index >= 0 && index < N);
+			return mData[index];
+		}
+
+		Span<char> toSpan() {
+			return Span(mData);
+		}
+
+		Span<const char> toSpan()const {
+			return Span(mData);
 		}
 
 	private:
@@ -212,6 +241,9 @@ namespace Cjing3D
 		char   back()const;
 		void   clear();
 		void   replace(size_t pos, size_t len, const char* str);
+
+		Span<char> toSpan();
+		Span<const char> toSpan()const;
 
 		char* begin() {
 			return data();

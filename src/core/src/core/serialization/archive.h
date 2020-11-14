@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core\common\common.h"
+#include "core\filesystem\filesystem.h"
 
 #include <string>
 #include <vector>
@@ -16,7 +17,7 @@ namespace Cjing3D {
 	class ArchiveBase
 	{
 	public:
-		ArchiveBase(const String& path, ArchiveMode mode);
+		ArchiveBase(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
 		~ArchiveBase();
 
 		bool IsOpen()const;
@@ -29,6 +30,7 @@ namespace Cjing3D {
 	protected:
 		ArchiveMode mMode = ArchiveMode::ArchiveMode_Read;
 		String mFilePath;
+		BaseFileSystem& mFileSystem;
 
 		char* mDataBuffer = nullptr;
 		U32 mDataSize = 0;

@@ -5,8 +5,8 @@ namespace Cjing3D
 {
 	const U32 BinaryArchive::currentArchiveVersion = 2;
 
-	BinaryArchive::BinaryArchive(const String& path, ArchiveMode mode) :
-		ArchiveBase(path, mode)
+	BinaryArchive::BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
+		ArchiveBase(path, mode, fileSystem)
 	{
 		if (mMode == ArchiveMode::ArchiveMode_Read)
 		{
