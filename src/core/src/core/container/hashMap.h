@@ -339,7 +339,7 @@ namespace Cjing3D
 			CJING_ALLOCATOR_FREE_ALIGN(mAllocator, oldHashTable);
 		}
 
-		void Swap(HashMap&& rhs)
+		void Swap(HashMap& rhs)
 		{
 			if (this != &rhs)
 			{

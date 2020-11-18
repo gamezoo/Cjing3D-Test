@@ -2,6 +2,8 @@
 
 #include "core\common\common.h"
 #include "core\filesystem\path.h"
+#include "core\filesystem\file.h"
+#include "core\jobsystem\concurrency.h"
 
 namespace Cjing3D
 {
@@ -39,34 +41,27 @@ namespace Cjing3D
 		Resource(const Path& path);
 		virtual ~Resource();
 
-		bool IsEmpty()const { return mFlag == ResFlag::EMPTY; }
-		bool IsLoaded()const { return mFlag == ResFlag::LOADED; }
+		bool IsLoaded()const { return mLoaded != 0; }
 		Path GetPath()const { return mPath; }
-		void SetPath(const Path& path);
+		void SetPath(const Path& path) { mPath = path; }
 
 		virtual ResourceType GetType()const = 0;
 
 	public:
 		void AddRefCount() {
-			mRefCount++;
+			Concurrency::AtomicIncrement(&mRefCount);
 		}
 		void SubRefCount() {
-			mRefCount--;
+			Concurrency::AtomicDecrement(&mRefCount);
 		}
 		I32 GetRefCount()const {
 			return mRefCount;
 		}
+		volatile I32 mRefCount;
+		volatile I32 mLoaded;
 
 	protected:
-		I32 mRefCount;
 		Path mPath;
-
-		enum ResFlag
-		{
-			EMPTY = 0,
-			LOADED
-		};
-		ResFlag mFlag;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////
@@ -78,8 +73,9 @@ namespace Cjing3D
 		virtual~ResourceFactory() {};
 
 		virtual Resource* CreateResource() = 0;
-		virtual Resource* LoadResource(const Path& path) = 0;
-		virtual void DestroyResource(Resource& resource) = 0;
+		virtual bool LoadResource(Resource* resource, const char*name, File& file) = 0;
+		virtual bool DestroyResource(Resource* resource) = 0;
+		virtual bool IsNeedConvert()const = 0;
 	};
 
 #define DECLARE_RESOURCE(CLASS_NAME, NAME)                                                      \

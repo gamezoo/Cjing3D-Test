@@ -94,6 +94,16 @@ namespace Concurrency
 		return InterlockedAdd((LONG volatile*)pw, val);
 	}
 
+	I32 AtomicAddAcquire(volatile I32* pw, volatile I32 val)
+	{
+		return InterlockedAddAcquire((LONG volatile*)pw, val);
+	}
+
+	I32 AtomicAddRelease(volatile I32* pw, volatile I32 val)
+	{
+		return InterlockedAddRelease((LONG volatile*)pw, val);
+	}
+
 	I32 AtomicSub(volatile I32* pw, volatile I32 val)
 	{
 		return InterlockedExchangeAdd((LONG volatile*)pw, -(int32_t)val) - val;
@@ -144,6 +154,16 @@ namespace Concurrency
 	I64 AtomicAdd(volatile I64* pw, volatile I64 val)
 	{
 		return InterlockedAdd64((LONGLONG volatile*)pw, val);
+	}
+
+	I64 AtomicAddAcquire(volatile I64* pw, volatile I64 val)
+	{
+		return InterlockedAddAcquire64((LONGLONG volatile*)pw, val);
+	}
+
+	I64 AtomicAddRelease(volatile I64* pw, volatile I64 val)
+	{
+		return InterlockedAddRelease64((LONGLONG volatile*)pw, val);
 	}
 
 	I64 AtomicSub(volatile I64* pw, volatile I64 val)
@@ -556,6 +576,40 @@ namespace Concurrency
 	void SpinLock::Unlock()
 	{
 		AtomicExchange(&mLockedFlag, 0);
+	}
+
+	RWLock::RWLock()
+	{
+	}
+
+	RWLock::~RWLock()
+	{
+	}
+
+	void RWLock::BeginRead()
+	{
+		ScopedSpinLock lock(mWriteMutex);
+		if (Concurrency::AtomicIncrement(&mReadCout) == 1) {
+			mReadMutex.Lock();
+		}
+	}
+
+	void RWLock::EndRead()
+	{
+		ScopedSpinLock lock(mWriteMutex);
+		if (Concurrency::AtomicDecrement(&mReadCout) == 0) {
+			mReadMutex.Unlock();
+		}
+	}
+
+	void RWLock::BeginWrite()
+	{
+		mWriteMutex.Lock();
+	}
+
+	void RWLock::EndWrite()
+	{
+		mWriteMutex.Unlock();
 	}
 }
 }

@@ -28,6 +28,8 @@ namespace Concurrency
 	I32 AtomicDecrement(volatile I32* pw);
 	I32 AtomicIncrement(volatile I32* pw);
 	I32 AtomicAdd(volatile I32* pw, volatile I32 val);
+	I32 AtomicAddAcquire(volatile I32* pw, volatile I32 val);
+	I32 AtomicAddRelease(volatile I32* pw, volatile I32 val);
 	I32 AtomicSub(volatile I32* pw, volatile I32 val);
 	I32 AtomicExchange(volatile I32* pw, I32 exchg);
 	I32 AtomicCmpExchange(volatile I32* pw, I32 exchg, I32 comp);
@@ -37,6 +39,8 @@ namespace Concurrency
 	I64 AtomicDecrement(volatile I64* pw);
 	I64 AtomicIncrement(volatile I64* pw);
 	I64 AtomicAdd(volatile I64* pw, volatile I64 val);
+	I64 AtomicAddAcquire(volatile I64* pw, volatile I64 val);
+	I64 AtomicAddRelease(volatile I64* pw, volatile I64 val);
 	I64 AtomicSub(volatile I64* pw, volatile I64 val);
 	I64 AtomicExchange(volatile I64* pw, I64 exchg);
 	I64 AtomicCmpExchange(volatile I64* pw, I64 exchg, I64 comp);
@@ -172,7 +176,7 @@ namespace Concurrency
 		~Semaphore();
 
 		bool Signal(I32 count);
-		bool Wait(I32 timeout);
+		bool Wait(I32 timeout = -1);
 
 	private:
 		Semaphore(const Semaphore&) = delete;
@@ -214,5 +218,59 @@ namespace Concurrency
 		SpinLock& mSpinLock;
 	};
 
+	class RWLock final
+	{
+	public:
+		RWLock();
+		~RWLock();
+
+		void BeginRead();
+		void EndRead();
+		void BeginWrite();
+		void EndWrite();
+
+	private:
+		RWLock(const RWLock&) = delete;
+
+		SpinLock mReadMutex;
+		SpinLock mWriteMutex;
+		volatile I32 mReadCout = 0;
+	};
+
+	class ScopedReadLock final
+	{
+	public:
+		ScopedReadLock(RWLock& lock)
+			: mRWLock(lock)
+		{
+			mRWLock.BeginRead();
+		}
+
+		~ScopedReadLock() { mRWLock.EndRead(); }
+
+	private:
+		ScopedReadLock(const ScopedSpinLock&) = delete;
+		ScopedReadLock(ScopedSpinLock&&) = delete;
+
+		RWLock& mRWLock;
+	};
+
+	class ScopedWriteLock final
+	{
+	public:
+		ScopedWriteLock(RWLock& lock)
+			: mRWLock(lock)
+		{
+			mRWLock.BeginWrite();
+		}
+
+		~ScopedWriteLock() { mRWLock.EndWrite(); }
+
+	private:
+		ScopedWriteLock(const ScopedSpinLock&) = delete;
+		ScopedWriteLock(ScopedSpinLock&&) = delete;
+
+		RWLock& mRWLock;
+	};
 }
 }

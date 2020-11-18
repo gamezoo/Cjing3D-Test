@@ -45,7 +45,7 @@ namespace Cjing3D
 			return false;
 		}
 
-		return mFileSystem.SaveFile(path, jsonString.c_str(), jsonString.size());
+		return mFileSystem.WriteFile(path, jsonString.c_str(), jsonString.size());
 	}
 
 	nlohmann::json* JsonArchive::GetCurrentJson()

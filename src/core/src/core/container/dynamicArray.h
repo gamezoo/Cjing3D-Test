@@ -45,24 +45,27 @@ namespace Cjing3D
 			swap(rhs);
 		}
 
-		DynamicArray& operator= (const DynamicArray& rhs)
+		void operator= (const DynamicArray& rhs)
 		{
 			if (this != &rhs)
 			{
-				CallDestructors(mData, mData + mSize);
-				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
+				if (mCapacity > 0)
+				{
+					CallDestructors(mData, mData + mSize);
+					CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
+				}
 
 				mData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, rhs.mCapacity * sizeof(T), alignof(T));
 				mCapacity = rhs.mCapacity;
 				mSize = rhs.mSize;
 
 				for (U32 i = 0; i < mSize; ++i) {
-					new(char*(mData + i)) T(rhs.mData[i]);
+					new((char*)(mData + i)) T(rhs.mData[i]);
 				}
 			}
 		}
 
-		DynamicArray& operator= (DynamicArray&& rhs)
+		void operator= (DynamicArray&& rhs)
 		{
 			if (this != &rhs)
 			{

@@ -24,11 +24,18 @@ namespace JobSystem
 	{
 	}
 
+	void TaskJob::RunTaskImmediate(I32 param)
+	{
+		Concurrency::AtomicIncrement(&mRunningTimes);
+		mJobInfo.jobFunc_(param, this);
+	}
+
 	void TaskJob::RunTask(I32 param, Priority priority, JobHandle* jobHandle)
 	{
 		JobSystem::JobInfo jobInfo = mJobInfo;
 		jobInfo.userParam_ = param;
 		jobInfo.jobPriority_ = priority;
+		Concurrency::AtomicIncrement(&mRunningTimes);
 
 		RunJobs(&jobInfo, 1, jobHandle);
 	}

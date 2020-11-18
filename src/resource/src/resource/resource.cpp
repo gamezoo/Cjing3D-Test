@@ -13,28 +13,19 @@ namespace  Cjing3D
 
 	Resource::Resource() :
 		mPath(),
-		mRefCount(1),
-		mFlag(ResFlag::EMPTY)
+		mRefCount(0),
+		mLoaded(0)
 	{
 	}
 
 	Resource::Resource(const Path& path) :
 		mPath(path),
-		mRefCount(1),
-		mFlag(ResFlag::EMPTY)
+		mRefCount(0),
+		mLoaded(0)
 	{
 	}
 
 	Resource::~Resource()
 	{
-	}
-
-	void Resource::SetPath(const Path& path)
-	{
-		if (!mPath.IsEmpty()) {
-		
-		}
-
-		mPath = path;
 	}
 }

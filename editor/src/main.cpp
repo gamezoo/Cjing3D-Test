@@ -23,49 +23,8 @@ using namespace Cjing3D;
 //	return 0;
 //}
 
-#include "resource\resource.h"
-#include "resource\resourceManager.h"
-#include "core\memory\memory.h"
-
-class TestResFactory : public ResourceFactory
-{
-public:
-	virtual Resource* CreateResource()
-	{
-		return nullptr;
-	}
-
-	virtual Resource* LoadResource(const Path& path)
-	{
-		return nullptr;
-	}
-
-	virtual void DestroyResource(Resource& resource)
-	{
-	
-	}
-};
-
-class TestRes : public Resource
-{
-public:
-	DECLARE_RESOURCE(TestRes, "Test")
-
-	TestRes() = default;
-};
-
-DEFINE_RESOURCE(TestRes, "Test")
-
-
 int main()
 {
-	ResourceManager::Initialize();
-	TestRes::RegisterFactory();
-
-
-	TestRes::UnregisterFactory();
-	ResourceManager::Uninitialize();
-
 	std::cout << "Hello world!" << std::endl;
 	return 0;
 }

@@ -1,105 +1,92 @@
-#include "filesystem.h"
+#include "filesystem_physfs.h"
 #include "core\helper\debug.h"
 #include "core\memory\memory.h"
 #include "core\platform\platform.h"
+#include "core\filesystem\file.h"
 
 #include "physfs_3.0.2\physfs.h"
 
 namespace Cjing3D {
 
-	/// //////////////////////////////////////////////////////////////////////////////////////////////////
-	/// FileSystemGeneric
-	FileSystemGeneric::FileSystemGeneric(const char* basePath)
+	class PhsysFile : public FileImpl
 	{
-		SetBasePath(basePath);
-	}
+	private:
+		PHYSFS_file* mFile = nullptr;
+		size_t mSize = 0;
+		FileFlags mFlags = FileFlags::NONE;
 
-	FileSystemGeneric::~FileSystemGeneric()
-	{
-	}
-
-	void FileSystemGeneric::SetBasePath(const char* path)
-	{
-		Path::FormatPath(path, mBasePath.toSpan());
-		if (mBasePath.back() != '/' && mBasePath.back() != '\\') {
-			mBasePath.append(Path::PATH_SEPERATOR);
-		}
-	}
-
-	char* FileSystemGeneric::GetBasePath()
-	{
-		return mBasePath.c_str();
-	}
-
-	bool FileSystemGeneric::CreateDirectory(const char* path)
-	{
-		return Platform::CreateDir(path);
-	}
-
-	bool FileSystemGeneric::DeleteDirectory(const char* path)
-	{
-		return Platform::DeleteFile(path);
-	}
-
-	bool FileSystemGeneric::IsDirectoryExists(const char* path)
-	{
-		return Platform::DirExists(path);
-	}
-
-	bool FileSystemGeneric::IsFileExists(const char* path)
-	{
-		return Platform::FileExists(path);
-	}
-
-	bool FileSystemGeneric::DeleteFile(const char* path)
-	{
-		return Platform::DeleteFile(path);
-	}
-
-	bool FileSystemGeneric::ReadFileBytes(const char* path, std::vector<char>& data)
-	{
-		if (auto file = Platform::File(path, Platform::FileFlags::DEFAULT_READ))
+	public:
+		PhsysFile(PHYSFS_file* file,  FileFlags flags) :
+			mFlags(flags),
+			mFile(file),
+			mSize(PHYSFS_fileLength(file))
 		{
-			size_t size = file.Size();
-			data.reserve(size);
-			size_t readed = file.Read(data.data(), size);
-			return readed == size;
 		}
-		return false;
-	}
 
-	bool FileSystemGeneric::ReadFileBytes(const char* path, char** buffer, U32& size)
-	{
-		if (auto file = Platform::File(path, Platform::FileFlags::DEFAULT_READ))
+		~PhsysFile()
 		{
-			size = file.Size();
-			*buffer = CJING_NEW_ARR(char, size);
-			size_t readed = file.Read(*buffer, size);
-			return readed == size;
+			if (mFile != nullptr) {
+				PHYSFS_close(mFile);
+			}
 		}
-		return false;
-	}
 
-	bool FileSystemGeneric::SaveFile(const char* path, const char* buffer, size_t length)
-	{
-		if (!path || !buffer || length <= 0) {
+		bool Read(void* buffer, size_t bytes)override
+		{
+			if (FLAG_ANY(mFlags, FileFlags::READ))
+			{
+				const size_t copySize = std::min(mSize - PHYSFS_tell(mFile), bytes);
+				size_t readed = PHYSFS_read(mFile, buffer, 1, (PHYSFS_uint32)copySize);
+				return copySize == readed;
+			}
 			return false;
 		}
 
-		if (auto file = Platform::File(path, Platform::FileFlags::DEFAULT_WRITE))
+		bool Write(const void* buffer, size_t bytes)override
 		{
-			size_t wrote = file.Write(buffer, length);
-			return wrote == length;
+			if (FLAG_ANY(mFlags, FileFlags::WRITE)) {
+				size_t wrote = PHYSFS_write(mFile, buffer, 1, (PHYSFS_uint32)bytes);
+				return wrote == bytes;
+			}
+			return false;
 		}
-		return false;
-	}
-  
-	/// //////////////////////////////////////////////////////////////////////////////////////////////////
-	/// FileSystemPhysfs
+
+		bool Seek(size_t offset)override
+		{
+			if (offset < mSize)
+			{
+				PHYSFS_seek(mFile, offset);
+				return true;
+			}
+			return false;
+		}
+
+		size_t Tell() const override
+		{
+			return PHYSFS_tell(mFile);
+		}
+
+		size_t Size() const override {
+			return mSize;
+		}
+
+		FileFlags GetFlags() const override {
+			return mFlags;
+		}
+
+		bool IsValid() const override {
+			return mFile != nullptr;
+		}
+
+		const char* GetPath() const override {
+			return "";
+		}
+	};
+
 	FileSystemPhysfs::FileSystemPhysfs(const char* basePath)
 	{
 		PHYSFS_init(nullptr);
 		PHYSFS_permitSymbolicLinks(1);
+		SetBasePath(basePath);
 	}
 
 	FileSystemPhysfs::~FileSystemPhysfs()
@@ -114,6 +101,11 @@ namespace Cjing3D {
 		if (!PHYSFS_mount(path, nullptr, 1)) {
 			Debug::Error(String("[FileData] Failed to mount archive, path:") + path + ", " + PHYSFS_getLastError());
 		}
+	
+		if (!PHYSFS_setWriteDir(path)) {
+			Debug::Error(String("[FileData] Failed to set write path:") + PHYSFS_getLastError());
+		}
+
 		mBasePath = path;
 	}
 
@@ -122,7 +114,7 @@ namespace Cjing3D {
 		return mBasePath.c_str();
 	}
 
-	bool FileSystemPhysfs::CreateDirectory(const char* name)
+	bool FileSystemPhysfs::CreateDir(const char* name)
 	{
 		if (PHYSFS_isDirectory(name)) {
 			return true;
@@ -130,7 +122,7 @@ namespace Cjing3D {
 		return PHYSFS_mkdir(name) != 0;
 	}
 
-	bool FileSystemPhysfs::DeleteDirectory(const char* name)
+	bool FileSystemPhysfs::DeleteDir(const char* name)
 	{
 		if (!PHYSFS_isDirectory(name)) {
 			return true;
@@ -138,7 +130,7 @@ namespace Cjing3D {
 		return PHYSFS_delete(name) != 0;
 	}
 
-	bool FileSystemPhysfs::IsDirectoryExists(const char* name)
+	bool FileSystemPhysfs::IsDirExists(const char* name)
 	{
 		return PHYSFS_isDirectory(name);
 	}
@@ -148,7 +140,7 @@ namespace Cjing3D {
 		return PHYSFS_exists(name);
 	}
 
-	bool FileSystemPhysfs::ReadFileBytes(const char* name, char** buffer, U32& size)
+	bool FileSystemPhysfs::ReadFile(const char* name, char** buffer, U32& size)
 	{
 		if (!PHYSFS_exists(name))
 		{
@@ -171,7 +163,7 @@ namespace Cjing3D {
 		return true;
 	}
 
-	bool FileSystemPhysfs::ReadFileBytes(const char* name, std::vector<char>& data)
+	bool FileSystemPhysfs::ReadFile(const char* name, DynamicArray<char>& data)
 	{
 		if (!PHYSFS_exists(name))
 		{
@@ -202,6 +194,40 @@ namespace Cjing3D {
 		return true;
 	}
 
+	bool FileSystemPhysfs::OpenFile(const char* path, File& file, FileFlags flags)
+	{
+		if (FLAG_ANY(flags, FileFlags::READ))
+		{
+			if (!PHYSFS_exists(path))
+			{
+				Debug::Warning("[fileData] The file \"%s\" is not exists.", path);
+				return false;
+			}
+
+			PHYSFS_file* physfsFile = PHYSFS_openRead(path);
+			if (physfsFile == nullptr)
+			{
+				Debug::Warning("[fileData] The file \"%s\" open failed.", path);
+				return false;
+			}
+
+			file = std::move(File(CJING_NEW(PhsysFile)(physfsFile, flags)));
+			return true;
+		}
+		else if (FLAG_ANY(flags, FileFlags::WRITE))
+		{
+			PHYSFS_file* physfsFile = PHYSFS_openWrite(path);
+			if (physfsFile == nullptr)
+			{
+				Debug::Warning("[fileData] The file \"%s\" open failed.", path);
+				return false;
+			}
+
+			file = std::move(File(CJING_NEW(PhsysFile)(physfsFile, flags)));
+			return true;
+		}
+	}
+
 	DynamicArray<const char*> FileSystemPhysfs::EnumerateFiles(const char* path)
 	{
 		DynamicArray<const char*> ret;
@@ -213,8 +239,7 @@ namespace Cjing3D {
 		return ret;
 	}
 
-
-	bool SaveFile(const char* path, const char* buffer, size_t length)
+	bool FileSystemPhysfs::WriteFile(const char* path, const char* buffer, size_t length)
 	{
 		PHYSFS_File* file = PHYSFS_openWrite(path);
 		if (file == nullptr)

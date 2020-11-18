@@ -6,6 +6,9 @@ namespace Cjing3D
 {
 	namespace JobSystem
 	{
+		static const I32 MAX_FIBER_COUNT = 128;
+		static const I32 FIBER_STACK_SIZE = 16 * 1024;
+
 		using JobHandle = U32;
 		constexpr JobHandle INVALID_HANDLE = 0xFFFFFFFF;
 

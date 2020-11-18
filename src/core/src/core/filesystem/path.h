@@ -40,7 +40,7 @@ public:
 	size_t Length()const { return mPath.size(); }
 	const char* c_str()const { return mPath.c_str(); }
 	unsigned int  GetHash()const { return mHash; }
-	bool IsEmpty()const { return mPath[0] != '\0'; }
+	bool IsEmpty()const { return mPath[0] == '\0'; }
 	bool SplitPath(char* outPath, size_t pathLen, char* outFile, size_t fileLen, char* outExt, size_t extLen)const;
 	void AppendPath(const Path& path);
 	void Normalize();
