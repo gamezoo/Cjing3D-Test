@@ -43,5 +43,11 @@ namespace Platform {
 	bool   CreateDir(const char* path);
 	void   SetCurrentDir(const char* path);
 	void   GetCurrentDir(Span<char> path);
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// library
+	void* LibraryOpen(const char* path);
+	void  LibraryClose(void* handle);
+	void* LibrarySymbol(void* handle, const char* symbolName);
 }
 }

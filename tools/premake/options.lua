@@ -32,3 +32,9 @@ newoption
    value       = "dir",
    description = "specify location of engine in relation to project"
 }
+
+newoption 
+{
+	trigger = "dynamic_plugins",
+	description = "Plugins are dynamic libraries."
+}

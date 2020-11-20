@@ -3,6 +3,8 @@
 -----------------------------------------------------------------------------------
 require('vstudio')
 
+dofile("class.lua")
+
 premake.api.register {
     name = "conformanceMode",
     scope = "config",
@@ -42,6 +44,7 @@ platform_dir = ""
 sdk_version = ""
 env_dir = "../"
 current_platform = "unknown"
+is_static_plugin = true
 
 function setup_project_env_win32()
     platforms "x64"
@@ -68,7 +71,19 @@ function setup_project_definines()
         ("CJING3D_PLATFORM_" .. string.upper(platform_dir)),
         ("CJING3D_RENDERER_" .. string.upper(renderer)),
     }
+
+    if is_static_plugin then 
+        defines { "STATIC_PLUGINS" }
+    end 
 end 
+
+function force_Link(name)
+    if current_platform == "win32" then 
+		linkoptions {"/INCLUDE:" .. name}
+    else
+        print("Force link error, current platform not support", current_platform)
+    end 
+end
 
 -----------------------------------------------------------------------------------
 -- main
@@ -86,6 +101,9 @@ function setup_env_from_options()
     if _OPTIONS["sdk_version"] then
         sdk_version = _OPTIONS["sdk_version"]
     end  
+    if _OPTIONS["dynamic_plugins"] then	
+        is_static_plugin = true
+    end 
 end
 
 function setup_env_from_action()
@@ -94,6 +112,12 @@ function setup_env_from_action()
     end 
 
     print("[premake]:current_platform:", current_platform)
+
+    if is_static_plugin then 
+        print("[premake]:static plugins")
+    else
+        print("[premake]:dynamic plugins")
+    end 
 end 
 
 setup_env_from_options()

@@ -17,3 +17,5 @@ src/client/lib
 src/shaders
 src/resource/build
 src/resource/lib
+src/plugins/build
+src/plugins/lib

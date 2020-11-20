@@ -1,4 +1,4 @@
-#define CJING_TEST_RESOURCE
+//#define CJING_TEST_RESOURCE
 #ifdef CJING_TEST_RESOURCE
 
 #include "resource\resRef.h"

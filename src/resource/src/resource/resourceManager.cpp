@@ -1,10 +1,12 @@
 #include "resourceManager.h"
+#include "converter.h"
 #include "core\helper\debug.h"
 #include "core\filesystem\filesystem_physfs.h"
 #include "core\container\hashMap.h"
 #include "core\jobsystem\taskJob.h"
 #include "core\helper\timer.h"
 #include "core\container\mpmc_bounded_queue.h"
+#include "core\plugin\pluginManager.h"
 
 namespace Cjing3D
 {
@@ -61,6 +63,9 @@ namespace ResourceManager
 		Concurrency::Thread mReadThread;
 		bool mIOExiting = false;
 
+		// converter plugins
+		DynamicArray<ResConverterPlugin> mConverterPlugins;
+
 		volatile I32 mPendingResJobs = 0;
 		bool mIsInitialized = false;
 
@@ -85,6 +90,10 @@ namespace ResourceManager
 		mWriteThread(WriteIOTaskFunc, this, 65536, "WriteIOThread"),
 		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread")
 	{
+		// acquire all converter plugins
+	
+
+		// setup filesystem
 		mFilesystem = CJING_NEW(FileSystemPhysfs)(rootPath);
 		mIsInitialized = true;
 	}

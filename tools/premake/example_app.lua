@@ -11,6 +11,12 @@ end
 local function setup_third_modules()
 end 
 
+local function link_all_plugins(config)
+    for _, plugin in ipairs(all_plugins) do
+        link_plugin(plugin)
+    end
+end 
+
 ----------------------------------------------------------------------------
 
 function get_current_script_path()
@@ -71,11 +77,13 @@ function create_example_app(project_name, source_directory, root_directory, app_
             targetname(project_name)
             defines { "DEBUG" }
             setup_engine("Debug")
+            link_all_plugins("Debug")
 
         -- Release config
         filter {"configurations:Release"}
             targetname(project_name .. "_d")
             defines { "NDEBUG" }
             setup_engine("Release")
+            link_all_plugins("Release")
         --------------------------------------------------------------
 end

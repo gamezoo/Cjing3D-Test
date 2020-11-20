@@ -56,6 +56,19 @@ function setup_dependent_libs(project_name, config)
     end 
 end 
 
+function get_all_dependencies(project_name, hash_map)
+    hash_map[project_name] = 1
+
+    local dependencies = dependencies_mapping[project_name]
+    if dependencies == nil or #dependencies <= 0 then
+        return
+    end 
+    
+    for _, dependency in ipairs(dependencies) do
+        get_all_dependencies(dependency, hash_map)
+    end 
+end 
+
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 

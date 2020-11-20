@@ -274,6 +274,24 @@ namespace Platform {
 		::GetCurrentDirectory(Path::MAX_PATH_LENGTH, tmp);
 		return WCharToChar(path, tmp);
 	}
+
+	void* LibraryOpen(const char* path)
+	{
+		WCHAR tmp[Path::MAX_PATH_LENGTH];
+		CharToWChar(tmp, path);
+		return ::LoadLibrary(tmp);
+	}
+
+	void LibraryClose(void* handle)
+	{
+		::FreeLibrary((HMODULE)handle);
+	}
+
+	void* LibrarySymbol(void* handle, const char* symbolName)
+	{
+		return ::GetProcAddress((HMODULE)handle, symbolName);
+	}
+
 #endif
 }
 }
