@@ -5,7 +5,7 @@
 
 #include "math\maths.h"
 #include "core\helper\timer.h"
-#include "core\helper\logger.h"
+#include "core\helper\debug.h"
 
 #define CATCH_CONFIG_MAIN
 #include "catch\catch.hpp"

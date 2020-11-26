@@ -23,9 +23,12 @@ namespace Cjing3D
 	public:
 		using JsonSerializerFunc = std::function<void(JsonArchive& archive)>;
 
+		JsonArchive(ArchiveMode mode, BaseFileSystem& fileSystem);
 		JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
 		~JsonArchive();
 
+		void OpenJson(const char* path);
+		void SetPath(const char* path) override;
 		bool Save(const String& path) override;
 
 		nlohmann::json* GetCurrentJson();

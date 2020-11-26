@@ -14,13 +14,13 @@ namespace Cjing3D
 		staticPluginRoot = this;
 	}
 
-	Plugin* StaticPlugin::GetPlugin(const char* name, const StringID& type)
+	Plugin* StaticPlugin::GetPlugin(const char* name)
 	{
 		StaticPlugin* node = staticPluginRoot;
 		while (node)
 		{
 			if (EqualString(name, node->mName)) {
-				return node->mCreator(type);
+				return node->mCreator();
 			}
 			node = node->mNextPlugin;
 		}

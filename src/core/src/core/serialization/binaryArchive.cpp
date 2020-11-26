@@ -8,9 +8,24 @@ namespace Cjing3D
 	BinaryArchive::BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
 		ArchiveBase(path, mode, fileSystem)
 	{
+		OpenBinaryFile(path);
+	}
+
+	BinaryArchive::~BinaryArchive()
+	{
+		if (mMode == ArchiveMode::ArchiveMode_Write)
+		{
+			if (!mFilePath.empty() && mDataBuffer != nullptr) {
+				Save(mFilePath);
+			}
+		}
+	}
+
+	void BinaryArchive::OpenBinaryFile(const char* path)
+	{
 		if (mMode == ArchiveMode::ArchiveMode_Read)
 		{
-			if (!Load(mFilePath.c_str())) {
+			if (!Load(path)) {
 				return;
 			}
 
@@ -33,14 +48,11 @@ namespace Cjing3D
 		}
 	}
 
-	BinaryArchive::~BinaryArchive()
+	void BinaryArchive::SetPath(const char* path)
 	{
-		if (mMode == ArchiveMode::ArchiveMode_Write)
-		{
-			if (mDataBuffer != nullptr) {
-				Save(mFilePath);
-			}
-		}
+		Close();
+		OpenBinaryFile(path);
+		ArchiveBase::SetPath(path);
 	}
 
 	void BinaryArchive::WriteImpl(const void* data, U32 size)

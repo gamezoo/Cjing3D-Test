@@ -3,19 +3,27 @@
 #include "resource.h"
 #include "core\plugin\plugin.h"
 #include "core\container\dynamicArray.h"
+#include "core\filesystem\filesystem.h"
 
 namespace Cjing3D
 {
+	class IResConverter;
+	class JsonArchive;
+
 	class ResConverterContext
 	{
 	public:
-		ResConverterContext();
+		ResConverterContext(BaseFileSystem& filesystem);
 		virtual ~ResConverterContext();
 
 		void AddDependency(const char* filePath);
-		
+		bool Convert(IResConverter* converter, const ResourceType& resType, const char* srcPath, const char* destPath);
+	
 	private:
 		DynamicArray<String> mDependencies;
+		BaseFileSystem& mFileSystem;
+		MaxPathString mMetaFilePath;
+		JsonArchive* mSerializer;
 	};
 
 	class IResConverter

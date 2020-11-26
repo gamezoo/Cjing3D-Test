@@ -13,14 +13,16 @@ namespace Cjing3D
 		void Uninitialize();
 		bool IsInitialized();
 
+		Plugin* LoadPlugin(const char* path);
+		bool ReloadPlugin(Plugin*& plugin);
+		I32 ScanPlugins(const char* rootPath);
 		Plugin* GetPlugin(const char* path);
-
-		I32 GetPlugins(const StringID& pluginType, void* outPlugins, I32 maxPlugins);
+		void GetPlugins(const StringID& pluginType, DynamicArray<Plugin*>& plugins);
 
 		template<typename PluginT>
-		I32 GetPlugins(PluginT* outPlugins, I32 maxPlugins)
+		void GetPlugins(DynamicArray<Plugin*>& plugins)
 		{
-			return GetPlugins(PluginT::GetType(), outPlugins, maxPlugins);
+			return GetPlugins(PluginT::Type(), plugins);
 		}
 	};
 }

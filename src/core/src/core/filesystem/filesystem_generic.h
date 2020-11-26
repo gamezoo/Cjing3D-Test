@@ -22,6 +22,7 @@ namespace Cjing3D
 		virtual bool WriteFile(const char* path, const char* buffer, size_t length);
 		virtual bool DeleteFile(const char* path);
 		virtual bool OpenFile(const char* path, File& file, FileFlags flags);
+		virtual U64  GetLastModTime(const char* path);
 
 	private:
 		MaxPathString mBasePath;

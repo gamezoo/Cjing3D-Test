@@ -66,6 +66,12 @@ namespace Cjing3D {
 		return file.IsValid();
 	}
 
+	U64 FileSystemGeneric::GetLastModTime(const char* path)
+	{
+		MaxPathString fullpath(mBasePath, path);
+		return Platform::GetLastModTime(fullpath.c_str());
+	}
+
 	bool FileSystemGeneric::ReadFile(const char* path, DynamicArray<char>& data)
 	{
 		MaxPathString fullpath(mBasePath, path);

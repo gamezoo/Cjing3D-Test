@@ -24,6 +24,7 @@ namespace Cjing3D {
 		void Close();
 		String GetDirectory()const;
 
+		virtual void SetPath(const char* path);
 		virtual bool Load(const String& path);
 		virtual bool Save(const String& path);
 

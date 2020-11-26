@@ -1,7 +1,6 @@
 #include "jobsystem.h"
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\helper\debug.h"
-#include "core\helper\logger.h"
 #include "core\helper\timer.h"
 
 #include <vector>

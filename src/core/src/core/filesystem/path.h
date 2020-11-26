@@ -41,7 +41,7 @@ public:
 	const char* c_str()const { return mPath.c_str(); }
 	unsigned int  GetHash()const { return mHash; }
 	bool IsEmpty()const { return mPath[0] == '\0'; }
-	bool SplitPath(char* outPath, size_t pathLen, char* outFile, size_t fileLen, char* outExt, size_t extLen)const;
+	bool SplitPath(char* outPath, size_t pathLen, char* outFile = nullptr, size_t fileLen = 0, char* outExt = nullptr, size_t extLen = 0)const;
 	void AppendPath(const Path& path);
 	void Normalize();
 	bool IsAbsolutePath()const;

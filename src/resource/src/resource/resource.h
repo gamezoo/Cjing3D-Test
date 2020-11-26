@@ -41,10 +41,12 @@ namespace Cjing3D
 		Resource(const Path& path);
 		virtual ~Resource();
 
+		bool IsFaild()const { return mFailed != 0; }
 		bool IsLoaded()const { return mLoaded != 0; }
 		Path GetPath()const { return mPath; }
 		void SetPath(const Path& path) { mPath = path; }
-
+		Path GetConvertedPath()const { return mConvertedPath; }
+		void SetConvertedPath(const Path& path) { mConvertedPath = path; }
 		virtual ResourceType GetType()const = 0;
 
 	public:
@@ -59,9 +61,12 @@ namespace Cjing3D
 		}
 		volatile I32 mRefCount;
 		volatile I32 mLoaded;
+		volatile I32 mFailed;
+		volatile I32 mConverting;
 
 	protected:
 		Path mPath;
+		Path mConvertedPath;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////

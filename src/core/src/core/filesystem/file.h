@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core\common\definitions.h"
+#include "core\filesystem\path.h"
 
 namespace Cjing3D
 {
@@ -14,6 +15,16 @@ namespace Cjing3D
 
 		DEFAULT_READ = READ | MMAP,
 		DEFAULT_WRITE = WRITE | CREATE,
+	};
+
+	typedef U64 FileTimestamp;
+	struct FileInfo 
+	{
+		FileTimestamp mCreatedTime;
+		FileTimestamp mModifiedTime;
+		size_t mFileSize = 0;
+		bool   mIsDirectory = false;
+		char   mFilename[Path::MAX_PATH_LENGTH];
 	};
 
 	class FileImpl
@@ -50,8 +61,9 @@ namespace Cjing3D
 		FileFlags GetFlags() const;
 		const char* GetPath() const;
 		bool IsValid() const;
-
 		explicit operator bool() const { return IsValid(); }
+
+		static size_t EnumerateFiles(const char* path, const char* ext, FileInfo* fileInfos = nullptr);
 
 	private:
 		File(const File&) = delete;

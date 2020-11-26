@@ -6,24 +6,16 @@ namespace Cjing3D
 {
 	const U32 JsonArchive::currentArchiveVersion = 1;
 
+	JsonArchive::JsonArchive(ArchiveMode mode, BaseFileSystem& fileSystem) :
+		ArchiveBase("", mode, fileSystem)
+	{
+	}
+
 	JsonArchive::JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
 		ArchiveBase(path, mode, fileSystem)
 	{
-		if (mMode == ArchiveMode::ArchiveMode_Read)
-		{
-			if (!Load(mFilePath)) {
-				return;
-			}
-			try
-			{
-				mRootJson = nlohmann::json::parse(mDataBuffer, mDataBuffer + mDataSize);
-			}
-			catch (const std::exception& e)
-			{
-				Debug::Warning("Fail to open json file:%s, %s", mFilePath, e.what());
-				Close();
-				return;
-			}
+		if (mMode == ArchiveMode::ArchiveMode_Read) {
+			OpenJson(path.c_str());
 		}
 	}
 
@@ -38,8 +30,44 @@ namespace Cjing3D
 		}
 	}
 
+	void JsonArchive::OpenJson(const char* path)
+	{
+		if (!Load(path)) {
+			return;
+		}
+		try
+		{
+			mRootJson = nlohmann::json::parse(mDataBuffer, mDataBuffer + mDataSize);
+		}
+		catch (const std::exception& e)
+		{
+			Debug::Warning("Fail to open json file:%s, %s", path, e.what());
+			Close();
+		}
+	}
+
+	void JsonArchive::SetPath(const char* path)
+	{
+		if (mMode != ArchiveMode::ArchiveMode_Write)
+		{
+			if (!mFilePath.empty() && !mRootJson.empty())
+			{
+				while (!mJsonStack.empty()) {
+					mJsonStack.pop();
+				}
+				Close();
+			}
+			OpenJson(path);
+		}
+		ArchiveBase::SetPath(path);
+	}
+
 	bool JsonArchive::Save(const String& path)
 	{
+		if (path.empty()) {
+			return false;
+		}
+
 		String jsonString = mRootJson.dump(0);
 		if (jsonString.empty()) {
 			return false;
@@ -50,6 +78,10 @@ namespace Cjing3D
 
 	nlohmann::json* JsonArchive::GetCurrentJson()
 	{
+		if (mRootJson.empty()) {
+			return nullptr;
+		}
+
 		if (mJsonStack.empty()) {
 			return &mRootJson;
 		}

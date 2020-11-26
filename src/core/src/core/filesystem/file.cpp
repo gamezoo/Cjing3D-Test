@@ -279,4 +279,25 @@ namespace Cjing3D
 	{
 		return mFileImpl->IsValid();
 	}
+
+	size_t File::EnumerateFiles(const char* path, const char* ext, FileInfo* fileInfos)
+	{
+		auto* fileIt = Platform::CreateFileIterator(path, ext);
+		if (fileIt == nullptr) {
+			return 0;
+		}
+
+		size_t fileCount = 0;
+		FileInfo fileInfo;
+		while (Platform::GetNextFile(fileIt, fileInfo))
+		{
+			if (fileInfos) {
+				fileInfos[fileCount] = fileInfo;
+			}
+			fileCount++;
+		}
+
+		Platform::DestroyFileIterator(fileIt);
+		return fileCount;
+	}
 }

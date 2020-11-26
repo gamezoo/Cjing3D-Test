@@ -9,7 +9,7 @@
 #include "core\filesystem\filesystem_physfs.h"
 #include "core\jobsystem\jobsystem.h"
 #include "core\helper\timer.h"
-#include "core\helper\logger.h"
+#include "core\plugin\pluginManager.h"
 
 #define CATCH_CONFIG_RUNNER
 #include "catch\catch.hpp"
@@ -71,50 +71,75 @@ public:
 
 	virtual bool IsNeedConvert()const
 	{
-		return false;
+		return true;
 	}
 };
 
 DEFINE_RESOURCE(TestRes, "Test")
 
-TEST_CASE("resource", "[resource]")
+//TEST_CASE("load resource (no converter)", "[resource]")
+//{
+//	TestRes::RegisterFactory();
+//	{
+//		TestResRef ref = ResourceManager::LoadResource<TestRes>("Test.txt");
+//		ResourceManager::WaitForResource(ref);
+//		std::cout << "Resource Ref Test" << std::endl;
+//	}
+//	TestRes::UnregisterFactory();
+//}
+
+TEST_CASE("load resource (converter)", "[resource]")
 {
 	TestRes::RegisterFactory();
 	{
-		
+		TestResRef ref = ResourceManager::LoadResourceImmediate<TestRes>("Test.txt");
+		//ResourceManager::WaitForResource(ref);
+		std::cout << "Resource Ref Test" << std::endl;
 	}
 	TestRes::UnregisterFactory();
 }
 
-TEST_CASE("file io read", "[resource]")
-{
-	ResourceManager::AsyncHandle handle;
-	char* buffer = nullptr;
-	size_t size = 0;
-	ResourceManager::ReadFileData("Test.txt", buffer, size, &handle);
 
-	F64 startTime = Timer::GetAbsoluteTime();
-	do {
-		Logger::Info("Wait for reading. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
-	} while (!handle.IsComplete());
-
-	CJING_SAFE_DELETE_ARR(buffer, size);
-}
-
-TEST_CASE("file io write", "[resource]")
-{
-	String ouputText = "I wanna to be a guy!";
-	ResourceManager::AsyncHandle handle;
-	ResourceManager::WriteFileData("Test.txt", ouputText.data(), ouputText.length(), &handle);
-
-	F64 startTime = Timer::GetAbsoluteTime();
-	do {
-		Logger::Info("Wait for writing. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
-	} while (!handle.IsComplete());
-}
+//TEST_CASE("file io read", "[resource]")
+//{
+//	ResourceManager::AsyncHandle handle;
+//	char* buffer = nullptr;
+//	size_t size = 0;
+//	ResourceManager::ReadFileData("Test.txt", buffer, size, &handle);
+//
+//	F64 startTime = Timer::GetAbsoluteTime();
+//	do {
+//		Logger::Info("Wait for reading. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
+//	} while (!handle.IsComplete());
+//
+//	CJING_SAFE_DELETE_ARR(buffer, size);
+//}
+//
+//TEST_CASE("file io write", "[resource]")
+//{
+//	String ouputText = "I wanna to be a guy!";
+//	ResourceManager::AsyncHandle handle;
+//	ResourceManager::WriteFileData("Test.txt", ouputText.data(), ouputText.length(), &handle);
+//
+//	F64 startTime = Timer::GetAbsoluteTime();
+//	do {
+//		Logger::Info("Wait for writing. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
+//	} while (!handle.IsComplete());
+//}
 
 int main(int argc, char* argv[])
 {
+	PluginManager::Initialize();
+
+#ifdef CJING_PLUGINS
+	const char* plugins[] = { CJING_PLUGINS };
+	Span<const char*> pluginSpan = Span(plugins);
+	for (const char* plugin : pluginSpan)
+	{
+		std::cout << plugin << std::endl;
+		PluginManager::LoadPlugin(plugin);
+	}
+#endif
 	JobSystem::ScopedManager scoped(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
 
 	MaxPathString dirPath;
@@ -124,6 +149,8 @@ int main(int argc, char* argv[])
 	auto ret = Catch::Session().run(argc, argv);
 
 	ResourceManager::Uninitialize();
+	PluginManager::Uninitialize();
+
 	return ret;
 }
 

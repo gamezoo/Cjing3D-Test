@@ -2,7 +2,6 @@
 
 #ifdef CJING_MEMORY_TRACKER
 #include "core\helper\debug.h"
-#include "core\helper\logger.h"
 #include "core\jobsystem\concurrency.h"
 
 #include <fstream>

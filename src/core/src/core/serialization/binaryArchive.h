@@ -18,6 +18,9 @@ namespace Cjing3D
 		BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
 		~BinaryArchive();
 
+		void OpenBinaryFile(const char* path);
+		void SetPath(const char* path)override;
+
 		template<typename T>
 		inline BinaryArchive& operator << (const T& data)
 		{

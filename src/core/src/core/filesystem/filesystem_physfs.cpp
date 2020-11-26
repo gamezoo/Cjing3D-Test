@@ -228,6 +228,11 @@ namespace Cjing3D {
 		}
 	}
 
+	U64 FileSystemPhysfs::GetLastModTime(const char* path)
+	{
+		return PHYSFS_getLastModTime(path);
+	}
+
 	DynamicArray<const char*> FileSystemPhysfs::EnumerateFiles(const char* path)
 	{
 		DynamicArray<const char*> ret;

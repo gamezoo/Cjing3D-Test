@@ -50,7 +50,6 @@ namespace ResourceManager
 		ResourceTypeTable mResourceTypeTable;
 		DynamicArray<Resource*> mReleasedResources;
 
-		MaxPathString mRootPath;
 		Concurrency::RWLock mRWLock;
 		BaseFileSystem* mFilesystem = nullptr;
 
@@ -64,9 +63,10 @@ namespace ResourceManager
 		bool mIOExiting = false;
 
 		// converter plugins
-		DynamicArray<ResConverterPlugin> mConverterPlugins;
+		DynamicArray<ResConverterPlugin*> mConverterPlugins;
 
 		volatile I32 mPendingResJobs = 0;
+		volatile I32 mConversionJobs = 0;
 		bool mIsInitialized = false;
 
 	public:
@@ -91,7 +91,11 @@ namespace ResourceManager
 		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread")
 	{
 		// acquire all converter plugins
-	
+		DynamicArray<Plugin*> plugins;
+		PluginManager::GetPlugins<ResConverterPlugin>(plugins);
+		for (auto plugin : plugins) {
+			mConverterPlugins.push(reinterpret_cast<ResConverterPlugin*>(plugin));
+		}
 
 		// setup filesystem
 		mFilesystem = CJING_NEW(FileSystemPhysfs)(rootPath);
@@ -323,10 +327,12 @@ namespace ResourceManager
 	//////////////////////////////////////////////////////////////////////////
 	// Task job
 	//////////////////////////////////////////////////////////////////////////
+
+	// resource load job
 	class ResourceLoadJob : public JobSystem::TaskJob
 	{
 	public:
-		ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char*name, const char* path);
+		ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char* path);
 		virtual ~ResourceLoadJob();
 
 		void OnWork(I32 param)override;
@@ -338,6 +344,109 @@ namespace ResourceManager
 		String mName;
 		String mPath;
 	};
+
+	// Resource convert job
+	class ResourceConvertJob : public JobSystem::TaskJob
+	{
+	public:
+		ResourceConvertJob(Resource& resource, const ResourceType& resType, const char* srcPath, const char* convertedPath);
+		virtual ~ResourceConvertJob();
+
+		void SetLoadJob(ResourceLoadJob* job) { mResLoadJob = job; }
+		void SetIsImmediate(bool isImmediate) { mIsImmediate = isImmediate; }
+		void OnWork(I32 param)override;
+		void OnCompleted()override;
+
+	private:
+		Resource& mResource;
+		ResourceType mResType;
+		const char* mSrcPath;
+		const char* mConvertedPath;
+		ResourceLoadJob* mResLoadJob;
+		bool mConversionRet;
+
+		bool mIsImmediate = false;
+		I32 mCurrentConvertTime = 0;
+		static const I32 MaxConvertTimes = 3;
+	};
+
+	ResourceConvertJob::ResourceConvertJob(Resource& resource, const ResourceType& resType, const char* srcPath, const char* convertedPath) :
+		JobSystem::TaskJob("ResourceConvertJob"),
+		mResource(resource),
+		mResType(resType),
+		mSrcPath(srcPath),
+		mConvertedPath(convertedPath),
+		mResLoadJob(nullptr),
+		mConversionRet(false)
+	{
+		Concurrency::AtomicIncrement(&mImpl->mPendingResJobs);
+		Debug::CheckAssertion(Concurrency::AtomicIncrement(&mResource.mConverting) == 1);
+	}
+
+	ResourceConvertJob::~ResourceConvertJob()
+	{
+		Concurrency::AtomicDecrement(&mImpl->mPendingResJobs);
+		Concurrency::AtomicDecrement(&mResource.mConverting);
+	}
+
+	void ResourceConvertJob::OnWork(I32 param)
+	{
+		Concurrency::AtomicIncrement(&mImpl->mConversionJobs);
+		for (auto plugin : mImpl->mConverterPlugins)
+		{
+			auto converter = plugin->CreateConverter();
+			if (converter && converter->SupportsType(nullptr, mResType))
+			{
+				// convert src resource
+				ResConverterContext context(*mImpl->mFilesystem);
+				mConversionRet = context.Convert(converter, mResType, mSrcPath, mConvertedPath);
+			}
+			plugin->DestroyConverter(converter);
+
+			// 成功转换后则直接返回
+			if (mConversionRet) {
+				break;
+			}
+		}
+		Concurrency::AtomicDecrement(&mImpl->mConversionJobs);
+	}
+
+	void ResourceConvertJob::OnCompleted()
+	{
+		// if convert failed, try again
+		if (!mConversionRet)
+		{
+			if (mCurrentConvertTime < MaxConvertTimes)
+			{
+				mCurrentConvertTime++;
+				if (mIsImmediate) {
+					return RunTaskImmediate(0);
+				}
+				else {
+					return RunTask(0, JobSystem::Priority::LOW);
+				}
+			}
+			else
+			{
+				Concurrency::AtomicIncrement(&mResource.mFailed);
+			}
+		}
+
+		// if convert success, try to do loading job
+		if (mConversionRet && mResLoadJob)
+		{
+			if (mIsImmediate) {
+				mResLoadJob->RunTaskImmediate(0);
+			}
+			else 
+			{
+				JobSystem::JobHandle jobHandle;
+				mResLoadJob->RunTask(0, JobSystem::Priority::LOW, &jobHandle);
+				JobSystem::Wait(&jobHandle);
+			}
+		}
+		CJING_DELETE(this);
+	}
 
 	ResourceLoadJob::ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char*path) :
 		JobSystem::TaskJob("ResourceLoadJob"),
@@ -360,18 +469,23 @@ namespace ResourceManager
 		DynamicArray<char> buffer;
 		if (!mImpl->mFilesystem->ReadFile(mPath, buffer)) 
 		{
-			Debug::CheckAssertion("Failed to load resource \"%s\"", mPath);
+			Debug::Warning("Failed to load resource \"%s\"", mPath);
+			Concurrency::AtomicIncrement(&mResource.mFailed);
 			return;
 		}
 
 		File file(buffer.data(), buffer.size(), FileFlags::DEFAULT_READ);
 		bool success = mFactory.LoadResource(&mResource, mName.c_str(), file);
+		if (success && !mResource.IsLoaded())
+		{
+			Concurrency::AtomicIncrement(&mResource.mLoaded);
+		}
 		if (!success)
 		{
-			Debug::CheckAssertion("Failed to load resource \"%s\"", mPath);
+			Debug::Warning("Failed to load resource \"%s\"", mPath);
+			Concurrency::AtomicIncrement(&mResource.mFailed);
 			return;
 		}
-		Concurrency::AtomicIncrement(&mResource.mLoaded);
 	}
 
 	void ResourceLoadJob::OnCompleted()
@@ -385,6 +499,8 @@ namespace ResourceManager
 	//////////////////////////////////////////////////////////////////////////
 	void Initialize(const char* rootPath)
 	{
+		Debug::CheckAssertion(JobSystem::IsInitialized());
+		Debug::CheckAssertion(PluginManager::IsInitialized());
 		Debug::CheckAssertion(mImpl == nullptr);
 		mImpl = CJING_NEW(ResourceManagerImpl)(rootPath);
 	}
@@ -452,7 +568,6 @@ namespace ResourceManager
 					return nullptr;
 				}
 				mImpl->RecordResource(inPath, type, *ret);
-
 				ret->SetPath(inPath);
 
 				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), inPath.c_str());
@@ -467,29 +582,82 @@ namespace ResourceManager
 		}
 		else
 		{
-			// set converted path
-			MaxPathString convertedPath, convertedFileName;
-			sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
-			sprintf_s(convertedPath.data(), convertedPath.size(), "%s.converter_output", mImpl->mRootPath.data());
-
 			// acquire resource
-			Resource* ret = mImpl->AcquireResource(Path(convertedPath), type);
+			Resource* ret = mImpl->AcquireResource(inPath, type);
 			if (ret == nullptr)
 			{
 				ret = factory->CreateResource();
 				if (ret == nullptr) {
 					return nullptr;
 				}
-				// add ref
-				mImpl->RecordResource(Path(convertedPath), type, *ret);
+				mImpl->RecordResource(inPath, type, *ret);
+				ret->SetPath(inPath);
 
-				ret->SetPath(Path(convertedPath));
+				// set converted directory path
+				MaxPathString convertedPath, convertedFileName;
+				sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
+				sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
 
-				// todo
+				if (!mImpl->mFilesystem->IsDirExists(convertedPath.c_str())) {
+					mImpl->mFilesystem->CreateDir(convertedPath.c_str());
+				}
 
+				// converted full path
+				Path convertedfullPath(convertedPath.c_str());
+				convertedfullPath.AppendPath(Path(dirPath));
+				convertedfullPath.AppendPath(Path(convertedFileName));
+				ret->SetConvertedPath(convertedfullPath);
+
+				bool needConvert = false;
+				if (mImpl->mFilesystem->IsFileExists(convertedPath))
+				{
+					MaxPathString metaPath(inPath.c_str());
+					metaPath.append(".metadata");
+
+					needConvert = true;
+
+					if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
+					{
+						// check res metadata last modified time
+						U64 srcModTime = mImpl->mFilesystem->GetLastModTime(inPath.c_str());
+						U64 metaModTime = mImpl->mFilesystem->GetLastModTime(metaPath.c_str());
+
+						if (metaModTime >= srcModTime) {
+							needConvert = false;
+						}
+					}
+				}
+
+				if (needConvert == true)
+				{
+					// load job
+					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
+					
+					// convert job
+					auto* convertJob = CJING_NEW(ResourceConvertJob)(*ret, type, inPath.c_str(), convertedfullPath.c_str());
+					convertJob->SetLoadJob(loadJob);
+					convertJob->SetIsImmediate(isImmediate);
+					
+					if (isImmediate) {
+						convertJob->RunTaskImmediate(0);
+					}
+					else {
+						convertJob->RunTask(0, JobSystem::Priority::LOW);
+					}
+				}
+				else
+				{
+					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
+					if (isImmediate) {
+						loadJob->RunTaskImmediate(0);
+					}
+					else {
+						loadJob->RunTask(0, JobSystem::Priority::LOW);
+					}
+				}
 			}
 			return ret;
-		}
+		}                                                                                           
 	}
 	void AcquireResource(Resource* resource)
 	{
@@ -525,7 +693,7 @@ namespace ResourceManager
 		F64 maxWaitTime = 10.0f;
 #endif
 		F64 startTime = Timer::GetAbsoluteTime();
-		while(!IsResourceLoaded(resource))
+		while(!resource->IsLoaded() && !resource->IsFaild())
 		{
 			JobSystem::YieldCPU();
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)

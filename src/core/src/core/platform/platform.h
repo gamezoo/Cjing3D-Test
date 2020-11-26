@@ -10,6 +10,7 @@
 
 #include "core\common\definitions.h"
 #include "core\container\span.h"
+#include "core\filesystem\file.h"
 
 #include <functional>
 
@@ -33,16 +34,22 @@ namespace Platform {
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// File 
+	struct FileIterator;
+
 	bool   FileExists(const char* path);
 	bool   DirExists(const char* path);
 	bool   DeleteFile(const char* path);
 	bool   MoveFile(const char* from, const char* to);
 	bool   FileCopy(const char* from, const char* to);
 	size_t GetFileSize(const char* path);
-	U64    GetLastModified(const char* file);
+	U64    GetLastModTime(const char* file);
 	bool   CreateDir(const char* path);
 	void   SetCurrentDir(const char* path);
 	void   GetCurrentDir(Span<char> path);
+
+	FileIterator* CreateFileIterator(const char* path, const char* ext = nullptr);
+	void DestroyFileIterator(FileIterator* it);
+	bool GetNextFile(FileIterator* it, FileInfo& info);
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// library

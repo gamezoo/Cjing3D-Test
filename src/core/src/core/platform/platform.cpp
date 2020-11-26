@@ -3,7 +3,6 @@
 #include "core\helper\debug.h"
 #include "core\string\string.h"
 #include "core\string\stringUtils.h"
-#include "core\filesystem\path.h"
 
 #ifdef CJING3D_PLATFORM_WIN32
 #include <ShlObj.h>
@@ -62,6 +61,14 @@ namespace Platform {
 		WCHAR data[N];
 	};
 	using WPathString = WCharString<Path::MAX_PATH_LENGTH>;
+
+	U64 FileTimeToU64(FILETIME ft)
+	{
+		ULARGE_INTEGER i;
+		i.LowPart = ft.dwLowDateTime;
+		i.HighPart = ft.dwHighDateTime;
+		return i.QuadPart;
+	}
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// platform function
@@ -222,7 +229,7 @@ namespace Platform {
 		return (size_t)size.QuadPart;
 	}
 
-	U64 GetLastModified(const char* file)
+	U64 GetLastModTime(const char* file)
 	{
 		const WPathString wpath(file);
 		FILETIME ft;
@@ -273,6 +280,59 @@ namespace Platform {
 		WCHAR tmp[Path::MAX_PATH_LENGTH];
 		::GetCurrentDirectory(Path::MAX_PATH_LENGTH, tmp);
 		return WCharToChar(path, tmp);
+	}
+
+	struct FileIterator
+	{
+		HANDLE mHandle;
+		WIN32_FIND_DATA mFFD;
+		bool mIsValid;
+	};
+
+	FileIterator* CreateFileIterator(const char* path, const char* ext)
+	{
+		char tempPath[Path::MAX_PATH_LENGTH] = { 0 };
+		CopyString(tempPath, path);
+
+		// serach specific ext files
+		if (ext != nullptr)
+		{
+			CatString(tempPath, "/*.");
+			CatString(tempPath, ext);
+		}
+		else
+		{
+			CatString(tempPath, "/*");
+		}
+
+		WCharString<Path::MAX_PATH_LENGTH> wTempPath(tempPath);
+		FileIterator* it = CJING_NEW(FileIterator);
+		it->mHandle = ::FindFirstFile(wTempPath, &it->mFFD);
+		it->mIsValid = it->mHandle != INVALID_HANDLE_VALUE;
+		return it;
+	}
+
+	void DestroyFileIterator(FileIterator* it)
+	{
+		::FindClose(it->mHandle);
+		CJING_SAFE_DELETE(it);
+	}
+
+	bool GetNextFile(FileIterator* it, FileInfo& info)
+	{
+		if (!it->mIsValid) {
+			return false;
+		}
+
+		WIN32_FIND_DATA& data = it->mFFD;
+		WCharToChar(info.mFilename, data.cFileName);
+		info.mCreatedTime  = FileTimeToU64(data.ftCreationTime);
+		info.mModifiedTime = FileTimeToU64(data.ftLastWriteTime);
+		info.mFileSize = ((size_t)data.nFileSizeHigh << 32LL) | (size_t)data.nFileSizeLow;
+		info.mIsDirectory = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+		it->mIsValid = ::FindNextFile(it->mHandle, &it->mFFD) != FALSE;
+		return true;
 	}
 
 	void* LibraryOpen(const char* path)

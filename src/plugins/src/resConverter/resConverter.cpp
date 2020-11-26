@@ -12,12 +12,20 @@ namespace Cjing3D
 		
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override
 		{
-			return true;
+			return false;
 		}
 	};
 
-	LUMIX_PLUGIN_ENTRY(ResConverter)
+	LUMIX_PLUGIN_ENTRY(resConverter)
 	{
-		return nullptr;
+		ResConverterPlugin* plugin = CJING_NEW(ResConverterPlugin);
+		plugin->CreateConverter = []() -> IResConverter* {
+			return CJING_NEW(GeneralResConverter);
+		};
+		plugin->DestroyConverter = [](IResConverter*& converter) {
+			CJING_SAFE_DELETE(converter);
+			converter = nullptr;
+		};
+		return plugin;
 	}
 }

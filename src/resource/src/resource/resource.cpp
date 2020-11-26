@@ -14,14 +14,18 @@ namespace  Cjing3D
 	Resource::Resource() :
 		mPath(),
 		mRefCount(0),
-		mLoaded(0)
+		mLoaded(0),
+		mFailed(0),
+		mConverting(0)
 	{
 	}
 
 	Resource::Resource(const Path& path) :
 		mPath(path),
 		mRefCount(0),
-		mLoaded(0)
+		mLoaded(0),
+		mFailed(0),
+		mConverting(0)
 	{
 	}
 

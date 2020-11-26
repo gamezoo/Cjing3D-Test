@@ -16,6 +16,11 @@ namespace Cjing3D
 		Close();
 	}
 
+	void ArchiveBase::SetPath(const char* path)
+	{
+		mFilePath = path;
+	}
+
 	bool ArchiveBase::IsOpen() const
 	{
 		return mDataBuffer != nullptr;
@@ -28,7 +33,7 @@ namespace Cjing3D
 
 	bool ArchiveBase::Load(const String& path)
 	{
-		if (!mFileSystem.IsFileExists(mFilePath.c_str())) {
+		if (!mFileSystem.IsFileExists(path)) {
 			return false;
 		}
 
@@ -45,11 +50,11 @@ namespace Cjing3D
 
 	bool ArchiveBase::Save(const String& path)
 	{
-		if (mFilePath.empty()) {
+		if (path.empty()) {
 			return false;
 		}
 
-		return mFileSystem.WriteFile(mFilePath.c_str(), mDataBuffer, static_cast<size_t> (mDataSize));
+		return mFileSystem.WriteFile(path.c_str(), mDataBuffer, static_cast<size_t> (mDataSize));
 	}
 
 	String ArchiveBase::GetDirectory() const
