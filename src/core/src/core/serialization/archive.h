@@ -23,6 +23,7 @@ namespace Cjing3D {
 		bool IsOpen()const;
 		void Close();
 		String GetDirectory()const;
+		ArchiveMode GetMode()const { return mMode; }
 
 		virtual void SetPath(const char* path);
 		virtual bool Load(const String& path);

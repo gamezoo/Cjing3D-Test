@@ -4,6 +4,7 @@
 #include "core\plugin\plugin.h"
 #include "core\container\dynamicArray.h"
 #include "core\filesystem\filesystem.h"
+#include "core\serialization\serializedObject.h"
 
 namespace Cjing3D
 {
@@ -17,13 +18,37 @@ namespace Cjing3D
 		virtual ~ResConverterContext();
 
 		void AddDependency(const char* filePath);
+		void AddOutput(const char* path);
 		bool Convert(IResConverter* converter, const ResourceType& resType, const char* srcPath, const char* destPath);
 	
+		template<typename T>
+		void SetMetaData(const T& data)
+		{
+			SetMetaDataImpl(data);
+		}
+
+		template<typename T>
+		T GetMetaData()
+		{
+			T data;
+			GetMetaDataImpl(data);
+			return data;
+		}
+
+		BaseFileSystem& GetFileSystem() { return mFileSystem; }
+
 	private:
-		DynamicArray<String> mDependencies;
+		void SetMetaDataImpl(const SerializedObject& obj);
+		void GetMetaDataImpl(SerializedObject& obj);
+
+	private:
 		BaseFileSystem& mFileSystem;
 		MaxPathString mMetaFilePath;
-		JsonArchive* mSerializer;
+		JsonArchive* mSerializer = nullptr;
+		JsonArchive* mDeserializer = nullptr;
+
+		DynamicArray<String> mDependencies;
+		DynamicArray<String> mOutputs;
 	};
 
 	class IResConverter

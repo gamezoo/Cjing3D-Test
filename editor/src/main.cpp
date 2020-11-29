@@ -90,7 +90,6 @@ public:
 };
 DEFINE_RESOURCE(TestRes, "Test")
 
-
 int main()
 {
 	PluginManager::Initialize();

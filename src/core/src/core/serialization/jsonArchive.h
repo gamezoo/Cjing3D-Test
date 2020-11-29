@@ -5,6 +5,7 @@
 #include "core\common\common.h"
 #include "math\maths.h"
 #include "json\json.hpp"
+#include "core\container\dynamicArray.h"
 
 #include <stack>
 #include <string>
@@ -23,6 +24,14 @@ namespace Cjing3D
 	public:
 		using JsonSerializerFunc = std::function<void(JsonArchive& archive)>;
 
+
+	private:
+		std::stack<nlohmann::json*> mJsonStack;
+		nlohmann::json mRootJson;
+
+		static const U32 currentArchiveVersion;
+
+	public:
 		JsonArchive(ArchiveMode mode, BaseFileSystem& fileSystem);
 		JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
 		~JsonArchive();
@@ -76,11 +85,17 @@ namespace Cjing3D
 				return *this;
 			}
 
-			auto it = currentJson->emplace(std::make_pair(key.toString(), nlohmann::json())).first;
-			mJsonStack.push(&it.value());
-			JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
-			mJsonStack.pop();
+			auto it = currentJson->find(key.toString());
+			if (it == currentJson->end()) {
+				it = currentJson->emplace(std::make_pair(key.toString(), nlohmann::json())).first;
+			}
 
+			if (it != currentJson->end())
+			{
+				mJsonStack.push(&it.value());
+				JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
+				mJsonStack.pop();
+			}
 			return *this;
 		}
 
@@ -170,12 +185,6 @@ namespace Cjing3D
 			func(*this);
 			mJsonStack.pop();
 		}
-
-	private:
-		std::stack<nlohmann::json*> mJsonStack;
-		nlohmann::json mRootJson;
-
-		static const U32 currentArchiveVersion;
 	};
 
 	class JsonSerializer
@@ -336,6 +345,38 @@ namespace Cjing3D
 					return;
 				}
 			
+				for (int i = 0; i < obj.size(); i++) {
+					archive.WriteAndPush(obj[i]);
+				}
+			}
+		};
+
+		template<typename T>
+		struct ArchiveTypeNormalMapping<DynamicArray<T>>
+		{
+			static void Serialize(DynamicArray<T>& obj, JsonArchive& archive)
+			{
+				nlohmann::json* currentJson = archive.GetCurrentJson();
+				if (currentJson == nullptr) {
+					return;
+				}
+
+				if (!currentJson->is_array()) {
+					return;
+				}
+
+				for (int i = 0; i < currentJson->size(); i++) {
+					archive.Read(i, obj[i]);
+				}
+			}
+
+			static void Unserialize(const DynamicArray<T>& obj, JsonArchive& archive)
+			{
+				nlohmann::json* currentJson = archive.GetCurrentJson();
+				if (currentJson == nullptr) {
+					return;
+				}
+
 				for (int i = 0; i < obj.size(); i++) {
 					archive.WriteAndPush(obj[i]);
 				}

@@ -111,7 +111,7 @@ namespace Cjing3D
 			os << std::endl;
 		}
 
-		Logger::Info(os.str().c_str());
+		Debug::Warning(os.str().c_str());
 
 		if (mMemoryLeaksFileName != nullptr)
 		{

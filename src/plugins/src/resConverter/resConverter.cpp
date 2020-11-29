@@ -7,11 +7,19 @@ namespace Cjing3D
 	public:
 		bool SupportsType(const char* ext, const ResourceType& type)override
 		{
-			return true;
+			if (type == ResourceType("Test")) {
+				return true;
+			}
+
+			return false;
 		}
 		
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override
 		{
+			if (type == ResourceType("Test")) {
+				return TestResConverter().Convert(context, type, src, dest);
+			}
+
 			return false;
 		}
 	};

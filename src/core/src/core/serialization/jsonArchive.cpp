@@ -78,10 +78,6 @@ namespace Cjing3D
 
 	nlohmann::json* JsonArchive::GetCurrentJson()
 	{
-		if (mRootJson.empty()) {
-			return nullptr;
-		}
-
 		if (mJsonStack.empty()) {
 			return &mRootJson;
 		}

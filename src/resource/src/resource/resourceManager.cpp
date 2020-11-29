@@ -197,7 +197,7 @@ namespace ResourceManager
 
 		for (auto resource : releasedResources)
 		{
-			Debug::CheckAssertion(resource->IsLoaded());
+			Debug::CheckAssertion(resource->IsLoaded() || resource->IsFaild());
 
 			ResourceFactory* factory = mImpl->GetFactory(resource->GetType());
 			if (factory != nullptr) {
@@ -433,16 +433,24 @@ namespace ResourceManager
 		}
 
 		// if convert success, try to do loading job
-		if (mConversionRet && mResLoadJob)
+		if (mResLoadJob)
 		{
-			if (mIsImmediate) {
-				mResLoadJob->RunTaskImmediate(0);
-			}
-			else 
+			if (mConversionRet)
 			{
-				JobSystem::JobHandle jobHandle;
-				mResLoadJob->RunTask(0, JobSystem::Priority::LOW, &jobHandle);
-				JobSystem::Wait(&jobHandle);
+				if (mIsImmediate) {
+					mResLoadJob->RunTaskImmediate(0);
+				}
+				else
+				{
+					JobSystem::JobHandle jobHandle;
+					mResLoadJob->RunTask(0, JobSystem::Priority::LOW, &jobHandle);
+					JobSystem::Wait(&jobHandle);
+				}
+			}
+			else
+			{
+				mResLoadJob->OnCompleted();
+				mResLoadJob = nullptr;
 			}
 		}
 		CJING_DELETE(this);
@@ -608,13 +616,11 @@ namespace ResourceManager
 				convertedfullPath.AppendPath(Path(convertedFileName));
 				ret->SetConvertedPath(convertedfullPath);
 
-				bool needConvert = false;
-				if (mImpl->mFilesystem->IsFileExists(convertedPath))
+				bool needConvert = true;
+				if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
 				{
 					MaxPathString metaPath(inPath.c_str());
 					metaPath.append(".metadata");
-
-					needConvert = true;
 
 					if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
 					{
