@@ -4,6 +4,8 @@
 #include "core\filesystem\path.h"
 #include "core\filesystem\file.h"
 #include "core\jobsystem\concurrency.h"
+#include "core\container\dynamicArray.h"
+#include "core\signal\connectionMap.h"
 
 namespace Cjing3D
 {
@@ -32,41 +34,75 @@ namespace Cjing3D
 
 	private:
 		U32 mTypeValue = 0;
-	};
+	}; 
 
+	//namespace ResourceManager {
+	//	class ResourceManagerImpl;
+	//}
 	class Resource
 	{
 	public:
+		//friend class ResourceManager::ResourceManagerImpl;
+		
+		enum class ResState
+		{
+			EMPTY = 0,
+			LOADED,
+			FAILURE,
+		};
+
 		Resource();
 		Resource(const Path& path);
 		virtual ~Resource();
 
-		bool IsFaild()const { return mFailed != 0; }
-		bool IsLoaded()const { return mLoaded != 0; }
+		ResState GetState()const { return mState; }
+		bool IsFaild()const  { return mState == ResState::FAILURE; }
+		bool IsLoaded()const { return mState == ResState::LOADED; }
+		bool IsEmpty()const  { return mState == ResState::EMPTY; }
+
 		Path GetPath()const { return mPath; }
 		void SetPath(const Path& path) { mPath = path; }
 		Path GetConvertedPath()const { return mConvertedPath; }
 		void SetConvertedPath(const Path& path) { mConvertedPath = path; }
+
 		virtual ResourceType GetType()const = 0;
 
 	public:
-		void AddRefCount() {
-			Concurrency::AtomicIncrement(&mRefCount);
+		void SetSourceFiles(const DynamicArray<String>& srcFiles);
+		DynamicArray<String> GetSourceFiles()const;
+		void AddDependency(Resource& res);
+		void RemoveDependency(Resource& res);
+		void OnLoaded(bool ret);
+
+		Signal<void(ResState oldState, ResState newState)> OnStateChangedSignal;
+
+	public:
+		I32 AddRefCount() {
+			return Concurrency::AtomicIncrement(&mRefCount);
 		}
-		void SubRefCount() {
-			Concurrency::AtomicDecrement(&mRefCount);
+		I32 SubRefCount() {
+			return Concurrency::AtomicDecrement(&mRefCount);
 		}
 		I32 GetRefCount()const {
 			return mRefCount;
 		}
+		bool SetConverting(bool isConverting);
+
+	protected:
 		volatile I32 mRefCount;
-		volatile I32 mLoaded;
+		volatile I32 mEmpty;
 		volatile I32 mFailed;
 		volatile I32 mConverting;
 
-	protected:
+		void CheckState();
+		void OnStateChanged(ResState oldState, ResState newState);
+
+	private:
 		Path mPath;
 		Path mConvertedPath;
+		DynamicArray<String> mSourceFiles;
+		ResState mState;
+		ConnectionMap mConnectionMap;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////////

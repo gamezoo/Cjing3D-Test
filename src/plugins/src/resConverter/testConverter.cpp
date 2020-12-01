@@ -29,7 +29,7 @@ namespace Cjing3D
 		if (!fileSystem.ReadFile(src, buffer)) {
 			return false;
 		}
-		context.AddDependency(src);
+		context.AddSource(src);
 
 		data.mTestValue = buffer.size();
 

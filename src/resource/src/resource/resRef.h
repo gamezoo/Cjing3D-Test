@@ -8,7 +8,7 @@ namespace Cjing3D
 	class BaseResRef
 	{
 	protected:
-		Resource* mResource = nullptr;;
+		Resource* mResource = nullptr;
 
 	public:
 		BaseResRef();

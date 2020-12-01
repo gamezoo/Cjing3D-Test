@@ -17,6 +17,11 @@ namespace Cjing3D {
 		mHashStringMap[mValue] = str;
 	}
 
+	StringID::StringID(U32 hash) :
+		mValue(hash)
+	{
+	}
+
 	StringID::StringID(const String & str) :
 		mValue(CalculateHash(str.c_str()))
 	{

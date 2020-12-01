@@ -41,7 +41,7 @@ end
 
 function create_example_app(project_name, source_directory, root_directory, app_kind)
     print("-------------------------------------------------------------")
-    print("[APP]")
+    print("[APP]", project_name)
     print("-------------------------------------------------------------")
 
     local project_dir = root_directory .. "/build/" .. platform_dir

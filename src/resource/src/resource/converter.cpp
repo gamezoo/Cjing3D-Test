@@ -23,6 +23,11 @@ namespace Cjing3D
 		mDependencies.push(filePath);
 	}
 
+	void ResConverterContext::AddSource(const char* path)
+	{
+		mSources.push(path);
+	}
+
 	void ResConverterContext::AddOutput(const char* path)
 	{
 		mOutputs.push(path);
@@ -59,6 +64,7 @@ namespace Cjing3D
 			}
 
 			mDeserializer->Write("dependencies",  mDependencies);
+			mDeserializer->Write("sources", mSources);
 			mDeserializer->Write("outputs", mOutputs);
 			mDeserializer->Save(mMetaFilePath.c_str());
 		}

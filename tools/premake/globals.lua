@@ -45,6 +45,8 @@ sdk_version = ""
 env_dir = "../"
 current_platform = "unknown"
 is_static_plugin = true
+build_editor = true
+build_app = false
 
 function setup_project_env_win32()
     platforms "x64"
@@ -103,6 +105,12 @@ function setup_env_from_options()
     end  
     if _OPTIONS["dynamic_plugins"] then	
         is_static_plugin = true
+    end 
+    if _OPTIONS["no_editor"] then	
+        build_editor = false
+    end 
+    if _OPTIONS["build_app"] then	
+        build_app = true
     end 
 end
 

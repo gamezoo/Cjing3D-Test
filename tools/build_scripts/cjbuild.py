@@ -57,6 +57,12 @@ def task_run_premake(config):
     # add sdk version
     if "sdk_version" in config.keys():
         premake_cmd += " --sdk_version=\"" + str(config["sdk_version"]) + "\""
+    # build editor
+    if "build_editor" not in config.keys() or not config["build_editor"]:
+        premake_cmd += " --no_editor"
+    # build app
+    if "build_app" in config.keys() and config["build_app"]:
+        premake_cmd += " --build_app"
 
     print(premake_cmd)
     subprocess.call(premake_cmd, shell=True)

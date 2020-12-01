@@ -26,6 +26,7 @@ namespace Cjing3D
 			return static_cast<T*>(LoadResource(T::ResType, inPath, true));
 		}
 
+		void ReloadResource(Resource* resource);
 		void AcquireResource(Resource* resource);
 		bool ReleaseResource(Resource** resource);
 		bool IsResourceLoaded(Resource* resource);

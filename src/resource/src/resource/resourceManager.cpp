@@ -7,6 +7,7 @@
 #include "core\helper\timer.h"
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\plugin\pluginManager.h"
+#include "core\serialization\jsonArchive.h"
 
 namespace Cjing3D
 {
@@ -79,6 +80,7 @@ namespace ResourceManager
 		Resource* AcquireResource(const Path& path, ResourceType type);
 		void RecordResource(const Path& path, ResourceType type, Resource& resource);
 		void ProcessReleasedResources();
+		DynamicArray<String> LoadResSources(const char* src);
 	};
 	ResourceManagerImpl* mImpl = nullptr;
 
@@ -137,7 +139,7 @@ namespace ResourceManager
 
 	bool ResourceManagerImpl::ReleaseResource(Resource* resource)
 	{
-		if (Concurrency::AtomicDecrement(&resource->mRefCount) == 0)
+		if (resource->SubRefCount() == 0)
 		{
 			Concurrency::ScopedWriteLock lock(mRWLock);
 			ResourceTable* resTable = mResourceTypeTable.find(resource->GetType().Type());
@@ -204,6 +206,20 @@ namespace ResourceManager
 				factory->DestroyResource(resource);
 			}
 		}
+	}
+
+	DynamicArray<String> ResourceManagerImpl::LoadResSources(const char* src)
+	{
+		DynamicArray<String> ret;
+
+		MaxPathString metaPath(src);
+		metaPath.append(".metadata");
+		if (mFilesystem->IsFileExists(metaPath.c_str()))
+		{
+			JsonArchive archive(ArchiveMode::ArchiveMode_Read, *mFilesystem);
+			archive.Read("dependencies", ret);
+		}
+		return ret;
 	}
 
 	AsyncResult FileIOTask::DoRead()
@@ -380,13 +396,13 @@ namespace ResourceManager
 		mConversionRet(false)
 	{
 		Concurrency::AtomicIncrement(&mImpl->mPendingResJobs);
-		Debug::CheckAssertion(Concurrency::AtomicIncrement(&mResource.mConverting) == 1);
+		Debug::CheckAssertion(mResource.SetConverting(true));
 	}
 
 	ResourceConvertJob::~ResourceConvertJob()
 	{
 		Concurrency::AtomicDecrement(&mImpl->mPendingResJobs);
-		Concurrency::AtomicDecrement(&mResource.mConverting);
+		mResource.SetConverting(false);
 	}
 
 	void ResourceConvertJob::OnWork(I32 param)
@@ -428,7 +444,7 @@ namespace ResourceManager
 			}
 			else
 			{
-				Concurrency::AtomicIncrement(&mResource.mFailed);
+				mResource.OnLoaded(false);
 			}
 		}
 
@@ -478,7 +494,7 @@ namespace ResourceManager
 		if (!mImpl->mFilesystem->ReadFile(mPath, buffer)) 
 		{
 			Debug::Warning("Failed to load resource \"%s\"", mPath);
-			Concurrency::AtomicIncrement(&mResource.mFailed);
+			mResource.OnLoaded(false);
 			return;
 		}
 
@@ -486,12 +502,16 @@ namespace ResourceManager
 		bool success = mFactory.LoadResource(&mResource, mName.c_str(), file);
 		if (success && !mResource.IsLoaded())
 		{
-			Concurrency::AtomicIncrement(&mResource.mLoaded);
+			auto sources = mImpl->LoadResSources(mPath);
+			if (!sources.empty()) {
+				mResource.SetSourceFiles(sources);
+			}
+			mResource.OnLoaded(true);
 		}
 		if (!success)
 		{
 			Debug::Warning("Failed to load resource \"%s\"", mPath);
-			Concurrency::AtomicIncrement(&mResource.mFailed);
+			mResource.OnLoaded(false);
 			return;
 		}
 	}
@@ -586,6 +606,7 @@ namespace ResourceManager
 					loadJob->RunTask(0, JobSystem::Priority::LOW);
 				}
 			}
+
 			return ret;
 		}
 		else
@@ -665,6 +686,11 @@ namespace ResourceManager
 			return ret;
 		}                                                                                           
 	}
+
+	void ReloadResource(Resource* resource)
+	{
+	}
+
 	void AcquireResource(Resource* resource)
 	{
 		Debug::CheckAssertion(IsInitialized());
@@ -704,10 +730,11 @@ namespace ResourceManager
 			JobSystem::YieldCPU();
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
 			{
-				Debug::Warning("Resource load time out");
 #ifdef _DEBUG
+				Debug::Warning("Resource load time out, try loading again");
 				maxWaitTime *= 2;
 #else
+				Debug::Error("Resource load time out");
 				break;
 #endif
 			}

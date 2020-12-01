@@ -38,3 +38,15 @@ newoption
 	trigger = "dynamic_plugins",
 	description = "Plugins are dynamic libraries."
 }
+
+newoption 
+{
+	trigger = "no_editor",
+	description = "do not build editor."
+}
+
+newoption 
+{
+	trigger = "build_app",
+	description = "build default app."
+}

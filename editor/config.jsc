@@ -19,6 +19,12 @@
         // env directory
         env_dir : "../",
 
+        // build editor
+        build_editor : true,
+
+        // build app
+        build_app : true,
+
         // tools path
         tools : 
         {

@@ -111,7 +111,10 @@ int main()
 
 	TestRes::RegisterFactory();
 	{
-		TestResRef ref = ResourceManager::LoadResourceImmediate<TestRes>("Test.txt");
+		TestResRef ref1 = ResourceManager::LoadResource<TestRes>("Test.txt");
+		TestResRef ref2 = ResourceManager::LoadResource<TestRes>("Test.txt");
+		TestResRef ref3 = ResourceManager::LoadResource<TestRes>("Test.txt");
+		ref1.WaitUntilLoaded();
 		//ResourceManager::WaitForResource(ref);
 		std::cout << "Resource Ref Test" << std::endl;
 	}

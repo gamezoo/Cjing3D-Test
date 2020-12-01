@@ -16,6 +16,7 @@ namespace Cjing3D {
 	public:
 		StringID();
 		StringID(const char* str);
+		StringID(U32 hash);
 		StringID(const String& str);
 		StringID(const StringID& rhs);
 		StringID(StringID&& rhs);
