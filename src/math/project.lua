@@ -1,7 +1,5 @@
 
-print("-------------------------------------------------------------")
-print("[Engine modulers] Math")
-print("-------------------------------------------------------------")
+print("[Engine moduler] Math")
 
 local function setup_platform_win32()
     systemversion(windows_sdk_version())

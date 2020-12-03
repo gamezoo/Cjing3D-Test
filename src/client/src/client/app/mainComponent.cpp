@@ -42,9 +42,9 @@ namespace Cjing3D
 		auto engineTime = Timer::Instance().GetTime();
 		F32 deltaTime = engineTime.GetDeltaTime();
 		 
-		const auto& presentConfig = mEngine->GetPresentConfig();
-		U32 targetFrameRate = presentConfig.mTargetFrameRate;
-		U32 isLockFrameRate = presentConfig.mIsLockFrameRate;
+		const auto& initConfig = mEngine->GetInitConfig();
+		U32 targetFrameRate = initConfig.mTargetFrameRate;
+		U32 isLockFrameRate = initConfig.mIsLockFrameRate;
 
 		if (mGameWindow->IsWindowActive())
 		{

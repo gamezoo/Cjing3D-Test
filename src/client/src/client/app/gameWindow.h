@@ -14,6 +14,13 @@ namespace Cjing3D {
 		GameWindow& operator=(const GameWindow&) = delete;
 		virtual ~GameWindow() = default;
 
+		bool IsExiting()const {
+			return mIsExiting;
+		}
+		void SetIsExiting(bool isExiting) {
+			mIsExiting = isExiting;
+		}
+
 		virtual void* GetWindowHandle() const = 0;
 		virtual bool IsWindowActive() const = 0;
 		virtual bool IsFullScreen()const = 0;
@@ -24,5 +31,8 @@ namespace Cjing3D {
 		virtual RectInt GetClientBounds()const = 0;
 		virtual void SetClientbounds(const RectInt& rect) = 0;
 		virtual I32 GetDPI()const = 0;
+
+	private:
+		bool mIsExiting = false;
 	};
 }

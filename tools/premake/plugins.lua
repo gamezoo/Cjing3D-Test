@@ -27,6 +27,22 @@ local function set_plugin_env(plugin_dependencies, config)
     end 
 end 
 
+function setup_plugins_definines()
+    if #all_plugins <= 0 then 
+        return
+    end 
+
+    local definines_str = ""
+    for index, plugin in ipairs(all_plugins) do
+        if index > 1 then 
+            definines_str = definines_str .. ",";
+        end
+        definines_str = definines_str .. "\"" .. plugin .. "\""
+    end
+    defines { "CJING_PLUGINS=" .. definines_str }
+end 
+
+
 function link_plugin(plugin_name)
     links(plugin_name)
     if is_static_plugin then 
@@ -35,9 +51,7 @@ function link_plugin(plugin_name)
 end 
 
 function create_plugin(plugin_name, plugin_dependencies)
-    print("-------------------------------------------------------------")
     print("[Plugin]", plugin_name)
-    print("-------------------------------------------------------------")
 
     project (plugin_name)
     location("build/" ..  platform_dir)

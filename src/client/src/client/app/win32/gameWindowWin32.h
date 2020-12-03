@@ -14,7 +14,7 @@
 #define DEFAULT_GAME_WINDOW_DPI    96
 
 namespace Cjing3D {
-	struct PresentConfig;
+	struct InitConfig;
 }
 
 namespace Cjing3D::Win32 {
@@ -31,7 +31,7 @@ namespace Cjing3D::Win32 {
 	class GameWindowWin32 : public GameWindow
 	{
 	public:
-		GameWindowWin32(HINSTANCE hInstance, const UTF8String& titleName, const SharedPtr<EventQueue>& eventQueue, const PresentConfig& config);
+		GameWindowWin32(HINSTANCE hInstance, const UTF8String& titleName, const SharedPtr<EventQueue>& eventQueue, const InitConfig& config);
 		~GameWindowWin32();
 
 		bool Tick();

@@ -1,38 +1,111 @@
 #include "engineWin32.h"
-#include "core\platform\platform.h"
 #include "client\app\systemEvent.h"
 #include "client\app\win32\gameWindowWin32.h"
+#include "core\platform\platform.h"
+#include "core\plugin\pluginManager.h"
+#include "core\plugin\modulePulgin.h"
+#include "core\filesystem\filesystem_physfs.h"
+#include "core\jobsystem\jobsystem.h"
+#include "resource\resourceManager.h"
 
 namespace Cjing3D::Win32
 {
-	EngineWin32::EngineWin32(SharedPtr<GameWindowWin32> gameWindow, PresentConfig& config) :
-		Engine(gameWindow, config),
-		mGameWindowWin32(gameWindow)
+	struct EngineWin32Impl
 	{
+		SharedPtr<GameWindowWin32> mGameWindowWin32 = nullptr;
+		ScopedConnection mSystemConnection;
+		SharedPtr<EventQueue> mSystemEventQueue = nullptr;
+
+		BaseFileSystem* mFileSystem = nullptr;
+	};
+
+	EngineWin32::EngineWin32(SharedPtr<GameWindowWin32> gameWindow, InitConfig& config) :
+		Engine(gameWindow, config)
+	{
+		mImpl = CJING_NEW(EngineWin32Impl);
+		mImpl->mGameWindowWin32 = gameWindow;
 	}
 
 	EngineWin32::~EngineWin32()
 	{
+		CJING_SAFE_DELETE(mImpl);
 	}
 
 	void EngineWin32::Initialize()
 	{
+		JobSystem::Initialize(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
+
+		PluginManager::Initialize();
+
+#ifdef CJING_PLUGINS
+		const char* plugins[] = { CJING_PLUGINS };
+		Span<const char*> pluginSpan = Span(plugins);
+		for (const char* plugin : pluginSpan) {
+			PluginManager::LoadPlugin(plugin);
+		}
+#endif
+
+		BaseFileSystem* filesystem = nullptr;
+		if (mInitConfig.mPackPath != nullptr) {
+			// create pack filesystem
+		}
+		else if (mInitConfig.mWorkPath != nullptr) {
+			filesystem = CJING_NEW(FileSystemPhysfs)(mInitConfig.mWorkPath);
+		}
+		else
+		{	
+			// 以当前目录创建filesystem
+			MaxPathString dirPath;
+			Platform::GetCurrentDir(dirPath.toSpan());
+			filesystem = CJING_NEW(FileSystemPhysfs)(dirPath.c_str());
+		}
+		mImpl->mFileSystem = filesystem;
+		ResourceManager::Initialize(filesystem);
+
+		// load custom plugins
+		for (const char* plugin : mInitConfig.mPlugins) {
+			PluginManager::LoadPlugin(plugin);
+		}
+
+		// acquire all moduler plugins
+		DynamicArray<Plugin*> tempPlugins;
+		PluginManager::GetPlugins<ModulerPlugin>(tempPlugins);
+		for (auto plugin : tempPlugins) {
+			mModulerPlugins.push(reinterpret_cast<ModulerPlugin*>(plugin));
+		}
+
+		// init all plugins
+		for (ModulerPlugin* plugin : mModulerPlugins) {
+			plugin->Initialize();
+		}
 	}
 
 	void EngineWin32::Uninitialize()
 	{
+		for (ModulerPlugin* plugin : mModulerPlugins) {
+			plugin->Initialize();
+		}
+
+		// uninit resource manager
+		ResourceManager::Uninitialize();
+
+		CJING_SAFE_DELETE(mImpl->mFileSystem);
+
+		// uninit plugin manager
+		PluginManager::Uninitialize();
+
+		// uninit jobsystem
+		JobSystem::Uninitialize();
 	}
 
-	void EngineWin32::SetAssetPath(const String& path, const String& name)
+	void EngineWin32::Update()
 	{
-		mAssetPath = path;
-		mAssetName = name;
 	}
 
 	void EngineWin32::SetSystemEventQueue(const SharedPtr<EventQueue>& eventQueue)
 	{
-		mSystemEventQueue = eventQueue;
-		mSystemConnection = eventQueue->Connect([this](const Event& event) {
+		mImpl->mSystemEventQueue = eventQueue;
+		mImpl->mSystemConnection = eventQueue->Connect([this](const Event& event) {
 			HandleSystemMessage(event);
 		});
 	}
@@ -41,7 +114,7 @@ namespace Cjing3D::Win32
 	{
 		if (systemEvent.Is<WindowCloseEvent>())
 		{
-			SetIsExiting(true);
+			mImpl->mGameWindowWin32->SetIsExiting(true);
 		}
 		else if (systemEvent.Is<InputTextEvent>())
 		{
@@ -67,6 +140,11 @@ namespace Cjing3D::Win32
 
 	void EngineWin32::DoSystemEvents()
 	{
-		mSystemEventQueue->FireEvents();
+		mImpl->mSystemEventQueue->FireEvents();
+	}
+
+	BaseFileSystem* EngineWin32::GetFileSystem()
+	{
+		return mImpl->mFileSystem;
 	}
 }

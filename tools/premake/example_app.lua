@@ -11,22 +11,9 @@ end
 local function setup_third_modules()
 end 
 
-local function setup_plugins_definines()
-    if #all_plugins <= 0 then 
-        return
-    end 
-
-    local definines_str = ""
-    for index, plugin in ipairs(all_plugins) do
-        if index > 1 then 
-            definines_str = definines_str .. ",";
-        end
-        definines_str = definines_str .. "\"" .. plugin .. "\""
-    end
-    defines { "CJING_PLUGINS=" .. definines_str }
-end 
-
 local function link_all_plugins(config)
+    includedirs {env_dir .. "src/plugins/src"}
+
     for _, plugin in ipairs(all_plugins) do
         link_plugin(plugin)
     end

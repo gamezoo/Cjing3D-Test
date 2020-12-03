@@ -1,7 +1,7 @@
 #ifdef CJING3D_PLATFORM_WIN32
 
 #include "gameWindowWin32.h"
-#include "client\app\presentConfig.h"
+#include "client\app\initConfig.h"
 #include "client\app\systemEvent.h"
 #include "core\string\stringUtils.h"
 
@@ -45,7 +45,7 @@ namespace Cjing3D::Win32 {
 			HINSTANCE hInstance, 
 			const UTF8String& titleName, 
 			const SharedPtr<EventQueue>& eventQueue,
-			const PresentConfig& config) :
+			const InitConfig& config) :
 		mIsInitialized(false),
 		mHinstance(hInstance),
 		mHwnd(NULL),

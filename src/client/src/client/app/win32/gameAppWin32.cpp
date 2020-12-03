@@ -5,96 +5,15 @@
 
 namespace Cjing3D::Win32
 {
-	GameAppWin32::GameAppWin32()
+	GameAppWin32::GameAppWin32(HINSTANCE hInstance) :
+		mHinstance(hInstance)
 	{
 	}
 
-	void GameAppWin32::SetInstance(HINSTANCE hInstance)
+	void GameAppWin32::Run(InitConfig config, CreateGameFunc createGame)
 	{
-		mHinstance = hInstance;
-	}
-
-	void GameAppWin32::SetAssetPath(const String& path, const String& name)
-	{
-		mAssetPath = path;
-		mAssetName = name;
-	}
-
-	void GameAppWin32::SetTitleName(const UTF8String& string)
-	{
-		mTitleName = string;
-	}
-
-	void GameAppWin32::SetScreenSize(const I32x2& screenSize)
-	{
-		mScreenSize = screenSize;
-	}
-
-	void GameAppWin32::Run(const CreateGameFunc& createGame)
-	{
-#ifdef DEBUG
-		Debug::SetDebugConsoleEnable(true);
-		Debug::SetDieOnError(true);
-#endif
-		Logger::PrintConsoleHeader();
-
-		PresentConfig config = {};
-		config.mScreenSize = mScreenSize;
-		config.mIsFullScreen = false;
-		config.mIsLockFrameRate = true;
-		config.mTargetFrameRate = 60;
-		//config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
-	
-		if (mTitleName == "") {
-			mTitleName = String("Cjing3D ") + CjingVersion::GetVersionString();
-		}
-
-		// system event queue
-		SharedPtr<EventQueue> eventQueue = CJING_MAKE_SHARED<EventQueue>();
-
-		// create game window
-		auto gameWindow = CJING_MAKE_SHARED<GameWindowWin32>(mHinstance, mTitleName, eventQueue, config);
-
-		// create game engine
-		auto engine = CJING_MAKE_SHARED<EngineWin32>(gameWindow, config);
-		engine->SetAssetPath(mAssetPath, mAssetName);
-		engine->SetSystemEventQueue(eventQueue);
-		engine->Initialize();
-
-		// create game
-		Debug::CheckAssertion(createGame != nullptr);
-		auto game = createGame(engine);
-		if (game == nullptr) {
-			Debug::Die("Failed to create game.");
-		}
-		game->Initialize();
-
-		// run game
-		while (gameWindow->Tick()) 
-		{
-			if (game->GetIsExiting()) {
-				break;
-			}
-			game->Tick();
-		} 
-
-		// uninitialize
-		game->Uninitialize();
-		engine->Uninitialize();
-	}
-
-	void GameAppWin32::Run()
-	{
-		PresentConfig config = {};
-		config.mScreenSize = mScreenSize;
-		config.mIsFullScreen = false;
-		config.mIsLockFrameRate = true;
-		config.mTargetFrameRate = 60;
-		config.mFlag |= PresentFlag_WinApp;
-		//config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
-
-		if (mTitleName == "") {
-			mTitleName = String("Cjing3D ") + CjingVersion::GetVersionString();
+		if (config.mTitle == nullptr) {
+			config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
 		}
 
 #ifdef DEBUG
@@ -102,13 +21,12 @@ namespace Cjing3D::Win32
 		Debug::SetDieOnError(true);
 
 		///////////////////////////////////////////////////////////////////////////////
-// show debug console
+		// show debug console
 		if (config.mFlag & PresentFlag_WinApp &&
 			Debug::IsDebugConsoleEnable())
 		{
 			// console for std output..
-			if (!AttachConsole(ATTACH_PARENT_PROCESS))
-			{
+			if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
 				AllocConsole();
 			}
 
@@ -116,17 +34,51 @@ namespace Cjing3D::Win32
 			freopen("CONOUT$", "w", stdout);
 			freopen("CONOUT$", "w", stderr);
 		}
-#endif
 		// print console header
 		Logger::PrintConsoleHeader();
+#endif
 
 		// system event queue
 		SharedPtr<EventQueue> eventQueue = CJING_MAKE_SHARED<EventQueue>();
-
+		
 		// create game window
-		auto gameWindow = CJING_MAKE_SHARED<GameWindowWin32>(mHinstance, mTitleName, eventQueue, config);
+		auto gameWindow = CJING_MAKE_SHARED<GameWindowWin32>(mHinstance, config.mTitle, eventQueue, config);
+		
+		// create game engine
+		auto engine = CJING_MAKE_SHARED<EngineWin32>(gameWindow, config);
+		engine->SetSystemEventQueue(eventQueue);
+		engine->Initialize();
+
+		// create main component
+		SharedPtr<MainComponent> mainGame = nullptr;
+		if (createGame != nullptr)
+		{
+			Debug::CheckAssertion(createGame != nullptr);
+			mainGame = createGame(engine);
+			if (mainGame == nullptr) {
+				Debug::Die("Failed to create game.");
+			}
+			mainGame->Initialize();
+		}
 
 		// run game
-		while (gameWindow->Tick()) {}
+		while (gameWindow->Tick()) 
+		{
+			if (gameWindow->IsExiting()) {
+				break;
+			}
+			engine->DoSystemEvents();
+
+			if (mainGame != nullptr) {
+				mainGame->Tick();
+			}
+		}
+
+		// uninitialize
+		if (mainGame != nullptr) {
+			mainGame->Uninitialize();
+		}
+
+		engine->Uninitialize();
 	}
 }

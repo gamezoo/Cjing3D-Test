@@ -77,16 +77,19 @@ public:
 
 DEFINE_RESOURCE(TestRes, "Test")
 
-//TEST_CASE("load resource (no converter)", "[resource]")
-//{
-//	TestRes::RegisterFactory();
-//	{
-//		TestResRef ref = ResourceManager::LoadResource<TestRes>("Test.txt");
-//		ResourceManager::WaitForResource(ref);
-//		std::cout << "Resource Ref Test" << std::endl;
-//	}
-//	TestRes::UnregisterFactory();
-//}
+TEST_CASE("load resource (no converter)", "[resource]")
+{
+	TestRes::RegisterFactory();
+	{
+		TestResRef ref1 = ResourceManager::LoadResource<TestRes>("Test.txt");
+		TestResRef ref2 = ResourceManager::LoadResource<TestRes>("Test.txt");
+		TestResRef ref3 = ResourceManager::LoadResource<TestRes>("Test.txt");
+		ref1.WaitUntilLoaded();
+		//ResourceManager::WaitForResource(ref);
+		std::cout << "Resource Ref Test" << std::endl;
+	}
+	TestRes::UnregisterFactory();
+}
 
 TEST_CASE("load resource (converter)", "[resource]")
 {
@@ -99,33 +102,32 @@ TEST_CASE("load resource (converter)", "[resource]")
 	TestRes::UnregisterFactory();
 }
 
+TEST_CASE("file io read", "[resource]")
+{
+	ResourceManager::AsyncHandle handle;
+	char* buffer = nullptr;
+	size_t size = 0;
+	ResourceManager::ReadFileData("Test.txt", buffer, size, &handle);
 
-//TEST_CASE("file io read", "[resource]")
-//{
-//	ResourceManager::AsyncHandle handle;
-//	char* buffer = nullptr;
-//	size_t size = 0;
-//	ResourceManager::ReadFileData("Test.txt", buffer, size, &handle);
-//
-//	F64 startTime = Timer::GetAbsoluteTime();
-//	do {
-//		Logger::Info("Wait for reading. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
-//	} while (!handle.IsComplete());
-//
-//	CJING_SAFE_DELETE_ARR(buffer, size);
-//}
-//
-//TEST_CASE("file io write", "[resource]")
-//{
-//	String ouputText = "I wanna to be a guy!";
-//	ResourceManager::AsyncHandle handle;
-//	ResourceManager::WriteFileData("Test.txt", ouputText.data(), ouputText.length(), &handle);
-//
-//	F64 startTime = Timer::GetAbsoluteTime();
-//	do {
-//		Logger::Info("Wait for writing. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
-//	} while (!handle.IsComplete());
-//}
+	F64 startTime = Timer::GetAbsoluteTime();
+	do {
+		Logger::Info("Wait for reading. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
+	} while (!handle.IsComplete());
+
+	CJING_SAFE_DELETE_ARR(buffer, size);
+}
+
+TEST_CASE("file io write", "[resource]")
+{
+	String ouputText = "I wanna to be a guy!";
+	ResourceManager::AsyncHandle handle;
+	ResourceManager::WriteFileData("Test.txt", ouputText.data(), ouputText.length(), &handle);
+
+	F64 startTime = Timer::GetAbsoluteTime();
+	do {
+		Logger::Info("Wait for writing. time:%.2f remaining:%d", Timer::GetAbsoluteTime() - startTime, handle.mRemaining);
+	} while (!handle.IsComplete());
+}
 
 int main(int argc, char* argv[])
 {

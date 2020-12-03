@@ -1,7 +1,5 @@
 
-print("-------------------------------------------------------------")
-print("[Engine modulers] Client")
-print("-------------------------------------------------------------")
+print("[Engine moduler] Client")
 
 local function setup_platform_win32()
     systemversion(windows_sdk_version())
@@ -22,6 +20,7 @@ project (PROJECT_CLIENT_NAME)
     setup_project_env()
     setup_platform()
     setup_project_definines()
+    setup_plugins_definines()
     targetname(PROJECT_CLIENT_NAME)
 
     -- dependencies

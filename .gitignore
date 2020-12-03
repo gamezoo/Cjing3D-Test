@@ -19,3 +19,7 @@ src/resource/build
 src/resource/lib
 src/plugins/build
 src/plugins/lib
+src/gpu/build
+src/gpu/lib
+src/renderer/build
+src/renderer/lib

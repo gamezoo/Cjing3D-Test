@@ -1,7 +1,5 @@
 
-print("-------------------------------------------------------------")
-print("[Engine modulers] Resource")
-print("-------------------------------------------------------------")
+print("[Engine moduler] Resource")
 
 local function setup_platform_win32()
     systemversion(windows_sdk_version())

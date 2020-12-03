@@ -12,13 +12,16 @@ int WINAPI WinMain(
 	_In_ LPSTR lpCmdLine,
 	_In_ int nShowCmd)
 {
-	Win32::GameAppWin32 gameApp;
-	gameApp.SetInstance(hInstance);
-	gameApp.SetAssetPath(".", "Assets");
-	gameApp.SetScreenSize({ 1280, 720 });
-	gameApp.SetTitleName(String("Cjing3D ") + CjingVersion::GetVersionString());
-	gameApp.Run();
+	InitConfig config = {};
+	config.mScreenSize = { 1280, 720 };
+	config.mIsFullScreen = false;
+	config.mIsLockFrameRate = true;
+	config.mTargetFrameRate = 60;
+	config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
+	config.mTitle = "CJING3D Editor";
 
-	std::cout << "Hello world!" << std::endl;
+	Win32::GameAppWin32 gameApp(hInstance);
+	gameApp.Run(config, nullptr);
+
 	return 0;
 }

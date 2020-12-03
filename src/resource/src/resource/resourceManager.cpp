@@ -71,7 +71,7 @@ namespace ResourceManager
 		bool mIsInitialized = false;
 
 	public:
-		ResourceManagerImpl(const char* rootPath);
+		ResourceManagerImpl(BaseFileSystem* filesystem);
 		~ResourceManagerImpl();
 
 		ResourceFactory* GetFactory(ResourceType type);
@@ -84,13 +84,14 @@ namespace ResourceManager
 	};
 	ResourceManagerImpl* mImpl = nullptr;
 
-	ResourceManagerImpl::ResourceManagerImpl(const char* rootPath) :
+	ResourceManagerImpl::ResourceManagerImpl(BaseFileSystem* filesystem) :
 		mReadTaskQueue(MAX_READ_TASKS),
 		mWriteTaskQueue(MAX_WRITE_TASKS),
 		mWriteTaskSem(0, MAX_WRITE_TASKS, "ResWriteSem"),
 		mReadTaskSem(0,  MAX_READ_TASKS, "ResReadSem"),
 		mWriteThread(WriteIOTaskFunc, this, 65536, "WriteIOThread"),
-		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread")
+		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread"),
+		mFilesystem(filesystem)
 	{
 		// acquire all converter plugins
 		DynamicArray<Plugin*> plugins;
@@ -98,9 +99,6 @@ namespace ResourceManager
 		for (auto plugin : plugins) {
 			mConverterPlugins.push(reinterpret_cast<ResConverterPlugin*>(plugin));
 		}
-
-		// setup filesystem
-		mFilesystem = CJING_NEW(FileSystemPhysfs)(rootPath);
 		mIsInitialized = true;
 	}
 
@@ -122,8 +120,6 @@ namespace ResourceManager
 
 		mWriteTaskSem.Signal(1);
 		mWriteThread.Join();
-
-		CJING_SAFE_DELETE(mFilesystem);
 	}
 
 	ResourceFactory* ResourceManagerImpl::GetFactory(ResourceType type)
@@ -525,12 +521,12 @@ namespace ResourceManager
 	//////////////////////////////////////////////////////////////////////////
 	// Manager
 	//////////////////////////////////////////////////////////////////////////
-	void Initialize(const char* rootPath)
+	void Initialize(BaseFileSystem* filesystem)
 	{
 		Debug::CheckAssertion(JobSystem::IsInitialized());
 		Debug::CheckAssertion(PluginManager::IsInitialized());
 		Debug::CheckAssertion(mImpl == nullptr);
-		mImpl = CJING_NEW(ResourceManagerImpl)(rootPath);
+		mImpl = CJING_NEW(ResourceManagerImpl)(filesystem);
 	}
 
 	void Uninitialize()

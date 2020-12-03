@@ -120,6 +120,7 @@ function setup_env_from_action()
     end 
 
     print("[premake]:current_platform:", current_platform)
+    print("[premake]:current renderer:", renderer and renderer or "NULL")
 
     if is_static_plugin then 
         print("[premake]:static plugins")

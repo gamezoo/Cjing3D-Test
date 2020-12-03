@@ -18,7 +18,6 @@ namespace Cjing3D
 		virtual void Uninitialize();
 
 		void SetRenderPath(const SharedPtr<RenderPath>& renderPath);
-		bool GetIsExiting()const { return mEngine->GetIsExiting(); }
 
 	protected:
 		virtual void FixedUpdate();

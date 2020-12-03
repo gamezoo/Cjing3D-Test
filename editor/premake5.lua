@@ -1,5 +1,6 @@
 dofile("../../tools/premake/options.lua")
 dofile("../../tools/premake/globals.lua")
+dofile("../../tools/premake/plugins.lua")
 dofile("../../tools/premake/example_app.lua")
 dofile("../../src/definitions.lua")
 

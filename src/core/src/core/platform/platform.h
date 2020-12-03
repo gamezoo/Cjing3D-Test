@@ -17,6 +17,12 @@
 namespace Cjing3D {
 namespace Platform {
 
+#ifdef CJING3D_PLATFORM_WIN32
+	using WindowType = HWND;
+#else 
+	using WindowType = int;
+#endif 
+
 	enum ConsoleFontColor
 	{
 		CONSOLE_FONT_WHITE,

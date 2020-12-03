@@ -4,9 +4,11 @@
 
 namespace Cjing3D
 {
+	class BaseFileSystem;
+
 	namespace ResourceManager
 	{
-		void Initialize(const char* rootPath);
+		void Initialize(BaseFileSystem* filesystem);
 		void Uninitialize();
 		bool IsInitialized();
 		void RegisterFactory(ResourceType type, ResourceFactory* factory);

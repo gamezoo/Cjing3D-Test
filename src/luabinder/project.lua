@@ -1,7 +1,5 @@
 
-print("-------------------------------------------------------------")
-print("[Engine modulers] LuaBinder")
-print("-------------------------------------------------------------")
+print("[Engine moduler] LuaBinder")
 
 local function setup_platform_win32()
     systemversion(windows_sdk_version())

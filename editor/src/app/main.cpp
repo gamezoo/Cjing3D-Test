@@ -6,121 +6,23 @@
 
 using namespace Cjing3D;
 
-//int WINAPI WinMain(
-//	_In_ HINSTANCE hInstance,
-//	_In_opt_ HINSTANCE hPrevInstance,
-//	_In_ LPSTR lpCmdLine,
-//	_In_ int nShowCmd)
-//{
-//	Win32::GameAppWin32 gameApp;
-//	gameApp.SetInstance(hInstance);
-//	gameApp.SetAssetPath(".", "Assets");
-//	gameApp.SetScreenSize({ 1280, 720 });
-//	gameApp.SetTitleName(String("Cjing3D ") + CjingVersion::GetVersionString());
-//	gameApp.Run();
-//
-//	std::cout << "Hello world!" << std::endl;
-//	return 0;
-//}
-
-#include "core\plugin\plugin.h"
-#include "core\plugin\pluginManager.h"
-#include "core\container\span.h"
-#include "core\jobsystem\jobsystem.h"
-#include "resource\resourceManager.h"
-#include "resource\resRef.h"
-
-class TestRes : public Resource
+int WINAPI WinMain(
+	_In_ HINSTANCE hInstance,
+	_In_opt_ HINSTANCE hPrevInstance,
+	_In_ LPSTR lpCmdLine,
+	_In_ int nShowCmd)
 {
-public:
-	DECLARE_RESOURCE(TestRes, "Test")
+	InitConfig config = {};
+	config.mScreenSize = { 1280, 720 };
+	config.mIsFullScreen = false;
+	config.mIsLockFrameRate = true;
+	config.mTargetFrameRate = 60;
+	config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
+	config.mFlag = InitConfigFlag::PresentFlag_WinApp;
+	config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
 
-	TestRes() = default;
+	Win32::GameAppWin32 gameApp(hInstance);
+	gameApp.Run(config, nullptr);
 
-	String mText;
-};
-using TestResRef = ResRef<TestRes>;
-
-class TestResFactory : public ResourceFactory
-{
-public:
-	virtual Resource* CreateResource()
-	{
-		TestRes* testRes = CJING_NEW(TestRes)();
-		return testRes;
-	}
-
-	virtual bool LoadResource(Resource* resource, const char* name, File& file)
-	{
-		if (!file) {
-			return false;
-		}
-
-		TestRes* res = reinterpret_cast<TestRes*>(resource);
-		if (res == nullptr) {
-			return false;
-		}
-
-		res->mText.resize(file.Size());
-		file.Read(res->mText.data(), file.Size());
-
-		return true;
-	}
-
-	virtual bool DestroyResource(Resource* resource)
-	{
-		if (resource == nullptr) {
-			return false;
-		}
-
-		TestRes* res = reinterpret_cast<TestRes*>(resource);
-		if (res == nullptr) {
-			return false;
-		}
-
-		res->mText.clear();
-		CJING_DELETE(res);
-		return true;
-	}
-
-	virtual bool IsNeedConvert()const
-	{
-		return true;
-	}
-};
-DEFINE_RESOURCE(TestRes, "Test")
-
-int main()
-{
-	PluginManager::Initialize();
-
-#ifdef CJING_PLUGINS
-	const char* plugins[] = { CJING_PLUGINS };
-	Span<const char*> pluginSpan = Span(plugins);
-	for (const char* plugin : pluginSpan)
-	{
-		std::cout << plugin << std::endl;
-		PluginManager::LoadPlugin(plugin);
-	}
-#endif
-	JobSystem::ScopedManager scoped(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
-
-	MaxPathString dirPath;
-	Platform::GetCurrentDir(dirPath.toSpan());
-	ResourceManager::Initialize(dirPath.c_str());
-
-	TestRes::RegisterFactory();
-	{
-		TestResRef ref1 = ResourceManager::LoadResource<TestRes>("Test.txt");
-		TestResRef ref2 = ResourceManager::LoadResource<TestRes>("Test.txt");
-		TestResRef ref3 = ResourceManager::LoadResource<TestRes>("Test.txt");
-		ref1.WaitUntilLoaded();
-		//ResourceManager::WaitForResource(ref);
-		std::cout << "Resource Ref Test" << std::endl;
-	}
-	TestRes::UnregisterFactory();
-
-	ResourceManager::Uninitialize();
-	PluginManager::Uninitialize();
 	return 0;
 }
