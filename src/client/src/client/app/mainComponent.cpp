@@ -1,5 +1,7 @@
 #include "mainComponent.h"
 #include "core\helper\timer.h"
+#include "core\helper\profiler.h"
+#include "resource\resourceManager.h"
 
 namespace Cjing3D
 {
@@ -19,7 +21,12 @@ namespace Cjing3D
 			return;
 		}
 
+		Timer::Instance().Start();
+		mDeltaTimeAccumulator = 0;
 
+		OnLoad();
+
+		ResourceManager::WaitAll();
 		mIsInitialized = true;
 	}
 
@@ -29,6 +36,9 @@ namespace Cjing3D
 			return;
 		}
 
+		OnUnload();
+
+		Timer::Instance().Stop();
 		mIsInitialized = false;
 	}
 
@@ -39,6 +49,8 @@ namespace Cjing3D
 
 	void MainComponent::Tick()
 	{
+		Profiler::BeginFrame();
+
 		auto engineTime = Timer::Instance().GetTime();
 		F32 deltaTime = engineTime.GetDeltaTime();
 		 
@@ -48,10 +60,10 @@ namespace Cjing3D
 
 		if (mGameWindow->IsWindowActive())
 		{
+			// fixed update
 			const F32 dt = isLockFrameRate ? (1.0f / targetFrameRate) : deltaTime;
 			if (!mIsSkipFrame)
 			{
-				DoSystemEvents();
 				FixedUpdate();
 			}
 			else
@@ -66,62 +78,41 @@ namespace Cjing3D
 				const F32 targetRateInv = 1.0f / targetFrameRate;
 				while (mDeltaTimeAccumulator >= targetRateInv)
 				{
-					DoSystemEvents();
 					FixedUpdate();
 					mDeltaTimeAccumulator -= targetRateInv;
 				}
 			}
-			Update(dt);
-			UpdateInput(dt);
 
-			PreRender();
+			Update(dt);
 			Render();
-			PostRender();
 		}
 		else
 		{
 			mDeltaTimeAccumulator = 0;
-			UpdateInput(deltaTime);
 		}
 
 		Compose();
-		EndFrame();
+
+		Profiler::EndFrame();
 	}
 
 	void MainComponent::FixedUpdate()
 	{
+		PROFILER_CPU_BLOCK("FiexdUpdate");
+		mEngine->FixedUpdate();
 	}
 
 	void MainComponent::Update(F32 deltaTime)
 	{
-	}
-
-	void MainComponent::UpdateInput(F32 deltaTime)
-	{
-	}
-
-	void MainComponent::PreRender()
-	{
+		PROFILER_CPU_BLOCK("Update");
+		mEngine->Update(deltaTime);
 	}
 
 	void MainComponent::Render()
 	{
 	}
 
-	void MainComponent::PostRender()
-	{
-	}
-
 	void MainComponent::Compose()
 	{
-	}
-
-	void MainComponent::EndFrame()
-	{
-	}
-
-	void MainComponent::DoSystemEvents()
-	{
-		mEngine->DoSystemEvents();
 	}
 }

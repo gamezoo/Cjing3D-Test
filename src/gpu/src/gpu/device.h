@@ -5,6 +5,8 @@
 
 namespace Cjing3D
 {
+	static const U32 MAX_COMMANDLIST_COUNT = 32;
+
 	enum GraphicsDeviceType
 	{
 		GraphicsDeviceType_Unknown,
@@ -41,6 +43,7 @@ namespace Cjing3D
 		GraphicsDeviceType GetGraphicsDeviceType()const { return mDeviceType; }
 		U64 GetFrameCount()const { return mCurrentFrameCount; }
 		FORMAT GetBackBufferFormat()const { return mBackBufferFormat; }
+		U32 GetBackBufferCount()const { return mBackBufferCount; }
 		void SetIsVsync(bool isVsync) { mIsVsync = isVsync; }
 
 		virtual void SetResolution(const U32x2 size) = 0;
@@ -49,6 +52,7 @@ namespace Cjing3D
 		GraphicsDeviceType mDeviceType;
 		bool mIsFullScreen = false;
 		FORMAT mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
+		U32 mBackBufferCount = 2;
 		U32x2 mResolution = U32x2(0u, 0u);
 		bool mIsVsync = true;
 		bool mIsDebug = false;

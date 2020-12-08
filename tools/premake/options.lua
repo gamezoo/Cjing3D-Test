@@ -8,6 +8,7 @@ newoption
    allowed = 
    {
       { "dx11",    "DirectX 11" },
+      { "dx12",    "DirectX 12" },
       { "vulkan",  "Vulkan" }
    }
 }

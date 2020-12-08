@@ -4,7 +4,7 @@
 
 #include "core\platform\platform.h"
 #include "core\signal\eventQueue.h"
-#include "client\app\gameWindow.h"
+#include "core\platform\gameWindow.h"
 #include "core\container\dynamicArray.h"
 
 #include <functional>

@@ -2,7 +2,7 @@
 
 #ifdef CJING3D_PLATFORM_WIN32
 
-#include "client\app\engine.h"
+#include "core\engine.h"
 #include "core\signal\eventQueue.h"
 
 namespace Cjing3D::Win32
@@ -17,7 +17,8 @@ namespace Cjing3D::Win32
 
 		void Initialize()override;
 		void Uninitialize()override;
-		void Update()override;
+		void Update(F32 dt)override;
+		void FixedUpdate()override;
 
 		void SetSystemEventQueue(const SharedPtr<EventQueue>& eventQueue);
 		void HandleSystemMessage(const Event& systemEvent);

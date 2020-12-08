@@ -1,7 +1,7 @@
 #ifdef CJING3D_PLATFORM_WIN32
 
 #include "gameWindowWin32.h"
-#include "client\app\initConfig.h"
+#include "core\initConfig.h"
 #include "client\app\systemEvent.h"
 #include "core\string\stringUtils.h"
 

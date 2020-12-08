@@ -164,6 +164,13 @@ namespace Cjing3D
 	template<typename T>
 	using UniquePtr = std::unique_ptr<T, decltype(SmartPointDeleter<T>)*>;
 
+	template<typename T>
+	UniquePtr<T> NULL_UNIQUE()
+	{
+		static UniquePtr<T> nullUniquePtr(nullptr, SmartPointDeleter<T>);
+		return nullUniquePtr;
+	}
+
 	template< typename T>
 	UniquePtr<T> CJING_UNIQUE(T* ptr)
 	{

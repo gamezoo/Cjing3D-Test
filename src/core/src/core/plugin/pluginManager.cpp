@@ -5,6 +5,7 @@
 #include "core\jobsystem\concurrency.h"
 #include "core\helper\debug.h"
 #include "core\platform\platform.h"
+#include "core\engine.h"
 
 namespace Cjing3D
 {
@@ -14,20 +15,22 @@ namespace Cjing3D
 	class PluginDesc
 	{
 	private:
-		using GetPluginFunc = Plugin * (*)();
+		using GetPluginFunc = Plugin * (*)(Engine& engine);
 
 		String mPath;
 		// String mTempPath;
 		void*  mHandle;
 		Plugin* mPlugin;
 		bool mIsStaticPlugin;
+		Engine& mEngine;
 
 	public:
-		PluginDesc(const char* path) :
+		PluginDesc(const char* path, Engine& engine) :
 			mPath(path),
 			mHandle(nullptr),
 			mPlugin(nullptr),
-			mIsStaticPlugin(false)
+			mIsStaticPlugin(false),
+			mEngine(engine)
 		{
 			// setup temp path
 			//MaxPathString fileName, parentPath;
@@ -71,7 +74,7 @@ namespace Cjing3D
 					return false;
 				}
 
-				Plugin* plugin = getPluginFunc();
+				Plugin* plugin = getPluginFunc(mEngine);
 				if (plugin == nullptr)
 				{
 					Debug::Warning("Failed to load plugin libaray:%s", mPath.c_str());
@@ -91,7 +94,7 @@ namespace Cjing3D
 				// try to load plugin from static plugins
 				MaxPathString fileName;
 				Path::GetPathBaseName(mPath, fileName.toSpan());
-				Plugin* plugin = StaticPlugin::GetPlugin(fileName.c_str());
+				Plugin* plugin = StaticPlugin::GetPlugin(fileName.c_str(), mEngine);
 				if (plugin != nullptr)
 				{
 					Logger::Info("Plugin loaded");
@@ -141,15 +144,18 @@ namespace Cjing3D
 
 	struct PluginMangaerImpl
 	{
+		PluginMangaerImpl(Engine& engine) : mEngine(engine) {}
+
 		HashMap<U32, PluginDesc*> mPluginDesc;
 		Concurrency::Mutex mMutex;
+		Engine& mEngine;
 	};
 	PluginMangaerImpl* mImpl = nullptr;
 
-	void PluginManager::Initialize()
+	void PluginManager::Initialize(Engine& engine)
 	{
 		Debug::CheckAssertion(mImpl == nullptr);
-		mImpl = CJING_NEW(PluginMangaerImpl);
+		mImpl = CJING_NEW(PluginMangaerImpl)(engine);
 	}
 
 	void PluginManager::Uninitialize()
@@ -194,7 +200,7 @@ namespace Cjing3D
 			CJING_SAFE_DELETE(desc);
 		}
 
-		PluginDesc* desc = CJING_NEW(PluginDesc)(fullPath.c_str());
+		PluginDesc* desc = CJING_NEW(PluginDesc)(fullPath.c_str(), mImpl->mEngine);
 		if (*desc)
 		{
 			mImpl->mPluginDesc.insert(fullPath.GetHash(), desc);
@@ -253,7 +259,7 @@ namespace Cjing3D
 				auto it = mImpl->mPluginDesc.find(fullpath.GetHash());
 				if (it == nullptr)
 				{
-					PluginDesc* desc = CJING_NEW(PluginDesc)(fileInfo.mFilename);
+					PluginDesc* desc = CJING_NEW(PluginDesc)(fileInfo.mFilename, mImpl->mEngine);
 					if (*desc) {
 						mImpl->mPluginDesc.insert(fullpath.GetHash(), desc);
 					}

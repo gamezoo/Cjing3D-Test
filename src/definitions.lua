@@ -21,7 +21,8 @@ all_project_table =
 dependencies_mapping = 
 {
     [PROJECT_CORE_NAME]   = { 
-        PROJECT_MATH_NAME 
+        PROJECT_MATH_NAME,
+        PROJECT_LUA_BINDER_NAME
     },
 
     [PROJECT_RESOURCE_NAME] = { 

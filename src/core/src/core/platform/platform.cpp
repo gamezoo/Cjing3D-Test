@@ -173,6 +173,13 @@ namespace Platform {
 		callback(StringUtils::WStringToString(wStr));
 	}
 
+	WindowRect GetClientBounds(WindowType window)
+	{
+		RECT rect;
+		GetClientRect(window, &rect);
+		return { (I32)rect.left, (I32)rect.top, (I32)rect.right, (I32)rect.bottom };
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////
 	// file function
 	bool FileExists(const char* path)

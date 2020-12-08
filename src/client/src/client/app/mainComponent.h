@@ -1,7 +1,7 @@
 #pragma once
 
 #include "client\common\common.h"
-#include "client\app\engine.h"
+#include "core\engine.h"
 
 namespace Cjing3D
 {
@@ -20,15 +20,12 @@ namespace Cjing3D
 		void SetRenderPath(const SharedPtr<RenderPath>& renderPath);
 
 	protected:
+		virtual void OnLoad() {}
+		virtual void OnUnload() {}
 		virtual void FixedUpdate();
 		virtual void Update(F32 deltaTime);
-		virtual void UpdateInput(F32 deltaTime);
-		virtual void PreRender();
 		virtual void Render();
-		virtual void PostRender();
 		virtual void Compose();
-		virtual void EndFrame();
-		virtual void DoSystemEvents();
 
 	protected:
 		bool mIsInitialized = false;

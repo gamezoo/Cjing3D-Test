@@ -113,6 +113,10 @@ namespace Cjing3D
 
 		Debug::Warning(os.str().c_str());
 
+#ifdef DEBUG
+		system("pause");
+#endif // DEBUG
+
 		if (mMemoryLeaksFileName != nullptr)
 		{
 			if (!loggerFile.is_open()) {

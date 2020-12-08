@@ -34,7 +34,6 @@ namespace Cjing3D
 
 		static _GlobalNil _nil;
 	};
-	_GlobalNil _GlobalNilClass::_nil;
 
 	template <class K, class V, class C = Comparator<K>>
 	class Map {

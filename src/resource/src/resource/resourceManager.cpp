@@ -737,6 +737,27 @@ namespace ResourceManager
 		}
 	}
 
+	void WaitAll()
+	{
+		F64 maxWaitTime = 100000.0f;
+		F64 startTime = Timer::GetAbsoluteTime();
+		while (mImpl->mPendingResJobs > 0) 
+		{
+			JobSystem::YieldCPU();
+
+			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
+			{
+#ifdef _DEBUG
+				Debug::Warning("Resource load time out, try loading again");
+				maxWaitTime *= 2;
+#else
+				Debug::Error("Resource load time out");
+				break;
+#endif
+			}
+		}
+	}
+
 	AsyncResult ReadFileData(const char* path, char*& buffer, size_t& size, AsyncHandle* asyncHanlde)
 	{
 		Debug::CheckAssertion(IsInitialized());

@@ -3,6 +3,8 @@
 #include <iostream>
 
 #include "client\app\win32\gameAppWin32.h"
+#include "client\app\mainComponent.h"
+#include "core\container\map.h"
 
 using namespace Cjing3D;
 
@@ -17,12 +19,15 @@ int WINAPI WinMain(
 	config.mIsFullScreen = false;
 	config.mIsLockFrameRate = true;
 	config.mTargetFrameRate = 60;
-	config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
 	config.mFlag = InitConfigFlag::PresentFlag_WinApp;
 	config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
 
 	Win32::GameAppWin32 gameApp(hInstance);
-	gameApp.Run(config, nullptr);
+	gameApp.Run(config, 
+		[](const SharedPtr<Engine> engine)->SharedPtr<MainComponent> {
+			return CJING_MAKE_SHARED<MainComponent>(engine);
+		}
+	);
 
 	return 0;
 }

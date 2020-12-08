@@ -7,9 +7,11 @@
 
 namespace Cjing3D
 {
+	class Engine;
+
 	namespace PluginManager
 	{
-		void Initialize();
+		void Initialize(Engine& engine);
 		void Uninitialize();
 		bool IsInitialized();
 

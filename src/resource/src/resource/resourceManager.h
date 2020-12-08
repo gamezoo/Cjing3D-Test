@@ -33,6 +33,7 @@ namespace Cjing3D
 		bool ReleaseResource(Resource** resource);
 		bool IsResourceLoaded(Resource* resource);
 		void WaitForResource(Resource* resource);
+		void WaitAll();
 
 		enum AsyncResult
 		{

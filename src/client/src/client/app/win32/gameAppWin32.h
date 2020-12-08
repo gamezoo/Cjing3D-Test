@@ -3,7 +3,7 @@
 #ifdef CJING3D_PLATFORM_WIN32
 
 #include "client\common\common.h"
-#include "client\app\initConfig.h"
+#include "core\initConfig.h"
 #include "core\platform\platform.h"
 #include "core\string\utf8String.h"
 #include "core\signal\eventQueue.h"

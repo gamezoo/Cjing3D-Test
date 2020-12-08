@@ -1,12 +1,23 @@
 #include "engineWin32.h"
 #include "client\app\systemEvent.h"
 #include "client\app\win32\gameWindowWin32.h"
+#include "client\app\win32\input\inputSystemWin32.h"
 #include "core\platform\platform.h"
 #include "core\plugin\pluginManager.h"
 #include "core\plugin\modulePulgin.h"
 #include "core\filesystem\filesystem_physfs.h"
 #include "core\jobsystem\jobsystem.h"
+#include "core\scripts\luaContext.h"
+#include "core\helper\profiler.h"
 #include "resource\resourceManager.h"
+#include "renderer\renderer.h"
+#include "gpu\device.h"
+
+#ifdef CJING3D_RENDERER_DX11
+#include "gpu\dx11\deviceDX11.h"
+#elif  CJING3D_RENDERER_DX12
+#include "gpu\dx12\deviceDX12.h"
+#endif
 
 namespace Cjing3D::Win32
 {
@@ -17,7 +28,28 @@ namespace Cjing3D::Win32
 		SharedPtr<EventQueue> mSystemEventQueue = nullptr;
 
 		BaseFileSystem* mFileSystem = nullptr;
+		Win32::InputManagerWin32* mInputSystem = nullptr;
+		LuaContext* mLuaContext = nullptr;
 	};
+
+	void InitGraphicsDevice(Platform::WindowType window, bool fullscreen)
+	{	
+#ifdef DEBUG
+		bool debug = true;
+#else
+		bool debug = false;
+#endif
+
+#ifdef CJING3D_RENDERER_DX11
+		SharedPtr<GraphicsDevice> device = CJING_MAKE_SHARED<GraphicsDeviceDx11>(window, fullscreen, debug);
+		Renderer::SetDevice(device);
+
+#elif  CJING3D_RENDERER_DX12
+
+#else
+		Debug::Error("Unsupport graphics device");
+#endif
+	}
 
 	EngineWin32::EngineWin32(SharedPtr<GameWindowWin32> gameWindow, InitConfig& config) :
 		Engine(gameWindow, config)
@@ -33,9 +65,16 @@ namespace Cjing3D::Win32
 
 	void EngineWin32::Initialize()
 	{
+		Logger::Info("Initializing engine...");
+
+		// init profiler
+		Profiler::Initialize();
+
+		// init jobsystme
 		JobSystem::Initialize(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
 
-		PluginManager::Initialize();
+		// init plugin manager
+		PluginManager::Initialize(*this);
 
 #ifdef CJING_PLUGINS
 		const char* plugins[] = { CJING_PLUGINS };
@@ -44,10 +83,16 @@ namespace Cjing3D::Win32
 			PluginManager::LoadPlugin(plugin);
 		}
 #endif
+		// init lua context
+		mImpl->mLuaContext = CJING_NEW(LuaContext)(*this);
+		mImpl->mLuaContext->Initialize();
 
+		// init filesystem
 		BaseFileSystem* filesystem = nullptr;
-		if (mInitConfig.mPackPath != nullptr) {
+		if (mInitConfig.mPackPath != nullptr)
+		{
 			// create pack filesystem
+			// todo...
 		}
 		else if (mInitConfig.mWorkPath != nullptr) {
 			filesystem = CJING_NEW(FileSystemPhysfs)(mInitConfig.mWorkPath);
@@ -60,7 +105,17 @@ namespace Cjing3D::Win32
 			filesystem = CJING_NEW(FileSystemPhysfs)(dirPath.c_str());
 		}
 		mImpl->mFileSystem = filesystem;
+
+		// init resource manager
 		ResourceManager::Initialize(filesystem);
+
+		// init input system
+		mImpl->mInputSystem = CJING_NEW(Win32::InputManagerWin32);
+		mImpl->mInputSystem->Initialize(*mImpl->mGameWindowWin32);
+
+		// init renderer
+		InitGraphicsDevice(mImpl->mGameWindowWin32->GetHwnd(), mInitConfig.mIsFullScreen);
+		Renderer::Initialize();
 
 		// load custom plugins
 		for (const char* plugin : mInitConfig.mPlugins) {
@@ -78,6 +133,8 @@ namespace Cjing3D::Win32
 		for (ModulerPlugin* plugin : mModulerPlugins) {
 			plugin->Initialize();
 		}
+
+		Logger::Info("Engine initialized");
 	}
 
 	void EngineWin32::Uninitialize()
@@ -86,19 +143,45 @@ namespace Cjing3D::Win32
 			plugin->Initialize();
 		}
 
+		// unit renderer
+		Renderer::Uninitialize();
+
+		// uninit input system
+		mImpl->mInputSystem->Uninitialize();
+		CJING_SAFE_DELETE(mImpl->mInputSystem);
+
 		// uninit resource manager
 		ResourceManager::Uninitialize();
 
+		// uninit filesystem
 		CJING_SAFE_DELETE(mImpl->mFileSystem);
+
+		// uninit lua context
+		mImpl->mLuaContext->Uninitialize();
+		CJING_SAFE_DELETE(mImpl->mLuaContext);
 
 		// uninit plugin manager
 		PluginManager::Uninitialize();
 
 		// uninit jobsystem
 		JobSystem::Uninitialize();
+
+		// uninit profiler
+		Profiler::Uninitilize();
+
+		Logger::Info("Engine uninitialized");
 	}
 
-	void EngineWin32::Update()
+	void EngineWin32::Update(F32 dt)
+	{
+		// update all plugins
+		for (ModulerPlugin* plugin : mModulerPlugins) {
+			plugin->Update(dt);
+		}
+		mImpl->mInputSystem->Update(dt);
+	}
+
+	void EngineWin32::FixedUpdate()
 	{
 	}
 

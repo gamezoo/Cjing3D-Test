@@ -1,8 +1,8 @@
 #pragma once
 
-#include "client\common\common.h"
-#include "client\app\initConfig.h"
-#include "client\app\gameWindow.h"
+#include "core\common\common.h"
+#include "core\initConfig.h"
+#include "platform\gameWindow.h"
 
 namespace Cjing3D
 {
@@ -20,7 +20,8 @@ namespace Cjing3D
 		virtual void Initialize() = 0;
 		virtual void Uninitialize() = 0;
 		virtual void DoSystemEvents() = 0;
-		virtual void Update() = 0;
+		virtual void Update(F32 dt) = 0;
+		virtual void FixedUpdate() = 0;
 
 		virtual BaseFileSystem* GetFileSystem() = 0;
 

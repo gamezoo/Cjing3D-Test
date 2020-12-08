@@ -417,6 +417,8 @@ namespace JobSystem
 			Concurrency::AtomicIncrement(&gManagerImpl->mNumFreeFibers);
 #endif		
 		}
+
+		Logger::Info("Jobsystem initialized; numThreads:%d", numThreads, numFibers);
 	}
 
 	void Uninitialize()
@@ -462,6 +464,8 @@ namespace JobSystem
 		gManagerImpl->mWorkerThreads.clear();
 
 		CJING_SAFE_DELETE(gManagerImpl);
+
+		Logger::Info("Jobsystem uninitialized");
 	}
 
 	bool IsInitialized()

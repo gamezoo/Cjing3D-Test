@@ -1,4 +1,5 @@
 #include "resConverter.h"
+#include "core\engine.h"
 
 namespace Cjing3D
 {

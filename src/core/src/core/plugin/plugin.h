@@ -4,6 +4,8 @@
 
 namespace Cjing3D
 {
+	class Engine;
+
 	class Plugin
 	{
 	public:
@@ -18,10 +20,10 @@ namespace Cjing3D
 	class StaticPlugin
 	{
 	public:
-		using Creator = Plugin * (*)();
+		using Creator = Plugin * (*)(Engine& engine);
 		StaticPlugin(const char* name, Creator creator);
 
-		static Plugin* GetPlugin(const char* name);
+		static Plugin* GetPlugin(const char* name, Engine& engine);
 
 		Creator mCreator = nullptr;
 		const char* mName = nullptr;
@@ -34,12 +36,12 @@ namespace Cjing3D
 
 #ifdef STATIC_PLUGINS							
 #define LUMIX_PLUGIN_ENTRY(NAME)														    \
-		extern "C" Plugin * GetPlugin_##NAME();												\
+		extern "C" Plugin * GetPlugin_##NAME(Engine& engine);												\
 		extern "C" { StaticPlugin static_plugin_##NAME(#NAME, GetPlugin_##NAME);}           \
-		extern "C" Plugin * GetPlugin_##NAME()
+		extern "C" Plugin * GetPlugin_##NAME(Engine& engine)
 #else
 #define LUMIX_PLUGIN_ENTRY(NAME)														   \
-		extern "C" Plugin* GetPlugin(const StringID& type)
+		extern "C" Plugin* GetPlugin(Engine& engine)
 #endif
 
 }

@@ -2,6 +2,7 @@
 #include "client\app\win32\gameWindowWin32.h"
 #include "client\app\win32\engineWin32.h"
 #include "client\app\mainComponent.h"
+#include "core\container\map.h"
 
 namespace Cjing3D::Win32
 {

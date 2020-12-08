@@ -1,6 +1,6 @@
 #pragma once
 
-#include "client\common\common.h"
+#include "core\common\common.h"
 #include "math\geometry.h"
 #include "core\string\utf8String.h"
 

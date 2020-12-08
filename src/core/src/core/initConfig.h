@@ -1,7 +1,6 @@
 #pragma once
 
-#include "client\common\common.h"
-#include "gpu\gpu.h"
+#include "core\common\common.h"
 #include "core\container\span.h"
 
 namespace Cjing3D
@@ -24,6 +23,5 @@ namespace Cjing3D
 		U32    mMultiSampleCount = 1;
 		bool   mIsFullScreen = false;
 		I32    mFlag = 0;
-		FORMAT mBackBufferFormat = FORMAT::FORMAT_R8G8B8A8_UNORM;
 	};
 }

@@ -1,6 +1,11 @@
 #pragma once
 
+#ifdef CJING3D_RENDERER_DX11
+#ifdef CJING3D_PLATFORM_WIN32
+
 #include "gpu\device.h"
+#include "gpu\resource.h"
+#include "gpu\dx11\includeDX11.h"
 #include "core\platform\platform.h"
 
 namespace Cjing3D
@@ -9,7 +14,7 @@ namespace Cjing3D
 	{
 	public:
 		GraphicsDeviceDx11(Platform::WindowType window, bool isFullScreen = false, bool isDebug = false);
-		~GraphicsDeviceDx11();
+		virtual ~GraphicsDeviceDx11();
 
 		Handle CreateCommandlist()override;
 		Handle SubmitCommandList(Handle handle)override;
@@ -25,5 +30,16 @@ namespace Cjing3D
 
 		void SetResourceName(Handle resource, const char* name)override;
 		void SetResolution(const U32x2 size)override;
+
+	private:
+		ComPtr<ID3D11Device> mDevice;
+		ComPtr<IDXGISwapChain1> mSwapChain;
+		ComPtr<ID3D11DeviceContext> mImmediateContext;
+		ComPtr<ID3D11DeviceContext> mDeviceContexts[MAX_COMMANDLIST_COUNT];
+		ComPtr<ID3D11Texture2D> mBackBuffer;
+		ComPtr<ID3D11RenderTargetView> mRenderTargetView;
 	};
 }
+
+#endif
+#endif

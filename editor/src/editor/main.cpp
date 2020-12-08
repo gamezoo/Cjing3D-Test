@@ -17,7 +17,6 @@ int WINAPI WinMain(
 	config.mIsFullScreen = false;
 	config.mIsLockFrameRate = true;
 	config.mTargetFrameRate = 60;
-	config.mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
 	config.mTitle = "CJING3D Editor";
 
 	Win32::GameAppWin32 gameApp(hInstance);
