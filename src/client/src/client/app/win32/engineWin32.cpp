@@ -13,12 +13,6 @@
 #include "renderer\renderer.h"
 #include "gpu\device.h"
 
-#ifdef CJING3D_RENDERER_DX11
-#include "gpu\dx11\deviceDX11.h"
-#elif  CJING3D_RENDERER_DX12
-#include "gpu\dx12\deviceDX12.h"
-#endif
-
 namespace Cjing3D::Win32
 {
 	struct EngineWin32Impl
@@ -31,25 +25,6 @@ namespace Cjing3D::Win32
 		Win32::InputManagerWin32* mInputSystem = nullptr;
 		LuaContext* mLuaContext = nullptr;
 	};
-
-	void InitGraphicsDevice(Platform::WindowType window, bool fullscreen)
-	{	
-#ifdef DEBUG
-		bool debug = true;
-#else
-		bool debug = false;
-#endif
-
-#ifdef CJING3D_RENDERER_DX11
-		SharedPtr<GraphicsDevice> device = CJING_MAKE_SHARED<GraphicsDeviceDx11>(window, fullscreen, debug);
-		Renderer::SetDevice(device);
-
-#elif  CJING3D_RENDERER_DX12
-
-#else
-		Debug::Error("Unsupport graphics device");
-#endif
-	}
 
 	EngineWin32::EngineWin32(SharedPtr<GameWindowWin32> gameWindow, InitConfig& config) :
 		Engine(gameWindow, config)
@@ -114,8 +89,10 @@ namespace Cjing3D::Win32
 		mImpl->mInputSystem->Initialize(*mImpl->mGameWindowWin32);
 
 		// init renderer
-		InitGraphicsDevice(mImpl->mGameWindowWin32->GetHwnd(), mInitConfig.mIsFullScreen);
-		Renderer::Initialize();
+		GPU::GPUSetupParams gpuSetupParams;
+		gpuSetupParams.mWindow = mImpl->mGameWindowWin32->GetHwnd();
+		gpuSetupParams.mIsFullscreen = mInitConfig.mIsFullScreen;
+		Renderer::Initialize(gpuSetupParams);
 
 		// load custom plugins
 		for (const char* plugin : mInitConfig.mPlugins) {

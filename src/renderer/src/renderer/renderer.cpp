@@ -8,16 +8,19 @@ namespace Renderer
 	// Member
 	//////////////////////////////////////////////////////////////////////////
 	bool mIsInitialize = false;
-	SharedPtr<GraphicsDevice> mDevice = nullptr;
 
 	//////////////////////////////////////////////////////////////////////////
 	// Member
 	//////////////////////////////////////////////////////////////////////////
-	void Initialize()
+	void Initialize(GPU::GPUSetupParams params)
 	{
 		if (mIsInitialize) {
 			return;
 		}
+
+		// initialize gpu 
+		GPU::Initialize(params);
+
 		mIsInitialize = true;
 	}
 
@@ -32,18 +35,25 @@ namespace Renderer
 			return;
 		}
 
-		mDevice = nullptr;
+		// uninitialize gpu
+		GPU::Uninitialize();
+
 		mIsInitialize = false;
 	}
 
-	void SetDevice(SharedPtr<GraphicsDevice> device)
+	void PresentBegin()
 	{
-		mDevice = device;
+		GPU::PresentBegin(GPU::ResHandle::INVALID_HANDLE);
 	}
 
-	GraphicsDevice* GetDevice()
+	void PresentEnd()
 	{
-		return mDevice.get();
+		GPU::PresentEnd(GPU::ResHandle::INVALID_HANDLE);
+	}
+
+	void EndFrame()
+	{
+		GPU::EndFrame();
 	}
 }
 }

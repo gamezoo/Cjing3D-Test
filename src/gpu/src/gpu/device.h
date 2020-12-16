@@ -1,9 +1,10 @@
 #pragma once
 
-#include "gpu.h"
+#include "definitions.h"
 #include "commandList.h"
 
-namespace Cjing3D
+namespace Cjing3D {
+namespace GPU
 {
 	static const U32 MAX_COMMANDLIST_COUNT = 32;
 
@@ -20,19 +21,21 @@ namespace Cjing3D
 		GraphicsDevice(GraphicsDeviceType type);
 		virtual ~GraphicsDevice();
 
-		virtual Handle CreateCommandlist() = 0;
-		virtual Handle SubmitCommandList(Handle handle) = 0;
+		virtual bool CreateCommandlist(ResHandle handle) = 0;
+		virtual bool CompileCommandList(ResHandle handle, const CommandList& cmd) = 0;
+		virtual bool SubmitCommandList(ResHandle handle) = 0;
+		virtual void PresentBegin(ResHandle handle) = 0;
+		virtual void PresentEnd(ResHandle handle) = 0;
+		virtual void EndFrame() = 0;
 
-		virtual Handle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData) = 0;
-		virtual Handle CreateBuffer(const GPUBufferDesc* desc, const SubresourceData* initialData) = 0;
-		virtual Handle CreateShader(SHADERSTAGES stage, const void* bytecode, size_t length) = 0;
-		virtual Handle CreateDepthStencilState(const DepthStencilStateDesc* desc) = 0;
-		virtual Handle CreateBlendState(const BlendStateDesc* desc) = 0;
-		virtual Handle CreateRasterizerState(const RasterizerStateDesc* desc) = 0;
-		virtual Handle CreateInputLayout(const InputLayoutDesc* desc, U32 numElements, Handle shader) = 0;
-		virtual Handle CreateSamplerState(const SamplerDesc* desc) = 0;
-
-		virtual void SetResourceName(Handle resource, const char* name) = 0;
+		virtual bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData) = 0;
+		virtual bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData) = 0;
+		virtual bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length) = 0;
+		virtual bool CreateInputLayout(ResHandle handle, const InputLayoutDesc* desc, U32 numElements, ResHandle shader) = 0;
+		virtual bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc) = 0;
+		virtual bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc) = 0;
+		virtual void DestroyResource(ResHandle handle) = 0;
+		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
 
 		// status
 		U32x2 GetResolution()const { return mResolution; }
@@ -44,8 +47,10 @@ namespace Cjing3D
 		U64 GetFrameCount()const { return mCurrentFrameCount; }
 		FORMAT GetBackBufferFormat()const { return mBackBufferFormat; }
 		U32 GetBackBufferCount()const { return mBackBufferCount; }
-		void SetIsVsync(bool isVsync) { mIsVsync = isVsync; }
+		U32 GetFormatStride(FORMAT value) const;
+		bool CheckCapability(GPU_CAPABILITY capability) { return (U32)capability & mCapabilities; }
 
+		void SetIsVsync(bool isVsync) { mIsVsync = isVsync; }
 		virtual void SetResolution(const U32x2 size) = 0;
 
 	protected:
@@ -57,6 +62,7 @@ namespace Cjing3D
 		bool mIsVsync = true;
 		bool mIsDebug = false;
 		U64 mCurrentFrameCount = 0;
+		U32 mCapabilities = 0;
 	};
-
+}
 }

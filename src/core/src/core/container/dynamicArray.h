@@ -29,6 +29,10 @@ namespace Cjing3D
 
 	public:
 		DynamicArray() = default;
+		explicit DynamicArray(U32 size)
+		{
+			resize(size);
+		}
 		~DynamicArray()
 		{
 			CallDestructors(mData, mData + mSize);

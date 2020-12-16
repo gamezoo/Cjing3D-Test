@@ -550,6 +550,45 @@ namespace Concurrency
 		return (::WaitForSingleObject(mImpl->handle_, timeout) == WAIT_OBJECT_0);
 	}
 
+	struct RWLockImpl
+	{
+		SRWLOCK mSRWLock = SRWLOCK_INIT;
+	};
+	RWLock::RWLock()
+	{
+		// mutex use default new
+		mImpl = new(mImplData) RWLockImpl();
+	}
+
+	RWLock::~RWLock()
+	{
+#ifdef DEBUG
+		if (!::TryAcquireSRWLockExclusive(&(mImpl->mSRWLock))) {
+			DBG_ASSERT(false);
+		}
+#endif
+	}
+
+	void RWLock::BeginRead()const
+	{
+		::AcquireSRWLockShared(&mImpl->mSRWLock);
+	}
+
+	void RWLock::EndRead()const
+	{
+		::ReleaseSRWLockShared(&mImpl->mSRWLock);
+	}
+
+	void RWLock::BeginWrite()
+	{
+		::AcquireSRWLockExclusive(&mImpl->mSRWLock);
+	}
+
+	void RWLock::EndWrite()
+	{
+		::ReleaseSRWLockExclusive(&mImpl->mSRWLock);
+	}
+
 #endif
 
 	SpinLock::SpinLock()
@@ -576,40 +615,6 @@ namespace Concurrency
 	void SpinLock::Unlock()
 	{
 		AtomicExchange(&mLockedFlag, 0);
-	}
-
-	RWLock::RWLock()
-	{
-	}
-
-	RWLock::~RWLock()
-	{
-	}
-
-	void RWLock::BeginRead()
-	{
-		ScopedSpinLock lock(mWriteMutex);
-		if (Concurrency::AtomicIncrement(&mReadCout) == 1) {
-			mReadMutex.Lock();
-		}
-	}
-
-	void RWLock::EndRead()
-	{
-		ScopedSpinLock lock(mWriteMutex);
-		if (Concurrency::AtomicDecrement(&mReadCout) == 0) {
-			mReadMutex.Unlock();
-		}
-	}
-
-	void RWLock::BeginWrite()
-	{
-		mWriteMutex.Lock();
-	}
-
-	void RWLock::EndWrite()
-	{
-		mWriteMutex.Unlock();
 	}
 }
 }

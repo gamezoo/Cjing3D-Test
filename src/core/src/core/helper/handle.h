@@ -2,6 +2,7 @@
 
 #include "core\common\definitions.h"
 #include "core\container\dynamicArray.h"
+#include "core\container\staticArray.h"
 
 namespace Cjing3D
 {
@@ -63,7 +64,7 @@ namespace Cjing3D
 	class HandleAllocator
 	{
 	public:
-		HandleAllocator(I32 typeCount);
+		explicit HandleAllocator(I32 typeCount);
 		~HandleAllocator();
 
 		Handle Alloc(I32 type);
@@ -72,7 +73,8 @@ namespace Cjing3D
 		I32 GetTotalHandleCount(I32 type);
 		I32 GetMaxHandleCount(I32 type);
 		bool IsValid(Handle handle);
-		bool IsAllocated(Handle handle);
+		bool IsAllocated(Handle handle)const;
+		bool IsAllocated(I32 type, I32 index)const;
 
 	private:
 		U16& GetMagicID(U32 index, U32 type);
@@ -82,7 +84,7 @@ namespace Cjing3D
 			DynamicArray<U32> mFreeList;
 			DynamicArray<U8>  mAllocated;	// 0:free, 1:allocated
 		};
-		DynamicArray<HandleTypeData> mHandleTypeDatas;
+		StaticArray<HandleTypeData, Handle::MAX_TYPE> mHandleTypeDatas;
 
 		// MAX_TYPE * MAX_INDEX magic ids for validating handle
 		DynamicArray<U16> mMagicIDs;	

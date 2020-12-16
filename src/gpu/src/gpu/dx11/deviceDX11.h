@@ -4,11 +4,12 @@
 #ifdef CJING3D_PLATFORM_WIN32
 
 #include "gpu\device.h"
-#include "gpu\resource.h"
+#include "gpu\dx11\resourceDX11.h"
 #include "gpu\dx11\includeDX11.h"
 #include "core\platform\platform.h"
 
-namespace Cjing3D
+namespace Cjing3D {
+namespace GPU
 {
 	class GraphicsDeviceDx11 : public GraphicsDevice
 	{
@@ -16,20 +17,26 @@ namespace Cjing3D
 		GraphicsDeviceDx11(Platform::WindowType window, bool isFullScreen = false, bool isDebug = false);
 		virtual ~GraphicsDeviceDx11();
 
-		Handle CreateCommandlist()override;
-		Handle SubmitCommandList(Handle handle)override;
+		bool CreateCommandlist(ResHandle handle)override;
+		bool CompileCommandList(ResHandle handle, const CommandList& cmd)override;
+		bool SubmitCommandList(ResHandle handle)override;
+		void PresentBegin(ResHandle handle)override;
+		void PresentEnd(ResHandle handle)override;
+		void EndFrame() override;
 
-		Handle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData)override;
-		Handle CreateBuffer(const GPUBufferDesc* desc, const SubresourceData* initialData)override;
-		Handle CreateShader(SHADERSTAGES stage, const void* bytecode, size_t length)override;
-		Handle CreateDepthStencilState(const DepthStencilStateDesc* desc)override;
-		Handle CreateBlendState(const BlendStateDesc* desc)override;
-		Handle CreateRasterizerState(const RasterizerStateDesc* desc)override;
-		Handle CreateInputLayout(const InputLayoutDesc* desc, U32 numElements, Handle shader)override;
-		Handle CreateSamplerState(const SamplerDesc* desc)override;
-
-		void SetResourceName(Handle resource, const char* name)override;
+		bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)override;
+		bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData)override;
+		bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)override;
+		bool CreateInputLayout(ResHandle handle, const InputLayoutDesc* desc, U32 numElements, ResHandle shader)override;
+		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
+		bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)override;
+		void DestroyResource(ResHandle handle)override;
+		void SetResourceName(ResHandle resource, const char* name)override;
 		void SetResolution(const U32x2 size)override;
+
+	private:
+		int CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount);
+		int CreateSubresourceImpl(BufferDX11& buffer, SUBRESOURCE_TYPE type, U32 offset, U32 size = ~0);
 
 	private:
 		ComPtr<ID3D11Device> mDevice;
@@ -38,8 +45,14 @@ namespace Cjing3D
 		ComPtr<ID3D11DeviceContext> mDeviceContexts[MAX_COMMANDLIST_COUNT];
 		ComPtr<ID3D11Texture2D> mBackBuffer;
 		ComPtr<ID3D11RenderTargetView> mRenderTargetView;
+
+		// resources
+		ResourcePool<TextureDX11> mTextures;
+		ResourcePool<BufferDX11> mBuffers;
+		ResourcePool<ShaderDX11> mShaders;
+		ResourcePool<PipelineStateDX11> mPipelineStates;
 	};
 }
-
+}
 #endif
 #endif

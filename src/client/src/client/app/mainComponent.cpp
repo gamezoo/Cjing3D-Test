@@ -2,6 +2,8 @@
 #include "core\helper\timer.h"
 #include "core\helper\profiler.h"
 #include "resource\resourceManager.h"
+#include "renderer\renderPath.h"
+#include "renderer\renderer.h"
 
 namespace Cjing3D
 {
@@ -44,7 +46,15 @@ namespace Cjing3D
 
 	void MainComponent::SetRenderPath(const SharedPtr<RenderPath>& renderPath)
 	{
-		mNextRenderPath = renderPath;
+		if (mRenderPath != nullptr) {
+			mRenderPath->Stop();
+		}
+
+		if (renderPath != nullptr) {
+			renderPath->Start();
+		}
+
+		mRenderPath = renderPath;
 	}
 
 	void MainComponent::Tick()
@@ -58,8 +68,10 @@ namespace Cjing3D
 		U32 targetFrameRate = initConfig.mTargetFrameRate;
 		U32 isLockFrameRate = initConfig.mIsLockFrameRate;
 
-		if (mGameWindow->IsWindowActive())
-		{
+		if (!mGameWindow->IsWindowActive()) {
+			mDeltaTimeAccumulator = 0;
+		}
+		else {
 			// fixed update
 			const F32 dt = isLockFrameRate ? (1.0f / targetFrameRate) : deltaTime;
 			if (!mIsSkipFrame)
@@ -86,13 +98,10 @@ namespace Cjing3D
 			Update(dt);
 			Render();
 		}
-		else
-		{
-			mDeltaTimeAccumulator = 0;
-		}
 
 		Compose();
 
+		Renderer::EndFrame();
 		Profiler::EndFrame();
 	}
 
@@ -110,9 +119,20 @@ namespace Cjing3D
 
 	void MainComponent::Render()
 	{
+		if (mRenderPath != nullptr) {
+			mRenderPath->Render();
+		}
 	}
 
 	void MainComponent::Compose()
 	{
+		Renderer::PresentBegin();
+		{
+			if (mRenderPath != nullptr) {
+				mRenderPath->Compose();
+			}
+		}
+		Renderer::PresentEnd();
 	}
+
 }

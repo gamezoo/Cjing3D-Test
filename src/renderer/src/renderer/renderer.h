@@ -1,16 +1,17 @@
 #pragma once
 
-#include "gpu\device.h"
 #include "core\common\common.h"
+#include "gpu\gpu.h"
 
 namespace Cjing3D
 {
 namespace Renderer
 {
-	void Initialize();
+	void Initialize(GPU::GPUSetupParams params);
 	bool IsInitialized();
 	void Uninitialize();
-	void SetDevice(SharedPtr<GraphicsDevice> device);
-	GraphicsDevice* GetDevice();
+	void PresentBegin();
+	void PresentEnd();
+	void EndFrame();
 }
 }

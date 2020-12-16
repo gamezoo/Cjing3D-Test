@@ -224,17 +224,16 @@ namespace Concurrency
 		RWLock();
 		~RWLock();
 
-		void BeginRead();
-		void EndRead();
+		void BeginRead()const;
+		void EndRead()const;
 		void BeginWrite();
 		void EndWrite();
 
 	private:
 		RWLock(const RWLock&) = delete;
 
-		SpinLock mReadMutex;
-		SpinLock mWriteMutex;
-		volatile I32 mReadCout = 0;
+		struct RWLockImpl* mImpl = nullptr;
+		mutable U8 mImplData[8];
 	};
 
 	class ScopedReadLock final

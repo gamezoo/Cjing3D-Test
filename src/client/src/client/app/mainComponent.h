@@ -32,8 +32,7 @@ namespace Cjing3D
 		bool mIsSkipFrame = true;
 		F32  mDeltaTimeAccumulator = 0;
 
-		SharedPtr<RenderPath> mCurrentRenderPath = nullptr;
-		SharedPtr<RenderPath> mNextRenderPath = nullptr;
+		SharedPtr<RenderPath> mRenderPath = nullptr;
 		SharedPtr<Engine>     mEngine = nullptr;
 		SharedPtr<GameWindow> mGameWindow = nullptr;
 	};

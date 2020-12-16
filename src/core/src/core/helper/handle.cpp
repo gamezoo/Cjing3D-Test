@@ -98,10 +98,17 @@ namespace Cjing3D
 		return mMagicIDs[handle.mIndex + handle.mType * Handle::MAX_INDEX] == handle.mMagic;
 	}
 
-	bool HandleAllocator::IsAllocated(Handle handle)
+	bool HandleAllocator::IsAllocated(Handle handle)const
 	{
-		HandleTypeData& data = mHandleTypeDatas[handle.mType];
+		const HandleTypeData& data = mHandleTypeDatas[handle.mType];
 		return data.mAllocated[handle.mIndex] != 0;
+	}
+
+	bool HandleAllocator::IsAllocated(I32 type, I32 index)const
+	{
+		Debug::CheckAssertion(type >= 0 && type < mMaxTypeCount);
+		const HandleTypeData& data = mHandleTypeDatas[type];
+		return data.mAllocated[index] != 0;
 	}
 
 	U16& HandleAllocator::GetMagicID(U32 index, U32 type)

@@ -1,15 +1,18 @@
 #pragma once
 
-#include "gpu.h"
+#include "definitions.h"
+#include "resource.h"
 
-namespace Cjing3D
-{
+namespace Cjing3D {
+namespace GPU {
+
 	class CommandList
 	{
 	private:
-		Handle mHandle;
+		ResHandle mHandle;
 
 	public:
 
 	};
+}
 }

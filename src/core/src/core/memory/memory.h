@@ -103,6 +103,8 @@ inline void operator delete(void*, Cjing3D::NewPlaceHolder, void*) { }
 #define CJING_ALLOCATOR_REMALLOC_ALIGN(allocator, ptr, size, align)  allocator.AlignReallocate(ptr, size, align, __FILE__, __LINE__)
 #define CJING_ALLOCATOR_FREE(allocator, ptr) allocator.Free(ptr);
 #define CJING_ALLOCATOR_FREE_ALIGN(allocator, ptr) allocator.AlignFree(ptr); 
+#define CJING_ALLOCATOR_NEW(allocator, T) new (Cjing3D::NewPlaceHolder(), allocator.Allocate(sizeof(T), __FILE__, __LINE__)) T
+#define CJING_ALLOCATOR_DELETE(allocator, ptr) Cjing3D::Memory::ObjectConstruct(ptr); allocator.Free(ptr);
 
 #else
 #define CJING_NEW(T) new (Cjing3D::NewPlaceHolder(), Cjing3D::Memory::Alloc(sizeof(T))) T
@@ -123,6 +125,9 @@ inline void operator delete(void*, Cjing3D::NewPlaceHolder, void*) { }
 #define CJING_ALLOCATOR_REMALLOC_ALIGN(allocator, ptr, size, align)  allocator.AlignReallocate(ptr, size, align)
 #define CJING_ALLOCATOR_FREE(allocator, ptr) allocator.Free(ptr);
 #define CJING_ALLOCATOR_FREE_ALIGN(allocator, ptr) allocator.AlignFree(ptr); 
+#define CJING_ALLOCATOR_NEW(allocator, T) new (Cjing3D::NewPlaceHolder(), allocator.Allocate(size)) T
+#define CJING_ALLOCATOR_DELETE(allocator, ptr) Cjing3D::Memory::ObjectConstruct(ptr); allocator.Free(ptr);
+
 
 #endif
 
