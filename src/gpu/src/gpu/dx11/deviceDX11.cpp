@@ -664,6 +664,144 @@ namespace GPU
 			return texture3DDesc;
 		}
 
+		inline D3D11_FILTER _ConvertFilter(FILTER filter)
+		{
+			switch (filter)
+			{
+			case FILTER_MIN_MAG_MIP_POINT:
+				return D3D11_FILTER_MIN_MAG_MIP_POINT;
+				break;
+			case FILTER_MIN_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_MIN_POINT_MAG_MIP_LINEAR:
+				return D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+				break;
+			case FILTER_MIN_LINEAR_MAG_MIP_POINT:
+				return D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+				break;
+			case FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_MIN_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_MIN_MAG_MIP_LINEAR:
+				return D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+				break;
+			case FILTER_ANISOTROPIC:
+				return D3D11_FILTER_ANISOTROPIC;
+				break;
+			case FILTER_COMPARISON_MIN_MAG_MIP_POINT:
+				return D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+				break;
+			case FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
+				return D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+				break;
+			case FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
+				return D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+				break;
+			case FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
+				return D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+				break;
+			case FILTER_COMPARISON_ANISOTROPIC:
+				return D3D11_FILTER_COMPARISON_ANISOTROPIC;
+				break;
+			case FILTER_MINIMUM_MIN_MAG_MIP_POINT:
+				return D3D11_FILTER_MINIMUM_MIN_MAG_MIP_POINT;
+				break;
+			case FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR:
+				return D3D11_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR;
+				break;
+			case FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT:
+				return D3D11_FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT;
+				break;
+			case FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_MINIMUM_MIN_MAG_MIP_LINEAR:
+				return D3D11_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR;
+				break;
+			case FILTER_MINIMUM_ANISOTROPIC:
+				return D3D11_FILTER_MINIMUM_ANISOTROPIC;
+				break;
+			case FILTER_MAXIMUM_MIN_MAG_MIP_POINT:
+				return D3D11_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
+				break;
+			case FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR:
+				return D3D11_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR;
+				break;
+			case FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT:
+				return D3D11_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT;
+				break;
+			case FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+				return D3D11_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+				break;
+			case FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT:
+				return D3D11_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
+				break;
+			case FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR:
+				return D3D11_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
+				break;
+			case FILTER_MAXIMUM_ANISOTROPIC:
+				return D3D11_FILTER_MAXIMUM_ANISOTROPIC;
+				break;
+			default:
+				break;
+			}
+			return D3D11_FILTER_MIN_MAG_MIP_POINT;
+		}
+
+		D3D11_TEXTURE_ADDRESS_MODE _ConvertTextureAddressMode(TEXTURE_ADDRESS_MODE mode)
+		{
+			switch (mode)
+			{
+			case TEXTURE_ADDRESS_WRAP:
+				return D3D11_TEXTURE_ADDRESS_WRAP;
+			case TEXTURE_ADDRESS_MIRROR:
+				return D3D11_TEXTURE_ADDRESS_MIRROR;
+			case TEXTURE_ADDRESS_CLAMP:
+				return D3D11_TEXTURE_ADDRESS_CLAMP;
+			case TEXTURE_ADDRESS_BORDER:
+				return D3D11_TEXTURE_ADDRESS_BORDER;
+			case TEXTURE_ADDRESS_MIRROR_ONCE:
+				return D3D11_TEXTURE_ADDRESS_MIRROR_ONCE;
+			default:
+				break;
+			}
+			return D3D11_TEXTURE_ADDRESS_WRAP;
+		}
+
 		D3D11_FILL_MODE _ConvertFillMode(FillMode mode)
 		{
 			switch (mode)
@@ -836,29 +974,98 @@ namespace GPU
 
 	bool GraphicsDeviceDx11::CreateCommandlist(ResHandle handle)
 	{
-		return false;
+		Concurrency::ScopedMutex lock(mLock);
+		mUsedCmdMap.insert(handle.GetValue(), true);
+
+		auto cmd = mCommandLists.Write(handle);
+		if (*cmd != nullptr) {
+			return true;
+		}
+
+		*cmd = CJING_NEW(CommandListDX11)(*mDevice.Get());
+		return true;
 	}
 
 	bool GraphicsDeviceDx11::CompileCommandList(ResHandle handle, const CommandList& cmd)
 	{
-		return false;
+		return true;
 	}
 
-	bool GraphicsDeviceDx11::SubmitCommandList(ResHandle handle)
+	bool GraphicsDeviceDx11::SubmitCommandLists(Span<ResHandle> handles)
 	{
-		return false;
+		Concurrency::ScopedMutex lock(mLock);
+
+		I32 cmdCount = handles.length();
+		DynamicArray<CommandListDX11*> commandLists(cmdCount);
+		for (I32 i = 0; i < cmdCount; i++)
+		{
+			mUsedCmdMap.erase(handles[i].GetValue());
+
+			auto cmd = mCommandLists.Read(handles[i]);
+			if (*cmd != nullptr)  {
+				commandLists.push(*cmd);
+			}
+		}
+
+		for (auto cmd : commandLists) {
+			if (!cmd->Submit(*mImmediateContext.Get())) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
-	void GraphicsDeviceDx11::PresentBegin(ResHandle handle)
+	bool GraphicsDeviceDx11::SubmitCommandLists()
 	{
+		Concurrency::ScopedMutex lock(mLock);
+		if (mUsedCmdMap.size() <= 0) {
+			return true;
+		}
+
+		I32 cmdCount = mUsedCmdMap.size();
+		DynamicArray<CommandListDX11*> commandLists;
+		for (auto kvp : mUsedCmdMap)
+		{
+			auto cmd = mCommandLists.Read(ResHandle(kvp.first));
+			if (*cmd != nullptr) {
+				commandLists.push(*cmd);
+			}
+		}
+		mUsedCmdMap.clear();
+		
+		for (auto cmd : commandLists) {
+			if (!cmd->Submit(*mImmediateContext.Get())) {
+				return false;
+			}
+		}
+		return true;
 	}
 
-	void GraphicsDeviceDx11::PresentEnd(ResHandle handle)
+	void GraphicsDeviceDx11::PresentBegin(CommandList& cmd)
 	{
+		auto ptr = mCommandLists.Read(cmd.GetHanlde());
+		if (*ptr != nullptr)
+		{
+			// TODO: call commandList function
+			auto deviceContext = (*ptr)->GetContext();
+			ID3D11RenderTargetView* rtv = mRenderTargetView.Get();
+			deviceContext->OMSetRenderTargets(1, &rtv, 0);
+			F32 clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+			deviceContext->ClearRenderTargetView(rtv, clearColor);
+			
+		}
+	}
+
+	void GraphicsDeviceDx11::PresentEnd(CommandList& cmd)
+	{
+		SubmitCommandLists();
+		mSwapChain->Present(mIsVsync, 0);
 	}
 
 	void GraphicsDeviceDx11::EndFrame()
 	{
+		mUsedCmdMap.clear();
 	}
 
 	bool GraphicsDeviceDx11::CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)
@@ -958,17 +1165,66 @@ namespace GPU
 
 	bool GraphicsDeviceDx11::CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)
 	{
-		return false;
-	}
+		auto shader = mShaders.Write(handle);
+		shader->mStage = stage;
+		shader->mByteCode = CJING_NEW_ARR(U8, length);
+		shader->mByteCodeSize = length;
 
-	bool GraphicsDeviceDx11::CreateInputLayout(ResHandle handle, const InputLayoutDesc* desc, U32 numElements, ResHandle shader)
-	{
-		return false;
+		HRESULT ret;
+		switch (stage)
+		{
+		case SHADERSTAGES_VS:
+			ret = mDevice->CreateVertexShader(bytecode, length, nullptr, &shader->mVS);
+			break;
+		case SHADERSTAGES_GS:
+			ret = mDevice->CreateGeometryShader(bytecode, length, nullptr, &shader->mGS);
+			break;
+		case SHADERSTAGES_HS:
+			ret = mDevice->CreateHullShader(bytecode, length, nullptr, &shader->mHS);
+			break;
+		case SHADERSTAGES_DS:
+			ret = mDevice->CreateDomainShader(bytecode, length, nullptr, &shader->mDS);
+			break;
+		case SHADERSTAGES_PS:
+			ret = mDevice->CreatePixelShader(bytecode, length, nullptr, &shader->mPS);
+			break;
+		case SHADERSTAGES_CS:
+			ret = mDevice->CreateComputeShader(bytecode, length, nullptr, &shader->mCS);
+			break;
+		default:
+			break;
+		}
+		return SUCCEEDED(ret);
 	}
 
 	bool GraphicsDeviceDx11::CreateSamplerState(ResHandle handle, const SamplerDesc* desc)
 	{
-		return false;
+		auto sampler = mSamplers.Write(handle);
+		sampler->mDesc = *desc;
+
+		D3D11_SAMPLER_DESC samplerDesc = {};
+
+		samplerDesc.Filter = _ConvertFilter(desc->mFilter);
+		samplerDesc.AddressU = _ConvertTextureAddressMode(desc->mAddressU);
+		samplerDesc.AddressV = _ConvertTextureAddressMode(desc->mAddressV);
+		samplerDesc.AddressW = _ConvertTextureAddressMode(desc->mAddressW);
+		samplerDesc.MipLODBias = desc->mMipLODBias;
+		samplerDesc.MaxAnisotropy = desc->mMaxAnisotropy;
+		samplerDesc.ComparisonFunc = _ConvertComparisonFunc(desc->mComparisonFunc);
+		samplerDesc.BorderColor[0] = desc->mBorderColor[0];
+		samplerDesc.BorderColor[1] = desc->mBorderColor[1];
+		samplerDesc.BorderColor[2] = desc->mBorderColor[2];
+		samplerDesc.BorderColor[3] = desc->mBorderColor[3];
+		samplerDesc.MinLOD = desc->mMinLOD;
+		samplerDesc.MaxLOD = desc->mMaxLOD;
+
+		HRESULT ret = mDevice->CreateSamplerState(&samplerDesc, &sampler->mHandle);
+		if (FAILED(ret))
+		{
+			Debug::Warning("[GPU] Faile to create sampler state.");
+			return false;
+		}
+		return SUCCEEDED(ret);
 	}
 
 	bool GraphicsDeviceDx11::CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)
@@ -977,7 +1233,6 @@ namespace GPU
 		pipelineState->mDesc = *desc;
 
 		HRESULT ret = S_OK;
-
 		// blend state
 		if (desc->mBlendState != nullptr)
 		{
@@ -1115,10 +1370,55 @@ namespace GPU
 
 	void GraphicsDeviceDx11::DestroyResource(ResHandle handle)
 	{
+		switch (handle.GetType())
+		{
+		case RESOURCETYPE_BUFFER:
+			*mBuffers.Write(handle) = BufferDX11();
+			break;
+		case RESOURCETYPE_TEXTURE:
+			*mTextures.Write(handle) = TextureDX11();
+			break;
+		case RESOURCETYPE_SHADER:
+			if (auto shader = mShaders.Write(handle))
+			{
+				CJING_DELETE_ARR(shader->mByteCode, shader->mByteCodeSize);
+				*shader = ShaderDX11();
+			}
+			break;
+		case RESOURCETYPE_COMMAND_LIST:
+			if (auto cmd = mCommandLists.Write(handle))
+			{
+				CJING_DELETE(*cmd);
+				*cmd = nullptr;
+			}
+			break;
+		case RESOURCETYPE_SAMPLER_STATE:
+			*mSamplers.Write(handle) = SamplerStateDX11();
+			break;
+		case RESOURCETYPE_PIPELINE:
+			*mPipelineStates.Write(handle) = PipelineStateDX11();
+			break;
+		default:
+			break;
+		}
 	}
 
 	void GraphicsDeviceDx11::SetResourceName(ResHandle resource, const char* name)
 	{
+		switch (resource.GetType())
+		{
+		case RESOURCETYPE_BUFFER:
+			mBuffers.Write(resource)->mResource->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)strlen(name), name);
+			break;
+		case RESOURCETYPE_TEXTURE:
+			mTextures.Write(resource)->mResource->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)strlen(name), name);
+			break;
+		case RESOURCETYPE_SAMPLER_STATE:
+			mSamplers.Write(resource)->mHandle->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)strlen(name), name);
+			break;
+		default:
+			break;
+		}
 	}
 
 	void GraphicsDeviceDx11::SetResolution(const U32x2 size)

@@ -13,6 +13,8 @@
 namespace Cjing3D {
 namespace GPU
 {
+	static const I32 MaxGPUFrames = 4;
+
 	//////////////////////////////////////////////////////////////////////////
 	// Member
 	//////////////////////////////////////////////////////////////////////////
@@ -35,7 +37,7 @@ namespace GPU
 		void ProcessReleasedHandles()
 		{
 			Concurrency::ScopedMutex lock(mMutex);
-			auto& releasedHandles = mReleasedHandles[mCurrentFrameCount % 4];
+			auto& releasedHandles = mReleasedHandles[mCurrentFrameCount % MaxGPUFrames];
 			for (ResHandle handle : releasedHandles)
 			{
 				mDevice->DestroyResource(handle);
@@ -57,7 +59,7 @@ namespace GPU
 		void DestroyHandle(ResHandle handle)
 		{
 			Concurrency::ScopedMutex lock(mMutex);
-			auto& releasedHandles = mReleasedHandles[mCurrentFrameCount % 4];
+			auto& releasedHandles = mReleasedHandles[mCurrentFrameCount % MaxGPUFrames];
 			releasedHandles.push(handle);
 		}
 	};
@@ -99,6 +101,12 @@ namespace GPU
 			return;
 		}
 
+		for (int i = 0; i < MaxGPUFrames; i++) 
+		{
+			mImpl->mCurrentFrameCount++;
+			mImpl->ProcessReleasedHandles();
+		}
+
 #ifdef DEBUG
 		I32 aliveHandles = false;
 		for (I32 i = 0; i < (I32)ResourceType::RESOURCETYPE_COUNT; i++) {
@@ -130,6 +138,11 @@ namespace GPU
 				}
 			}
 
+			Debug::Warning(os.str().c_str());
+#ifdef DEBUG
+			system("pause");
+#endif // DEBUG
+
 		}
 #endif
 
@@ -141,14 +154,14 @@ namespace GPU
 		return mImpl->mDevice.get();
 	}
 
-	void PresentBegin(ResHandle handle)
+	void PresentBegin(CommandList& cmd)
 	{
-		mImpl->mDevice->PresentBegin(handle);
+		mImpl->mDevice->PresentBegin(cmd);
 	}
 
-	void PresentEnd(ResHandle handle)
+	void PresentEnd(CommandList& cmd)
 	{
-		mImpl->mDevice->PresentEnd(handle);
+		mImpl->mDevice->PresentEnd(cmd);
 	}
 
 	void EndFrame()
@@ -160,24 +173,46 @@ namespace GPU
 
 	bool IsHandleValid(ResHandle handle)
 	{
-		return false;
+		return mImpl->mHandleAllocator.IsValid(handle);
 	}
 
-	ResHandle CreateCommandlist()
+	bool CreateCommandlist(CommandList& cmd)
 	{
+		Debug::CheckAssertion(cmd.GetHanlde() == ResHandle::INVALID_HANDLE);
+
 		ResHandle handle = mImpl->AllocHandle(RESOURCETYPE_COMMAND_LIST);
-		mImpl->CheckHandle(handle, mImpl->mDevice->CreateCommandlist(handle));
-		return handle;
+		bool ret = mImpl->CheckHandle(handle, mImpl->mDevice->CreateCommandlist(handle));
+		if (ret) {
+			cmd.SetHanlde(handle);
+		}
+
+		return ret;
 	}
 
-	bool CompileCommandList(ResHandle handle, const CommandList& cmd)
+	bool CompileCommandList(const CommandList& cmd)
 	{
-		return mImpl->mDevice->CompileCommandList(handle, cmd);
+		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
+		return mImpl->mDevice->CompileCommandList(cmd.GetHanlde(), cmd);
 	}
 
-	bool SubmitCommandList(ResHandle handle)
+	bool SubmitCommandList(const CommandList& cmd)
 	{
-		return mImpl->mDevice->SubmitCommandList(handle);
+		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
+		auto handle = cmd.GetHanlde();
+		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(&handle, 1));
+	}
+
+	bool SubmitCommandList(Span<CommandList*> cmds)
+	{
+		DynamicArray<ResHandle> handles;
+		for (int i = 0; i < cmds.length(); i++)
+		{
+			auto handle = cmds[i]->GetHanlde();
+			if (handle != ResHandle::INVALID_HANDLE) {
+				handles.push(handle);
+			}
+		}
+		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
 	}
 
 	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData)
@@ -201,14 +236,7 @@ namespace GPU
 		return handle;
 	}
 
-	ResHandle CreateInputLayout(const InputLayoutDesc* desc, U32 numElements, ResHandle shader)
-	{
-		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_INPUT_LAYOUT);
-		mImpl->CheckHandle(handle, mImpl->mDevice->CreateInputLayout(handle, desc, numElements, shader));
-		return handle;
-	}
-
-	ResHandle CreateSamplerState(const SamplerDesc* desc)
+	ResHandle CreateSampler(const SamplerDesc* desc)
 	{
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_SAMPLER_STATE);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateSamplerState(handle, desc));

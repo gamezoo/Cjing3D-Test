@@ -41,14 +41,14 @@ namespace Renderer
 		mIsInitialize = false;
 	}
 
-	void PresentBegin()
+	void PresentBegin(GPU::CommandList& cmd)
 	{
-		GPU::PresentBegin(GPU::ResHandle::INVALID_HANDLE);
+		GPU::PresentBegin(cmd);
 	}
 
-	void PresentEnd()
+	void PresentEnd(GPU::CommandList& cmd)
 	{
-		GPU::PresentEnd(GPU::ResHandle::INVALID_HANDLE);
+		GPU::PresentEnd(cmd);
 	}
 
 	void EndFrame()

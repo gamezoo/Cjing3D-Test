@@ -10,8 +10,8 @@ namespace Renderer
 	void Initialize(GPU::GPUSetupParams params);
 	bool IsInitialized();
 	void Uninitialize();
-	void PresentBegin();
-	void PresentEnd();
+	void PresentBegin(GPU::CommandList& cmd);
+	void PresentEnd(GPU::CommandList& cmd);
 	void EndFrame();
 }
 }

@@ -3,6 +3,7 @@
 #include "core\common\definitions.h"
 #include "core\container\dynamicArray.h"
 #include "core\container\staticArray.h"
+#include "math\hash.h"
 
 namespace Cjing3D
 {
@@ -10,12 +11,16 @@ namespace Cjing3D
 	{
 	public:
 		Handle() : mValue(0) {}
+		explicit Handle(U32 value) : mValue(value) {}
 
 		U32 GetIndex()const {
 			return mIndex;
 		}
-		U32 GetType() {
+		U32 GetType()const {
 			return mType;
+		}
+		U32 GetValue()const {
+			return mValue;
 		}
 
 		explicit operator bool() const { 

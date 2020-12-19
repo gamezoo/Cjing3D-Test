@@ -12,7 +12,13 @@ namespace GPU {
 		ResHandle mHandle;
 
 	public:
+		CommandList();
+		~CommandList();
 
+		void Reset();
+
+		void SetHanlde(const ResHandle& handle) { mHandle = handle; }
+		ResHandle GetHanlde()const { return mHandle; }
 	};
 }
 }

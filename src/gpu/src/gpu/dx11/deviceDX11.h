@@ -4,9 +4,11 @@
 #ifdef CJING3D_PLATFORM_WIN32
 
 #include "gpu\device.h"
-#include "gpu\dx11\resourceDX11.h"
 #include "gpu\dx11\includeDX11.h"
+#include "gpu\dx11\resourceDX11.h"
+#include "gpu\dx11\commandListDX11.h"
 #include "core\platform\platform.h"
+#include "core\container\hashMap.h"
 
 namespace Cjing3D {
 namespace GPU
@@ -19,15 +21,16 @@ namespace GPU
 
 		bool CreateCommandlist(ResHandle handle)override;
 		bool CompileCommandList(ResHandle handle, const CommandList& cmd)override;
-		bool SubmitCommandList(ResHandle handle)override;
-		void PresentBegin(ResHandle handle)override;
-		void PresentEnd(ResHandle handle)override;
+		bool SubmitCommandLists(Span<ResHandle> handles)override;
+		bool SubmitCommandLists()override;
+
+		void PresentBegin(CommandList& cmd)override;
+		void PresentEnd(CommandList& cmd)override;
 		void EndFrame() override;
 
 		bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)override;
 		bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData)override;
 		bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)override;
-		bool CreateInputLayout(ResHandle handle, const InputLayoutDesc* desc, U32 numElements, ResHandle shader)override;
 		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
 		bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)override;
 		void DestroyResource(ResHandle handle)override;
@@ -50,7 +53,12 @@ namespace GPU
 		ResourcePool<TextureDX11> mTextures;
 		ResourcePool<BufferDX11> mBuffers;
 		ResourcePool<ShaderDX11> mShaders;
+		ResourcePool<SamplerStateDX11> mSamplers;
 		ResourcePool<PipelineStateDX11> mPipelineStates;
+		ResourcePool<CommandListDX11*> mCommandLists;
+
+		Concurrency::Mutex mLock;
+		HashMap<U32, bool> mUsedCmdMap;
 	};
 }
 }

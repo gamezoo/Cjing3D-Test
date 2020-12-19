@@ -16,7 +16,6 @@ namespace GPU
 		RESOURCETYPE_TEXTURE,
 		RESOURCETYPE_SHADER,
 		RESOURCETYPE_COMMAND_LIST,
-		RESOURCETYPE_INPUT_LAYOUT,
 		RESOURCETYPE_SAMPLER_STATE,
 		RESOURCETYPE_PIPELINE,
 		RESOURCETYPE_COUNT
@@ -26,10 +25,11 @@ namespace GPU
 	{
 	public:
 		ResHandle() = default;
+		explicit ResHandle(U32 value) : Handle(value) {}
 		explicit ResHandle(const Handle& handle) : Handle(handle) {}
 
 		operator Handle()const { return *this; }
-		ResourceType GetType()const { return  (ResourceType)GetType(); }
+		ResourceType GetType()const { return  (ResourceType)Handle::GetType(); }
 		bool IsValid()const;
 
 		static ResHandle INVALID_HANDLE;
@@ -116,6 +116,23 @@ namespace GPU
 		T* mVal = nullptr;
 	};
 
+	template<typename T, typename ENABLE = void>
+	struct PoolResource;
+
+	template<typename T>
+	struct PoolResource<T, typename std::enable_if_t<std::is_pointer_v<T>>>
+	{
+		Concurrency::RWLock mLock;
+		T mInst = nullptr;
+	};
+
+	template<typename T>
+	struct PoolResource<T, typename std::enable_if_t<!std::is_pointer_v<T>>>
+	{
+		Concurrency::RWLock mLock;
+		T mInst;
+	};
+
 	template<typename T>
 	class ResourcePool
 	{
@@ -123,12 +140,9 @@ namespace GPU
 		static const I32 INDEX_BITS = 8;
 		static const I32 BLOCK_SIZE = 256; // 1 << 8
 		static const I32 BLOCK_MASK = BLOCK_SIZE - 1;
-		
-		struct Resource
-		{
-			Concurrency::RWLock mLock;
-			T mInst;
-		};
+
+		using Resource = PoolResource<T>;
+
 		struct Resources
 		{
 			StaticArray<Resource, BLOCK_SIZE> mResources;

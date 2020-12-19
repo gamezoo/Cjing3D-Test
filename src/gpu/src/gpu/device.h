@@ -8,13 +8,6 @@ namespace GPU
 {
 	static const U32 MAX_COMMANDLIST_COUNT = 32;
 
-	enum GraphicsDeviceType
-	{
-		GraphicsDeviceType_Unknown,
-		GraphicsDeviceType_Dx11,
-		GraphicsDeviceType_Dx12
-	};
-
 	class GraphicsDevice
 	{
 	public:
@@ -23,21 +16,20 @@ namespace GPU
 
 		virtual bool CreateCommandlist(ResHandle handle) = 0;
 		virtual bool CompileCommandList(ResHandle handle, const CommandList& cmd) = 0;
-		virtual bool SubmitCommandList(ResHandle handle) = 0;
-		virtual void PresentBegin(ResHandle handle) = 0;
-		virtual void PresentEnd(ResHandle handle) = 0;
+		virtual bool SubmitCommandLists(Span<ResHandle> handles) = 0;
+		virtual bool SubmitCommandLists() = 0;
+		virtual void PresentBegin(CommandList& cmd) = 0;
+		virtual void PresentEnd(CommandList& cmd) = 0;
 		virtual void EndFrame() = 0;
 
 		virtual bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData) = 0;
 		virtual bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData) = 0;
 		virtual bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length) = 0;
-		virtual bool CreateInputLayout(ResHandle handle, const InputLayoutDesc* desc, U32 numElements, ResHandle shader) = 0;
 		virtual bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc) = 0;
 		virtual bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc) = 0;
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
 
-		// status
 		U32x2 GetResolution()const { return mResolution; }
 		U32 GetResolutionWidth()const { return mResolution.x(); }
 		U32 GetResolutionHeight()const { return mResolution.y(); }

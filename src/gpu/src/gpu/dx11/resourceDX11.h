@@ -36,6 +36,7 @@ namespace GPU
 	struct SamplerStateDX11
 	{
 		ComPtr<ID3D11SamplerState> mHandle;
+		SamplerDesc mDesc;
 	};
 
 	struct InputLayoutDX11
@@ -47,12 +48,14 @@ namespace GPU
 	{
 		U8* mByteCode = nullptr;
 		U32 mByteCodeSize = 0;
+		SHADERSTAGES mStage = SHADERSTAGES::SHADERSTAGES_COUNT;
 
 		ComPtr<ID3D11VertexShader>  mVS;
 		ComPtr<ID3D11PixelShader>   mPS;
 		ComPtr<ID3D11ComputeShader> mCS;
 		ComPtr<ID3D11HullShader>    mHS;
 		ComPtr<ID3D11DomainShader>  mDS;
+		ComPtr<ID3D11GeometryShader>mGS;
 	};
 
 	struct QueryDX11

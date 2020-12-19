@@ -17,7 +17,7 @@ namespace Cjing3D
 		virtual void Tick();
 		virtual void Uninitialize();
 
-		void SetRenderPath(const SharedPtr<RenderPath>& renderPath);
+		void SetRenderPath(RenderPath* renderPath);
 
 	protected:
 		virtual void OnLoad() {}
@@ -32,8 +32,9 @@ namespace Cjing3D
 		bool mIsSkipFrame = true;
 		F32  mDeltaTimeAccumulator = 0;
 
-		SharedPtr<RenderPath> mRenderPath = nullptr;
 		SharedPtr<Engine>     mEngine = nullptr;
 		SharedPtr<GameWindow> mGameWindow = nullptr;
+
+		RenderPath* mRenderPath = nullptr;
 	};
 }

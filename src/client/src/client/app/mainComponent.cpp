@@ -2,7 +2,7 @@
 #include "core\helper\timer.h"
 #include "core\helper\profiler.h"
 #include "resource\resourceManager.h"
-#include "renderer\renderPath.h"
+#include "renderer\renderPath\renderPath.h"
 #include "renderer\renderer.h"
 
 namespace Cjing3D
@@ -44,7 +44,7 @@ namespace Cjing3D
 		mIsInitialized = false;
 	}
 
-	void MainComponent::SetRenderPath(const SharedPtr<RenderPath>& renderPath)
+	void MainComponent::SetRenderPath(RenderPath* renderPath)
 	{
 		if (mRenderPath != nullptr) {
 			mRenderPath->Stop();
@@ -126,13 +126,16 @@ namespace Cjing3D
 
 	void MainComponent::Compose()
 	{
-		Renderer::PresentBegin();
+		GPU::CommandList cmd;
+		GPU::CreateCommandlist(cmd);
+
+		Renderer::PresentBegin(cmd);
 		{
 			if (mRenderPath != nullptr) {
 				mRenderPath->Compose();
 			}
 		}
-		Renderer::PresentEnd();
+		Renderer::PresentEnd(cmd);
 	}
 
 }
