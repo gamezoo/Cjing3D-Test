@@ -21,12 +21,12 @@ namespace GPU
 	void Uninitialize();
 	GPU::GraphicsDevice* GetDevice();
 	void PresentBegin(CommandList& cmd);
-	void PresentEnd(CommandList& cmd);
+	void PresentEnd();
 	void EndFrame();
 	bool IsHandleValid(ResHandle handle);
 
-	bool CreateCommandlist(CommandList& cmd);
-	bool CompileCommandList(const CommandList& cmd);
+	CommandList* CreateCommandlist();
+	bool CompileCommandList(CommandList& cmd);
 	bool SubmitCommandList(const CommandList& cmd);
 	bool SubmitCommandList(Span<CommandList*> cmds);
 
@@ -35,6 +35,11 @@ namespace GPU
 	ResHandle CreateShader(SHADERSTAGES stage, const void* bytecode, size_t length);
 	ResHandle CreateSampler(const SamplerDesc* desc);
 	ResHandle CreatePipelineState(const PipelineStateDesc* desc);
-	void   DestroyResource(ResHandle handle);
+	ResHandle CreatePipelineBindingSet(const PipelineBindingSetDesc* desc);
+	void      DestroyResource(ResHandle handle);
+
+	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingSRV> srvs);
+	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingUAV> uavs);
+	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs);
 }
 }

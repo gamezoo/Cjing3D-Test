@@ -18,6 +18,7 @@ namespace GPU
 		RESOURCETYPE_COMMAND_LIST,
 		RESOURCETYPE_SAMPLER_STATE,
 		RESOURCETYPE_PIPELINE,
+		RESOURCETYPE_PIPELINE_BINDING_SET,
 		RESOURCETYPE_COUNT
 	};
 
@@ -69,6 +70,7 @@ namespace GPU
 		const T& operator*() const { return *mVal; }
 		const T* operator->() const { return mVal; }
 		explicit operator bool() const { return mVal != nullptr; }
+		const T* Ptr()const { return mVal; }
 
 	private:
 		const Concurrency::RWLock& mLock;
@@ -110,6 +112,7 @@ namespace GPU
 		T& operator*() { return *mVal; }
 		T* operator->() { return mVal; }
 		explicit operator bool() const { return mVal != nullptr; }
+		T* Ptr() { return mVal; }
 
 	private:
 		Concurrency::RWLock& mLock;
@@ -207,6 +210,8 @@ namespace GPU
 		ResHandle mResource;
 		FORMAT mFormat = FORMAT::FORMAT_UNKNOWN;
 		TEXTURE_VIEW_DIMENSION mDimension = TEXTURE_VIEW_DIMENSION::TEXTURE_VIEW_INVALID;
+		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
+		I32 mSubresourceIndex = -1;
 	};
 
 	struct BindingRTV : BindingView
@@ -225,31 +230,14 @@ namespace GPU
 		I32 mArraySize = 0;
 	};
 
-	struct BindingSRV : BindingView
-	{
-		I32 mMostDetailedMip_FirstElement = 0;
-		I32 mMipLevels_NumElements = 0;
-		I32 mFirstArraySlice = 0;
-		I32 mPlaneSlice = 0;
-		I32 mArraySize = 0;
-		I32 mStructureByteStride = 0;
-		F32 mResourceMinLODClamp = 0.0f;
-	};
-
-	struct BindingUAV : BindingView
-	{
-		I32 mMipSlice_FirstElement = 0;
-		I32 mFirstArraySliceFirstWSliceNumElements = 0;
-		I32 mPlaneSlice = 0;
-		I32 mArraySizeWSize = 0;
-		I32 mStructureByteStride = 0;
-	};
+	struct BindingSRV : BindingView {};
+	struct BindingUAV : BindingView {};
 
 	struct BindingBuffer
 	{
 		ResHandle mResource;
+		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
 		I32 mOffset = 0;
-		I32 mSize = 0;
 		I32 mStride = 0;
 	};
 
@@ -257,6 +245,13 @@ namespace GPU
 	{
 		BindingRTV mRTVs[MAX_BOUND_RTVS];
 		BindingDSV mDSV;
+	};
+
+	struct PipelineBindingSetDesc
+	{
+		I32 numSRVs = 0;
+		I32 numCBVs = 0;
+		I32 numUAVs = 0;
 	};
 
 	struct PipelineStateDesc

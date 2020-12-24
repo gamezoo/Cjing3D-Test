@@ -11,7 +11,7 @@ namespace Renderer
 	bool IsInitialized();
 	void Uninitialize();
 	void PresentBegin(GPU::CommandList& cmd);
-	void PresentEnd(GPU::CommandList& cmd);
+	void PresentEnd();
 	void EndFrame();
 }
 }

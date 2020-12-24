@@ -46,9 +46,9 @@ namespace Renderer
 		GPU::PresentBegin(cmd);
 	}
 
-	void PresentEnd(GPU::CommandList& cmd)
+	void PresentEnd()
 	{
-		GPU::PresentEnd(cmd);
+		GPU::PresentEnd();
 	}
 
 	void EndFrame()

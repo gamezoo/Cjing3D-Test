@@ -1,6 +1,7 @@
 #include "deviceDX11.h"
 #include "core\helper\debug.h"
 #include "core\platform\platform.h"
+#include "compileContextDX11.h"
 
 #ifdef CJING3D_RENDERER_DX11
 #ifdef CJING3D_PLATFORM_WIN32
@@ -974,33 +975,32 @@ namespace GPU
 
 	bool GraphicsDeviceDx11::CreateCommandlist(ResHandle handle)
 	{
-		Concurrency::ScopedMutex lock(mLock);
-		mUsedCmdMap.insert(handle.GetValue(), true);
-
 		auto cmd = mCommandLists.Write(handle);
 		if (*cmd != nullptr) {
 			return true;
 		}
 
-		*cmd = CJING_NEW(CommandListDX11)(*mDevice.Get());
+		*cmd = CJING_NEW(CommandListDX11)(*this);
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::CompileCommandList(ResHandle handle, const CommandList& cmd)
+	bool GraphicsDeviceDx11::CompileCommandList(ResHandle handle, CommandList& cmd)
 	{
-		return true;
+		auto ptr = mCommandLists.Write(handle);
+		if (*ptr == nullptr) {
+			return false;
+		}
+
+		CompileContextDX11 context(*this, **ptr);
+		return context.Compile(cmd);
 	}
 
 	bool GraphicsDeviceDx11::SubmitCommandLists(Span<ResHandle> handles)
 	{
-		Concurrency::ScopedMutex lock(mLock);
-
 		I32 cmdCount = handles.length();
-		DynamicArray<CommandListDX11*> commandLists(cmdCount);
+		DynamicArray<CommandListDX11*> commandLists;
 		for (I32 i = 0; i < cmdCount; i++)
 		{
-			mUsedCmdMap.erase(handles[i].GetValue());
-
 			auto cmd = mCommandLists.Read(handles[i]);
 			if (*cmd != nullptr)  {
 				commandLists.push(*cmd);
@@ -1016,35 +1016,18 @@ namespace GPU
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::SubmitCommandLists()
+	void GraphicsDeviceDx11::ResetCommandList(ResHandle handle)
 	{
-		Concurrency::ScopedMutex lock(mLock);
-		if (mUsedCmdMap.size() <= 0) {
-			return true;
+		auto cmd = mCommandLists.Write(handle);
+		if (*cmd == nullptr) {
+			return;
 		}
-
-		I32 cmdCount = mUsedCmdMap.size();
-		DynamicArray<CommandListDX11*> commandLists;
-		for (auto kvp : mUsedCmdMap)
-		{
-			auto cmd = mCommandLists.Read(ResHandle(kvp.first));
-			if (*cmd != nullptr) {
-				commandLists.push(*cmd);
-			}
-		}
-		mUsedCmdMap.clear();
-		
-		for (auto cmd : commandLists) {
-			if (!cmd->Submit(*mImmediateContext.Get())) {
-				return false;
-			}
-		}
-		return true;
+		(*cmd)->Reset();
 	}
 
-	void GraphicsDeviceDx11::PresentBegin(CommandList& cmd)
+	void GraphicsDeviceDx11::PresentBegin(ResHandle handle)
 	{
-		auto ptr = mCommandLists.Read(cmd.GetHanlde());
+		auto ptr = mCommandLists.Read(handle);
 		if (*ptr != nullptr)
 		{
 			// TODO: call commandList function
@@ -1057,15 +1040,13 @@ namespace GPU
 		}
 	}
 
-	void GraphicsDeviceDx11::PresentEnd(CommandList& cmd)
+	void GraphicsDeviceDx11::PresentEnd()
 	{
-		SubmitCommandLists();
 		mSwapChain->Present(mIsVsync, 0);
 	}
 
 	void GraphicsDeviceDx11::EndFrame()
 	{
-		mUsedCmdMap.clear();
 	}
 
 	bool GraphicsDeviceDx11::CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)
@@ -1365,6 +1346,100 @@ namespace GPU
 			}
 		}
 
+		return true;
+	}
+
+	bool GraphicsDeviceDx11::CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)
+	{
+		auto bindingSet = mPipelineBindingSets.Write(handle);
+		bindingSet->mSRVs.resize(desc->numSRVs);
+		bindingSet->mCBVs.resize(desc->numCBVs);
+		bindingSet->mUAVs.resize(desc->numUAVs);
+		return true;
+	}
+
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs)
+	{
+		auto bindingSet = mPipelineBindingSets.Write(handle);
+		I32 bindingIndex = slot;
+		for (int i = 0; i < srvs.length(); i++, bindingIndex++)
+		{
+			ResHandle resHandle = srvs[i].mResource;
+			Debug::CheckAssertion(resHandle.IsValid());
+			Debug::CheckAssertion(resHandle.GetType() == RESOURCETYPE_BUFFER || resHandle.GetType() == RESOURCETYPE_TEXTURE);
+			
+			I32 index = srvs[i].mSubresourceIndex;
+			ID3D11ShaderResourceView* srv = nullptr;
+			if (resHandle.GetType() == RESOURCETYPE_BUFFER) 
+			{
+				auto buffer = mBuffers.Read(resHandle);
+				srv = index < 0 ? buffer->mSRV.Get() : buffer->mSubresourceSRVs[index].Get();
+			}
+			else {
+				auto texture = mTextures.Read(resHandle);
+				srv = index < 0 ? texture->mSRV.Get() : texture->mSubresourceSRVs[index].Get();
+			}
+
+			Debug::CheckAssertion(bindingIndex < bindingSet->mSRVs.size());
+			BindingSRVDX11& desc = bindingSet->mSRVs[bindingIndex];
+			desc.mSRV = srv;
+			desc.mSlot = bindingIndex;
+			desc.mStage = srvs[i].mStage;
+		}
+		return true;
+	}
+
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs)
+	{
+		auto bindingSet = mPipelineBindingSets.Write(handle);
+		I32 bindingIndex = slot;
+		for (int i = 0; i < uavs.length(); i++, bindingIndex++)
+		{
+			ResHandle resHandle = uavs[i].mResource;
+			auto resType = resHandle.GetType();
+
+			Debug::CheckAssertion(resHandle.IsValid());
+			Debug::CheckAssertion(resType == RESOURCETYPE_BUFFER || resType == RESOURCETYPE_TEXTURE);
+
+			I32 index = uavs[i].mSubresourceIndex;
+			ID3D11UnorderedAccessView* uav = nullptr;
+			if (resHandle.GetType() == RESOURCETYPE_BUFFER)
+			{
+				auto buffer = mBuffers.Read(resHandle);
+				uav = index < 0 ? buffer->mUAV.Get() : buffer->mSubresourceUAVS[index].Get();
+			}
+			else {
+				auto texture = mTextures.Read(resHandle);
+				uav = index < 0 ? texture->mUAV.Get() : texture->mSubresourceUAVS[index].Get();
+			}
+
+			Debug::CheckAssertion(bindingIndex < bindingSet->mUAVs.size());
+			BindingUAVDX11& desc = bindingSet->mUAVs[bindingIndex];
+			desc.mUAV = uav;
+			desc.mSlot = bindingIndex;
+			desc.mStage = uavs[i].mStage;
+		}
+		return true;
+	}
+	
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs)
+	{
+		auto bindingSet = mPipelineBindingSets.Write(handle);
+		I32 bindingIndex = slot;
+		for (int i = 0; i < cbvs.length(); i++, bindingIndex++)
+		{
+			ResHandle resHandle = cbvs[i].mResource;
+			Debug::CheckAssertion(resHandle.IsValid());
+			Debug::CheckAssertion(resHandle.GetType() == RESOURCETYPE_BUFFER);
+
+			ID3D11Buffer* cbv = (ID3D11Buffer*)mBuffers.Read(resHandle)->mResource.Get();
+
+			Debug::CheckAssertion(bindingIndex < bindingSet->mCBVs.size());
+			BindingCBVDX11& desc = bindingSet->mCBVs[bindingIndex];
+			desc.mBuffer = cbv;
+			desc.mSlot = bindingIndex;
+			desc.mStage = cbvs[i].mStage;
+		}
 		return true;
 	}
 

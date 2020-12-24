@@ -15,11 +15,11 @@ namespace GPU
 		virtual ~GraphicsDevice();
 
 		virtual bool CreateCommandlist(ResHandle handle) = 0;
-		virtual bool CompileCommandList(ResHandle handle, const CommandList& cmd) = 0;
+		virtual bool CompileCommandList(ResHandle handle, CommandList& cmd) = 0;
 		virtual bool SubmitCommandLists(Span<ResHandle> handles) = 0;
-		virtual bool SubmitCommandLists() = 0;
-		virtual void PresentBegin(CommandList& cmd) = 0;
-		virtual void PresentEnd(CommandList& cmd) = 0;
+		virtual void ResetCommandList(ResHandle handle) = 0;
+		virtual void PresentBegin(ResHandle handle) = 0;
+		virtual void PresentEnd() = 0;
 		virtual void EndFrame() = 0;
 
 		virtual bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData) = 0;
@@ -27,6 +27,11 @@ namespace GPU
 		virtual bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length) = 0;
 		virtual bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc) = 0;
 		virtual bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc) = 0;
+		virtual bool CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs) = 0;
+
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
 

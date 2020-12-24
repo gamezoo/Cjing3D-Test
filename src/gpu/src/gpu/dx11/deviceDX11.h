@@ -6,26 +6,29 @@
 #include "gpu\device.h"
 #include "gpu\dx11\includeDX11.h"
 #include "gpu\dx11\resourceDX11.h"
-#include "gpu\dx11\commandListDX11.h"
 #include "core\platform\platform.h"
 #include "core\container\hashMap.h"
 
 namespace Cjing3D {
 namespace GPU
 {
+	class CompileContextDX11;
+
 	class GraphicsDeviceDx11 : public GraphicsDevice
 	{
 	public:
+		friend class CompileContextDX11;
+		friend class CommandListDX11;
+
 		GraphicsDeviceDx11(Platform::WindowType window, bool isFullScreen = false, bool isDebug = false);
 		virtual ~GraphicsDeviceDx11();
 
 		bool CreateCommandlist(ResHandle handle)override;
-		bool CompileCommandList(ResHandle handle, const CommandList& cmd)override;
+		bool CompileCommandList(ResHandle handle, CommandList& cmd)override;
 		bool SubmitCommandLists(Span<ResHandle> handles)override;
-		bool SubmitCommandLists()override;
-
-		void PresentBegin(CommandList& cmd)override;
-		void PresentEnd(CommandList& cmd)override;
+		void ResetCommandList(ResHandle handle)override;
+		void PresentBegin(ResHandle handle)override;
+		void PresentEnd()override;
 		void EndFrame() override;
 
 		bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)override;
@@ -33,9 +36,17 @@ namespace GPU
 		bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)override;
 		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
 		bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)override;
+		bool CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)override;
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs)override;
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs)override;
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs)override;
+
 		void DestroyResource(ResHandle handle)override;
 		void SetResourceName(ResHandle resource, const char* name)override;
 		void SetResolution(const U32x2 size)override;
+
+		ID3D11Device& GetDevice() { return *mDevice.Get(); }
+		ID3D11DeviceContext& GetDeviceContext() { return *mImmediateContext.Get(); }
 
 	private:
 		int CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount);
@@ -45,7 +56,6 @@ namespace GPU
 		ComPtr<ID3D11Device> mDevice;
 		ComPtr<IDXGISwapChain1> mSwapChain;
 		ComPtr<ID3D11DeviceContext> mImmediateContext;
-		ComPtr<ID3D11DeviceContext> mDeviceContexts[MAX_COMMANDLIST_COUNT];
 		ComPtr<ID3D11Texture2D> mBackBuffer;
 		ComPtr<ID3D11RenderTargetView> mRenderTargetView;
 
@@ -55,10 +65,8 @@ namespace GPU
 		ResourcePool<ShaderDX11> mShaders;
 		ResourcePool<SamplerStateDX11> mSamplers;
 		ResourcePool<PipelineStateDX11> mPipelineStates;
+		ResourcePool<PipelineBindingSetDX11> mPipelineBindingSets;
 		ResourcePool<CommandListDX11*> mCommandLists;
-
-		Concurrency::Mutex mLock;
-		HashMap<U32, bool> mUsedCmdMap;
 	};
 }
 }

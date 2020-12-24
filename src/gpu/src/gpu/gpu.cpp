@@ -27,6 +27,9 @@ namespace GPU
 		Concurrency::Mutex mMutex;
 		U64 mCurrentFrameCount = 0;
 
+		StaticArray<CommandList, MAX_COMMANDLIST_COUNT> mCommandListHandles;
+		volatile I32 mUsedCmdCount = 0;
+
 	public:
 		ResHandle AllocHandle(ResourceType type)
 		{
@@ -107,6 +110,17 @@ namespace GPU
 			mImpl->ProcessReleasedHandles();
 		}
 
+		// release command list handle
+		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++)
+		{
+			auto handle = mImpl->mCommandListHandles[i].GetHanlde();
+			if (handle != ResHandle::INVALID_HANDLE)
+			{
+				mImpl->mDevice->DestroyResource(handle);
+				mImpl->mHandleAllocator.Free(handle);
+			}
+		}
+
 #ifdef DEBUG
 		I32 aliveHandles = false;
 		for (I32 i = 0; i < (I32)ResourceType::RESOURCETYPE_COUNT; i++) {
@@ -142,10 +156,8 @@ namespace GPU
 #ifdef DEBUG
 			system("pause");
 #endif // DEBUG
-
 		}
 #endif
-
 		CJING_SAFE_DELETE(mImpl);
 	}
 
@@ -156,12 +168,29 @@ namespace GPU
 
 	void PresentBegin(CommandList& cmd)
 	{
-		mImpl->mDevice->PresentBegin(cmd);
+		mImpl->mDevice->PresentBegin(cmd.GetHanlde());
 	}
 
-	void PresentEnd(CommandList& cmd)
+	void PresentEnd()
 	{
-		mImpl->mDevice->PresentEnd(cmd);
+		U32 count = mImpl->mUsedCmdCount;
+		Concurrency::AtomicExchange(&mImpl->mUsedCmdCount, 0);
+		if (count > 0)
+		{
+			DynamicArray<ResHandle> handles;
+			for (U32 index = 0; index < count; index++) 
+			{
+				auto& cmd = mImpl->mCommandListHandles[index];
+				auto handle = cmd.GetHanlde();
+				if (handle != ResHandle::INVALID_HANDLE)
+				{
+					mImpl->mDevice->CompileCommandList(handle, cmd);
+					handles.push(handle);
+				}
+			}
+			mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
+		}
+		mImpl->mDevice->PresentEnd();
 	}
 
 	void EndFrame()
@@ -176,20 +205,28 @@ namespace GPU
 		return mImpl->mHandleAllocator.IsValid(handle);
 	}
 
-	bool CreateCommandlist(CommandList& cmd)
+	CommandList* CreateCommandlist()
 	{
-		Debug::CheckAssertion(cmd.GetHanlde() == ResHandle::INVALID_HANDLE);
-
-		ResHandle handle = mImpl->AllocHandle(RESOURCETYPE_COMMAND_LIST);
-		bool ret = mImpl->CheckHandle(handle, mImpl->mDevice->CreateCommandlist(handle));
-		if (ret) {
-			cmd.SetHanlde(handle);
+		U32 index = Concurrency::AtomicIncrement(&mImpl->mUsedCmdCount) - 1;
+		CommandList* cmd = &mImpl->mCommandListHandles[index];
+		if (cmd->GetHanlde() == ResHandle::INVALID_HANDLE)
+		{
+			ResHandle handle = mImpl->AllocHandle(RESOURCETYPE_COMMAND_LIST);
+			bool ret = mImpl->CheckHandle(handle, mImpl->mDevice->CreateCommandlist(handle));
+			if (!ret) {
+				return nullptr;
+			}
+			cmd->SetHanlde(handle);
 		}
-
-		return ret;
+		else 
+		{
+			mImpl->mDevice->ResetCommandList(cmd->GetHanlde());
+			cmd->Reset();
+		}
+		return cmd;
 	}
 
-	bool CompileCommandList(const CommandList& cmd)
+	bool CompileCommandList(CommandList& cmd)
 	{
 		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
 		return mImpl->mDevice->CompileCommandList(cmd.GetHanlde(), cmd);
@@ -198,6 +235,9 @@ namespace GPU
 	bool SubmitCommandList(const CommandList& cmd)
 	{
 		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
+		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
+
+		Concurrency::AtomicDecrement(&mImpl->mUsedCmdCount);
 		auto handle = cmd.GetHanlde();
 		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(&handle, 1));
 	}
@@ -212,6 +252,13 @@ namespace GPU
 				handles.push(handle);
 			}
 		}
+
+		if (handles.size() <= 0) {
+			return false;
+		}
+
+		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
+		Concurrency::AtomicSub(&mImpl->mUsedCmdCount, handles.size());
 		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
 	}
 
@@ -250,11 +297,36 @@ namespace GPU
 		return handle;
 	}
 
+	ResHandle CreatePipelineBindingSet(const PipelineBindingSetDesc* desc)
+	{
+		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_PIPELINE_BINDING_SET);
+		mImpl->CheckHandle(handle, mImpl->mDevice->CreatePipelineBindingSet(handle, desc));
+		return handle;
+	}
+
 	void DestroyResource(ResHandle handle)
 	{
 		if (handle && IsHandleValid(handle)) {
 			mImpl->DestroyHandle(handle);
 		}
+	}
+
+	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingSRV> srvs)
+	{
+		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, srvs));
+	}
+
+	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingUAV> uavs)
+	{
+		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, uavs));
+	}
+
+	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs)
+	{
+		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, cbvs));
 	}
 }
 }

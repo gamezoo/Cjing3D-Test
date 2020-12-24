@@ -19,6 +19,7 @@ namespace GPU {
 #endif
 
 	static const I32 MAX_BOUND_RTVS = 8;
+	static const I32 MAX_VERTEX_STREAMS = 8;
 
 	enum GraphicsDeviceType
 	{
