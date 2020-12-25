@@ -1,5 +1,7 @@
 #include "compileContextDX11.h"
+#include "gpu\gpu.h"
 #include "core\string\stringUtils.h"
+#include "core\memory\memory.h"
 
 namespace Cjing3D
 {
@@ -37,9 +39,14 @@ namespace GPU
             GPU_COMMAND_CASE(CommandBindIndexBuffer);
             GPU_COMMAND_CASE(CommandBindPipelineState);
             GPU_COMMAND_CASE(CommandBindPipelineBindingSet);
+            GPU_COMMAND_CASE(CommandBindViewport);
+            GPU_COMMAND_CASE(CommandBindScissorRect);
             GPU_COMMAND_CASE(CommandDraw);
             GPU_COMMAND_CASE(CommandDispatch);
             GPU_COMMAND_CASE(CommandDispatchIndirect);
+            GPU_COMMAND_CASE(CommandBeginFrameBindingSet);
+            GPU_COMMAND_CASE(CommandEndFrameBindingSet);
+            GPU_COMMAND_CASE(CommandUpdateBuffer);
 
             case CommandBeginEvent::TYPE:
             {
@@ -67,7 +74,6 @@ namespace GPU
         }
 
         Debug::CheckAssertion(mEventStack.size() == 0);
-
         return true;
     }
 
@@ -201,6 +207,60 @@ namespace GPU
             }
         }
 
+        // sampler states
+        for (const auto& sam : bindingSet->mSAMs)
+        {
+            switch (sam.mStage)
+            {
+            case SHADERSTAGES_VS:
+                context->VSSetSamplers(sam.mSlot, 1, &sam.mSampler);
+                break;
+            case SHADERSTAGES_GS:
+                context->GSSetSamplers(sam.mSlot, 1, &sam.mSampler);
+                break;
+            case SHADERSTAGES_HS:
+                context->HSSetSamplers(sam.mSlot, 1, &sam.mSampler);
+                break;
+            case SHADERSTAGES_DS:
+                context->DSSetSamplers(sam.mSlot, 1, &sam.mSampler);
+                break;
+            case SHADERSTAGES_PS:
+                context->PSSetSamplers(sam.mSlot, 1, &sam.mSampler);
+                break;
+            case SHADERSTAGES_CS:
+                context->CSSetSamplers(sam.mSlot, 1, &sam.mSampler);
+                break;
+            default:
+                break;
+            }
+        }
+
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandBindViewport* cmd)
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = cmd->mViewport.mWidth;
+        vp.Height   = cmd->mViewport.mHeight;
+        vp.MinDepth = cmd->mViewport.mMinDepth;
+        vp.MaxDepth = cmd->mViewport.mMaxDepth;
+        vp.TopLeftX = cmd->mViewport.mTopLeftX;
+        vp.TopLeftY = cmd->mViewport.mTopLeftY;
+
+        mCommandList.GetContext()->RSSetViewports(1, &vp);
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandBindScissorRect* cmd)
+    {
+        D3D11_RECT rect = {}; 
+        rect.left   = (LONG)cmd->mRect.mLeft;
+        rect.top    = (LONG)cmd->mRect.mTop;
+        rect.right  = (LONG)cmd->mRect.mRight;
+        rect.bottom = (LONG)cmd->mRect.mBottom;
+ 
+        mCommandList.GetContext()->RSSetScissorRects(1, &rect);
         return true;
     }
 
@@ -249,6 +309,121 @@ namespace GPU
             (ID3D11Buffer*)buffer->mResource.Get(),
             cmd->mOffset
         );
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandBeginFrameBindingSet* cmd)
+    {
+        auto bindingSet = mDevice.mFrameBindingSets.Read(cmd->mHandle);
+        if (!bindingSet) {
+            return false;
+        }
+
+        mCommandList.ActiveFrameBindingSet(bindingSet.Ptr());
+
+        ID3D11DepthStencilView* dsv = nullptr;
+        ID3D11RenderTargetView* rtvs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+        U32 rtvIndex = 0;
+        for (const auto& attachment : bindingSet->mDesc.mAttachments)
+        {
+            auto texture = mDevice.mTextures.Read(attachment.mResource);
+            if (!texture) {
+                continue;
+            }
+
+            switch (attachment.mType)
+            {
+            case BindingFrameAttachment::RENDERTARGET:
+            {
+                ID3D11RenderTargetView* rtv = attachment.mSubresourceIndex < 0 ? texture->mRTV.Get() : texture->mSubresourceRTVs[attachment.mSubresourceIndex].Get();     
+                // clear rtv when rtv loaded
+                if (attachment.mLoadOperator == BindingFrameAttachment::LOAD_CLEAR) {
+                    mCommandList.GetContext()->ClearRenderTargetView(rtv, texture->mDesc.mClearValue.mColor);
+                }
+                rtvs[rtvIndex++] = rtv;
+            }
+            break;
+            case BindingFrameAttachment::DEPTH_STENCIL:
+            {
+                dsv = attachment.mSubresourceIndex < 0 ? texture->mDSV.Get() : texture->mSubresourceDSVs[attachment.mSubresourceIndex].Get();
+                // clear dsv when dsv loaded
+                if (attachment.mLoadOperator == BindingFrameAttachment::LOAD_CLEAR) 
+                {
+                    U32 flag = D3D11_CLEAR_DEPTH;
+                    if (GPU::IsFormatSupportStencil(texture->mDesc.mFormat)) {
+                        flag |= D3D11_CLEAR_STENCIL;
+                    }
+
+                    mCommandList.GetContext()->ClearDepthStencilView(
+                        dsv,
+                        flag, 
+                        texture->mDesc.mClearValue.mDepth, 
+                        texture->mDesc.mClearValue.mStencil);
+                }
+            }
+            break;
+            default:
+                break;
+            }
+        }
+       
+        mCommandList.GetContext()->OMSetRenderTargets(rtvIndex, rtvs, dsv);
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandEndFrameBindingSet* cmd)
+    {
+        if (mCommandList.GetActiveFrameBindingSet() == nullptr) {
+            return false;
+        }
+
+        mCommandList.GetContext()->OMSetRenderTargets(0, nullptr, nullptr);
+        mCommandList.ActiveFrameBindingSet(nullptr);
+
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandUpdateBuffer* cmd)
+    {
+        auto buffer = mDevice.mBuffers.Read(cmd->mHandle);
+        if (!buffer || cmd->mSize == 0) {
+            return false;
+        }
+
+        ID3D11DeviceContext& context = *mCommandList.GetContext();
+        const GPUBufferDesc& desc = buffer->mDesc;
+        if (desc.mUsage == USAGE_DYNAMIC)
+        {
+            D3D11_MAPPED_SUBRESOURCE mappedResource;
+            HRESULT result = context.Map(buffer->mResource.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+            Debug::ThrowIfFailed(result, "Failed to map buffer:%08x", result);
+
+            I32 dataSize = std::min(dataSize, (I32)desc.mByteWidth);
+            dataSize = dataSize >= 0 ? dataSize : (I32)desc.mByteWidth;
+
+            Memory::Memcpy(mappedResource.pData, cmd->mData, dataSize);
+            context.Unmap(buffer->mResource.Get(), 0);
+        }
+        else if (desc.mBindFlags & BIND_CONSTANT_BUFFER)
+        {
+            context.UpdateSubresource(buffer->mResource.Get(), 0, nullptr, cmd->mData, 0, 0);
+        }
+        else
+        {
+            I32 dataSize = std::min(dataSize, (I32)desc.mByteWidth);
+            dataSize = dataSize >= 0 ? dataSize : (I32)desc.mByteWidth;
+
+            D3D11_BOX box = {};
+            box.left = 0;
+            box.right = dataSize;
+            box.top = 0;
+            box.bottom = 1;
+            box.front = 0;
+            box.back = 1;
+
+            context.UpdateSubresource(buffer->mResource.Get(), 0, &box, cmd->mData, 0, 0);
+        }
+
         return true;
     }
 }

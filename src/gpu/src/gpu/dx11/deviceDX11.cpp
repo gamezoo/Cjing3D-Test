@@ -1,4 +1,5 @@
 #include "deviceDX11.h"
+#include "gpu\gpu.h"
 #include "core\helper\debug.h"
 #include "core\platform\platform.h"
 #include "compileContextDX11.h"
@@ -1030,7 +1031,6 @@ namespace GPU
 		auto ptr = mCommandLists.Read(handle);
 		if (*ptr != nullptr)
 		{
-			// TODO: call commandList function
 			auto deviceContext = (*ptr)->GetContext();
 			ID3D11RenderTargetView* rtv = mRenderTargetView.Get();
 			deviceContext->OMSetRenderTargets(1, &rtv, 0);
@@ -1047,6 +1047,13 @@ namespace GPU
 
 	void GraphicsDeviceDx11::EndFrame()
 	{
+	}
+
+	bool GraphicsDeviceDx11::CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc)
+	{
+		auto bindingSet = mFrameBindingSets.Write(handle);
+		bindingSet->mDesc = *desc;
+		return true;
 	}
 
 	bool GraphicsDeviceDx11::CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)
@@ -1358,10 +1365,10 @@ namespace GPU
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSRV> srvs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
-		I32 bindingIndex = slot;
+		I32 bindingIndex = index;
 		for (int i = 0; i < srvs.length(); i++, bindingIndex++)
 		{
 			ResHandle resHandle = srvs[i].mResource;
@@ -1383,16 +1390,16 @@ namespace GPU
 			Debug::CheckAssertion(bindingIndex < bindingSet->mSRVs.size());
 			BindingSRVDX11& desc = bindingSet->mSRVs[bindingIndex];
 			desc.mSRV = srv;
-			desc.mSlot = bindingIndex;
+			desc.mSlot = srvs[i].mSlot;
 			desc.mStage = srvs[i].mStage;
 		}
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingUAV> uavs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
-		I32 bindingIndex = slot;
+		I32 bindingIndex = index;
 		for (int i = 0; i < uavs.length(); i++, bindingIndex++)
 		{
 			ResHandle resHandle = uavs[i].mResource;
@@ -1416,16 +1423,16 @@ namespace GPU
 			Debug::CheckAssertion(bindingIndex < bindingSet->mUAVs.size());
 			BindingUAVDX11& desc = bindingSet->mUAVs[bindingIndex];
 			desc.mUAV = uav;
-			desc.mSlot = bindingIndex;
+			desc.mSlot = uavs[i].mSlot;
 			desc.mStage = uavs[i].mStage;
 		}
 		return true;
 	}
 	
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingBuffer> cbvs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
-		I32 bindingIndex = slot;
+		I32 bindingIndex = index;
 		for (int i = 0; i < cbvs.length(); i++, bindingIndex++)
 		{
 			ResHandle resHandle = cbvs[i].mResource;
@@ -1433,12 +1440,31 @@ namespace GPU
 			Debug::CheckAssertion(resHandle.GetType() == RESOURCETYPE_BUFFER);
 
 			ID3D11Buffer* cbv = (ID3D11Buffer*)mBuffers.Read(resHandle)->mResource.Get();
-
 			Debug::CheckAssertion(bindingIndex < bindingSet->mCBVs.size());
 			BindingCBVDX11& desc = bindingSet->mCBVs[bindingIndex];
 			desc.mBuffer = cbv;
-			desc.mSlot = bindingIndex;
+			desc.mSlot = cbvs[i].mSlot;
 			desc.mStage = cbvs[i].mStage;
+		}
+		return true;
+	}
+
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSAM> sams)
+	{
+		auto bindingSet = mPipelineBindingSets.Write(handle);
+		I32 bindingIndex = index;
+		for (int i = 0; i < sams.length(); i++, bindingIndex++)
+		{
+			ResHandle resHandle = sams[i].mResource;
+			Debug::CheckAssertion(resHandle.IsValid());
+			Debug::CheckAssertion(resHandle.GetType() == RESOURCETYPE_SAMPLER_STATE);
+
+			ID3D11SamplerState* sam = mSamplers.Read(resHandle)->mHandle.Get();
+			Debug::CheckAssertion(bindingIndex < bindingSet->mSAMs.size());
+			BindingSamplerDX11& desc = bindingSet->mSAMs[bindingIndex];
+			desc.mSampler = sam;
+			desc.mSlot = sams[i].mSlot;
+			desc.mStage = sams[i].mStage;
 		}
 		return true;
 	}
@@ -1886,7 +1912,7 @@ namespace GPU
 			else
 			{
 				// typed buffer，存储为numElements个structureByteStride大小的元素
-				U32 stride = GetFormatStride(bufferDesc.mFormat);
+				U32 stride = GPU::GetFormatStride(bufferDesc.mFormat);
 				srvDesc.Format = _ConvertFormat(bufferDesc.mFormat);
 				srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 				srvDesc.Buffer.FirstElement = offset / stride;
@@ -1932,7 +1958,7 @@ namespace GPU
 			else
 			{
 				// typed buffer，存储为numElements个structureByteStride大小的元素
-				U32 stride = GetFormatStride(bufferDesc.mFormat);
+				U32 stride = GPU::GetFormatStride(bufferDesc.mFormat);
 				uavDesc.Format = _ConvertFormat(bufferDesc.mFormat);
 				uavDesc.Buffer.FirstElement = offset / stride;
 				uavDesc.Buffer.NumElements = std::min(size, bufferDesc.mByteWidth - offset) / stride;

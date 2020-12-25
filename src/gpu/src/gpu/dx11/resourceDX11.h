@@ -94,14 +94,35 @@ namespace GPU
 		ID3D11UnorderedAccessView* mUAV = nullptr;
 	};
 
+	struct BindingSamplerDX11
+	{
+		SHADERSTAGES mStage = SHADERSTAGES::SHADERSTAGES_COUNT;
+		I32 mSlot = 0;
+		ID3D11SamplerState* mSampler = nullptr;
+	};
+
 	struct PipelineBindingSetDX11
 	{
 		DynamicArray<BindingSRVDX11> mSRVs;
 		DynamicArray<BindingCBVDX11> mCBVs;
 		DynamicArray<BindingUAVDX11> mUAVs;
+		DynamicArray<BindingSamplerDX11> mSAMs;
+	};
+
+	struct FrameBindingSetDX11
+	{
+		FrameBindingSetDesc mDesc;
 	};
 
 	class GraphicsDeviceDx11;
+
+	struct GPUAllocatorDX11
+	{
+		static const U32 DefaultBufferSize = 1024 * 1024;
+
+		ResHandle mBuffer;
+		U32 mOffset = 0;
+	};
 
 	class CommandListDX11
 	{
@@ -118,16 +139,20 @@ namespace GPU
 		bool IsValid()const { return mDeviceContext.Get() != nullptr; }
 		void ActivePipelineState(const PipelineStateDX11* pso);
 		void RefreshPipelineState();
+		void ActiveFrameBindingSet(const FrameBindingSetDX11* bindingSet);
+		const FrameBindingSetDX11* GetActiveFrameBindingSet() { return mActiveFrameBindingSet; }
 
 	private:
 		GraphicsDeviceDx11& mDevice;
-
+		GPUAllocatorDX11 mAllocator;
 		ComPtr<ID3D11DeviceContext> mDeviceContext;
 		ComPtr<ID3D11CommandList> mCommandList;
 		ComPtr<ID3DUserDefinedAnnotation> mUserDefinedAnnotations;
 
+		const FrameBindingSetDX11* mActiveFrameBindingSet = nullptr;
 		const PipelineStateDX11* mActivePSO = nullptr;
 		bool mIsPSODirty = true;
+		
 		// prev state info
 		ID3D11VertexShader* mPrevVertexShader = nullptr;
 		ID3D11PixelShader* mPrevPixelShader = nullptr;

@@ -19,6 +19,7 @@ namespace GPU
 		RESOURCETYPE_SAMPLER_STATE,
 		RESOURCETYPE_PIPELINE,
 		RESOURCETYPE_PIPELINE_BINDING_SET,
+		RESOURCETYPE_FRAME_BINDING_SET,
 		RESOURCETYPE_COUNT
 	};
 
@@ -212,26 +213,12 @@ namespace GPU
 		TEXTURE_VIEW_DIMENSION mDimension = TEXTURE_VIEW_DIMENSION::TEXTURE_VIEW_INVALID;
 		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
 		I32 mSubresourceIndex = -1;
-	};
-
-	struct BindingRTV : BindingView
-	{
-		I32 mMipSlice = 0;
-		I32 mFirstArraySlice = 0;
-		I32 mPlaneSlice_FirstWSlice = 0;
-		I32 mArraySize = 0;
-	};
-
-	struct BindingDSV : BindingView
-	{
-		DSV_FLAGS mFlags = DSV_FLAGS::DSV_FLAGS_NONE;
-		I32 mMipSlice = 0;
-		I32 mFfirstArraySlice = 0;
-		I32 mArraySize = 0;
+		I32 mSlot = 0;
 	};
 
 	struct BindingSRV : BindingView {};
 	struct BindingUAV : BindingView {};
+	struct BindingSAM : BindingView {};
 
 	struct BindingBuffer
 	{
@@ -239,12 +226,32 @@ namespace GPU
 		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
 		I32 mOffset = 0;
 		I32 mStride = 0;
+		I32 mSlot = 0;
+	};
+
+	struct BindingFrameAttachment
+	{
+		enum TYPE
+		{
+			RENDERTARGET,
+			DEPTH_STENCIL,
+		} 
+		mType = RENDERTARGET;
+
+		enum LoadOperation
+		{
+			LOAD_DEFAULT,
+			LOAD_CLEAR,
+		}
+		mLoadOperator = LOAD_DEFAULT;
+
+		I32 mSubresourceIndex = -1;
+		ResHandle mResource;
 	};
 
 	struct FrameBindingSetDesc
 	{
-		BindingRTV mRTVs[MAX_BOUND_RTVS];
-		BindingDSV mDSV;
+		DynamicArray<BindingFrameAttachment> mAttachments;
 	};
 
 	struct PipelineBindingSetDesc
@@ -267,5 +274,17 @@ namespace GPU
 		InputLayoutDesc* mInputLayout = nullptr;
 		PRIMITIVE_TOPOLOGY mPrimitiveTopology = TRIANGLELIST;
 	};
+
+	namespace Binding
+	{
+		BindingBuffer ConstantBuffer(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingBuffer VertexBuffer(ResHandle handle, I32 offset, I32 stride);
+		BindingBuffer IndexBuffer(ResHandle handle, I32 offset);
+		BindingSRV    Texture(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingSRV    Buffer(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingUAV    RWTexture(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingUAV    RWBuffer(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingSAM    Sampler(ResHandle handle, SHADERSTAGES stage, I32 slot);
+	}
 }
 }

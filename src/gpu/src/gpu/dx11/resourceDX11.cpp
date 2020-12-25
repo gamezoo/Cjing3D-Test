@@ -1,6 +1,7 @@
 #include "resourceDX11.h"
 #include "deviceDX11.h"
 #include "gpu\commandList.h"
+#include "gpu\gpu.h"
 
 namespace Cjing3D
 {
@@ -23,10 +24,30 @@ namespace GPU
 			Debug::Error("[CommandList] Failed to set user defined annotations: %08X", hr);
 			return;
 		}
+
+		// create gpu allocator buffer
+		GPUBufferDesc desc = {};
+		desc.mByteWidth = GPUAllocatorDX11::DefaultBufferSize;
+		desc.mBindFlags = BIND_SHADER_RESOURCE | BIND_INDEX_BUFFER | BIND_VERTEX_BUFFER;
+		desc.mUsage = USAGE_DYNAMIC;
+		desc.mCPUAccessFlags = CPU_ACCESS_WRITE;
+		desc.mMiscFlags = RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+
+		mAllocator.mBuffer = GPU::AllocateHandle(RESOURCETYPE_BUFFER);
+		if (!device.CreateBuffer(mAllocator.mBuffer, &desc, nullptr))
+		{
+			GPU::DestroyResource(mAllocator.mBuffer);
+			Debug::Error("[CommandList] Failed to create buffer.");
+			return;
+		}
+		device.SetResourceName(mAllocator.mBuffer, "CommandListFrameAllocator");
 	}
 
 	CommandListDX11::~CommandListDX11()
 	{
+		if (mAllocator.mBuffer != ResHandle::INVALID_HANDLE) {
+			GPU::DestroyResource(mAllocator.mBuffer);
+		}
 	}
 
 	ID3D11DeviceContext* CommandListDX11::GetContext()
@@ -76,6 +97,29 @@ namespace GPU
 		mPrevDepthStencilState = nullptr;
 		mPrevBlendState = nullptr;
 		mPrevPrimitiveTopology = UNDEFINED_TOPOLOGY;
+
+		// reset active obj
+		mActiveFrameBindingSet = nullptr;
+		mActivePSO = nullptr;
+		mIsPSODirty = false;
+
+		// reset viewport
+		D3D11_VIEWPORT vp = {};
+		vp.Width    = (F32)mDevice.mResolution.x();
+		vp.Height   = (F32)mDevice.mResolution.y();
+		vp.MinDepth = 0.0f;
+		vp.MaxDepth = 1.0f;
+		vp.TopLeftX = 0;
+		vp.TopLeftY = 0;
+		mDeviceContext->RSSetViewports(1, &vp);
+
+		// reset scissor rect
+		D3D11_RECT rect = {};
+		rect.left   = INT32_MIN;
+		rect.top    = INT32_MIN;
+		rect.right  = INT32_MAX;
+		rect.bottom = INT32_MAX;
+		mDeviceContext->RSSetScissorRects(1, &rect);
 	}
 
 	void CommandListDX11::RefreshPipelineState()
@@ -166,6 +210,11 @@ namespace GPU
 			mDeviceContext->IASetPrimitiveTopology(primitiveTopology);
 			mPrevPrimitiveTopology = desc.mPrimitiveTopology;
 		}
+	}
+
+	void CommandListDX11::ActiveFrameBindingSet(const FrameBindingSetDX11* bindingSet)
+	{
+		mActiveFrameBindingSet = bindingSet;
 	}
 }
 }

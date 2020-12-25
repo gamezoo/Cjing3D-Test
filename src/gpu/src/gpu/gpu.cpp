@@ -104,12 +104,6 @@ namespace GPU
 			return;
 		}
 
-		for (int i = 0; i < MaxGPUFrames; i++) 
-		{
-			mImpl->mCurrentFrameCount++;
-			mImpl->ProcessReleasedHandles();
-		}
-
 		// release command list handle
 		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++)
 		{
@@ -119,6 +113,12 @@ namespace GPU
 				mImpl->mDevice->DestroyResource(handle);
 				mImpl->mHandleAllocator.Free(handle);
 			}
+		}
+
+		for (int i = 0; i < MaxGPUFrames; i++) 
+		{
+			mImpl->mCurrentFrameCount++;
+			mImpl->ProcessReleasedHandles();
 		}
 
 #ifdef DEBUG
@@ -220,9 +220,10 @@ namespace GPU
 		}
 		else 
 		{
-			mImpl->mDevice->ResetCommandList(cmd->GetHanlde());
 			cmd->Reset();
 		}
+
+		mImpl->mDevice->ResetCommandList(cmd->GetHanlde());
 		return cmd;
 	}
 
@@ -260,6 +261,18 @@ namespace GPU
 		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
 		Concurrency::AtomicSub(&mImpl->mUsedCmdCount, handles.size());
 		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
+	}
+
+	ResHandle AllocateHandle(ResourceType type)
+	{
+		return mImpl->AllocHandle(type);
+	}
+
+	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc)
+	{
+		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_FRAME_BINDING_SET);
+		mImpl->CheckHandle(handle, mImpl->mDevice->CreateFrameBindingSet(handle, desc));
+		return handle;
 	}
 
 	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData)
@@ -327,6 +340,96 @@ namespace GPU
 	{
 		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
 		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, cbvs));
+	}
+
+	U32 GetFormatStride(FORMAT value)
+	{
+		switch (value)
+		{
+		case FORMAT_R32G32B32A32_FLOAT:
+		case FORMAT_R32G32B32A32_UINT:
+		case FORMAT_R32G32B32A32_SINT:
+			return 16;
+
+		case FORMAT_R32G32B32_FLOAT:
+		case FORMAT_R32G32B32_UINT:
+		case FORMAT_R32G32B32_SINT:
+			return 12;
+
+		case FORMAT_R16G16B16A16_FLOAT:
+		case FORMAT_R16G16B16A16_UNORM:
+		case FORMAT_R16G16B16A16_UINT:
+		case FORMAT_R16G16B16A16_SNORM:
+		case FORMAT_R16G16B16A16_SINT:
+			return 8;
+
+		case FORMAT_R32G32_FLOAT:
+		case FORMAT_R32G32_UINT:
+		case FORMAT_R32G32_SINT:
+		case FORMAT_R32G8X24_TYPELESS:
+		case FORMAT_D32_FLOAT_S8X24_UINT:
+			return 8;
+
+		case FORMAT_R10G10B10A2_UNORM:
+		case FORMAT_R10G10B10A2_UINT:
+		case FORMAT_R11G11B10_FLOAT:
+		case FORMAT_R8G8B8A8_UNORM:
+		case FORMAT_R8G8B8A8_UNORM_SRGB:
+		case FORMAT_R8G8B8A8_UINT:
+		case FORMAT_R8G8B8A8_SNORM:
+		case FORMAT_R8G8B8A8_SINT:
+		case FORMAT_B8G8R8A8_UNORM:
+		case FORMAT_B8G8R8A8_UNORM_SRGB:
+		case FORMAT_R16G16_FLOAT:
+		case FORMAT_R16G16_UNORM:
+		case FORMAT_R16G16_UINT:
+		case FORMAT_R16G16_SNORM:
+		case FORMAT_R16G16_SINT:
+		case FORMAT_R32_TYPELESS:
+		case FORMAT_D32_FLOAT:
+		case FORMAT_R32_FLOAT:
+		case FORMAT_R32_UINT:
+		case FORMAT_R32_SINT:
+		case FORMAT_R24G8_TYPELESS:
+		case FORMAT_D24_UNORM_S8_UINT:
+			return 4;
+
+		case FORMAT_R8G8_UNORM:
+		case FORMAT_R8G8_UINT:
+		case FORMAT_R8G8_SNORM:
+		case FORMAT_R8G8_SINT:
+		case FORMAT_R16_TYPELESS:
+		case FORMAT_R16_FLOAT:
+		case FORMAT_D16_UNORM:
+		case FORMAT_R16_UNORM:
+		case FORMAT_R16_UINT:
+		case FORMAT_R16_SNORM:
+		case FORMAT_R16_SINT:
+			return 2;
+
+		case FORMAT_R8_UNORM:
+		case FORMAT_R8_UINT:
+		case FORMAT_R8_SNORM:
+		case FORMAT_R8_SINT:
+			return 1;
+
+		default:
+			break;
+		}
+		return 16;
+	}
+
+	bool IsFormatSupportStencil(FORMAT value)
+	{
+		switch (value)
+		{
+		case FORMAT_R32G8X24_TYPELESS:
+		case FORMAT_D32_FLOAT_S8X24_UINT:
+		case FORMAT_R24G8_TYPELESS:
+		case FORMAT_D24_UNORM_S8_UINT:
+			return true;
+		}
+		return false;
 	}
 }
 }

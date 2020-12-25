@@ -29,6 +29,8 @@ namespace GPU {
 		void BindIndexBuffer(BindingBuffer handle, IndexFormat format);
 		void BindPipelineState(ResHandle handle);
 		void BindPipelineBindingSet(ResHandle handle);
+		void BindViewport(ViewPort vp);
+		void BindScissorRect(const ScissorRect& rect);
 
 		void Draw(U32 vertexCount, U32 startVertexLocation);
 		void DrawIndexed(UINT indexCount, UINT startIndexLocation, UINT baseVertexLocation);
@@ -36,6 +38,9 @@ namespace GPU {
 		void DrawIndexedInstanced(U32 indexCount, U32 instanceCount, U32 startIndexLocation, U32 baseVertexLocation, U32 startInstanceLocation);	
 		void Dispatch(U32 threadGroupCountX, U32 threadGroupCountY, U32 threadGroupCountZ);
 		void DispatchIndirect(ResHandle buffer, U32 offset);
+
+		void BeginFrameBindingSet(ResHandle handle);
+		void EndFrameBindingSet();
 
 		class ScopedEvent
 		{

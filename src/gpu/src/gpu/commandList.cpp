@@ -21,6 +21,12 @@ namespace GPU {
 
     void CommandList::UpdateBuffer(ResHandle handle, const void* data, I32 offset, I32 size)
     {
+        auto* command = Alloc<CommandUpdateBuffer>();
+        command->mHandle = handle;
+        command->mData = data;
+        command->mOffset = offset;
+        command->mSize = size;
+        mCommands.push(command);
     }
 
     void CommandList::BindVertexBuffer(DynamicArray<BindingBuffer> handles, I32 startSlot)
@@ -50,6 +56,20 @@ namespace GPU {
     {
         auto* command = Alloc<CommandBindPipelineBindingSet>();
         command->mHandle = handle;
+        mCommands.push(command);
+    }
+
+    void CommandList::BindViewport(ViewPort vp)
+    {
+        auto* command = Alloc<CommandBindViewport>();
+        command->mViewport = vp;
+        mCommands.push(command);
+    }
+
+    void CommandList::BindScissorRect(const ScissorRect& rect)
+    {
+        auto* command = Alloc<CommandBindScissorRect>();
+        command->mRect = rect;
         mCommands.push(command);
     }
 
@@ -109,6 +129,19 @@ namespace GPU {
         auto* command = Alloc<CommandDispatchIndirect>();
         command->mHandle = buffer;
         command->mOffset = offset;
+        mCommands.push(command);
+    }
+
+    void CommandList::BeginFrameBindingSet(ResHandle handle)
+    {
+        auto* command = Alloc<CommandBeginFrameBindingSet>();
+        command->mHandle = handle;
+        mCommands.push(command);
+    }
+
+    void CommandList::EndFrameBindingSet()
+    {
+        auto* command = Alloc<CommandEndFrameBindingSet>();
         mCommands.push(command);
     }
 

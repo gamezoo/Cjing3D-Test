@@ -22,6 +22,7 @@ namespace GPU
 		virtual void PresentEnd() = 0;
 		virtual void EndFrame() = 0;
 
+		virtual bool CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc) = 0;
 		virtual bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData) = 0;
 		virtual bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData) = 0;
 		virtual bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length) = 0;
@@ -31,7 +32,7 @@ namespace GPU
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs) = 0;
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs) = 0;
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs) = 0;
-
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSAM> sams) = 0;
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
 
@@ -44,7 +45,6 @@ namespace GPU
 		U64 GetFrameCount()const { return mCurrentFrameCount; }
 		FORMAT GetBackBufferFormat()const { return mBackBufferFormat; }
 		U32 GetBackBufferCount()const { return mBackBufferCount; }
-		U32 GetFormatStride(FORMAT value) const;
 		bool CheckCapability(GPU_CAPABILITY capability) { return (U32)capability & mCapabilities; }
 
 		void SetIsVsync(bool isVsync) { mIsVsync = isVsync; }

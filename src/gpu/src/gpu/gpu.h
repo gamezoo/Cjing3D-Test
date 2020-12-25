@@ -30,6 +30,8 @@ namespace GPU
 	bool SubmitCommandList(const CommandList& cmd);
 	bool SubmitCommandList(Span<CommandList*> cmds);
 
+	ResHandle AllocateHandle(ResourceType type);
+	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc);
 	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData);
 	ResHandle CreateBuffer(const GPUBufferDesc* desc, const SubresourceData* initialData);
 	ResHandle CreateShader(SHADERSTAGES stage, const void* bytecode, size_t length);
@@ -41,5 +43,8 @@ namespace GPU
 	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingSRV> srvs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingUAV> uavs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs);
+
+	U32  GetFormatStride(FORMAT value);
+	bool IsFormatSupportStencil(FORMAT value);
 }
 }

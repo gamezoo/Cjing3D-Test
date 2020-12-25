@@ -15,10 +15,16 @@ namespace GPU {
 		END_EVENT,
 		BIND_PIPELINE_STATE,
 		BIND_PIPELINE_BINDING_SET,
+		BIND_VIEWPORT,
+		BIND_SCISSOR_RECT,
 		DRAW,
 		DRAW_INDIRECT,
 		DISPATCH,
-		DISPATCH_INDIRECT
+		DISPATCH_INDIRECT,
+		BEGIN_FRAME_BINDING_SET,
+		END_FRAME_BINDING_SET,
+		UPDATE_BUFFER,
+
 	};
 
 	enum class CommandDrawType : I8
@@ -62,6 +68,16 @@ namespace GPU {
 		ResHandle mHandle;
 	};
 
+	struct CommandBindViewport : CommandTyped<CommandType::BIND_VIEWPORT>
+	{
+		ViewPort mViewport;
+	};
+
+	struct CommandBindScissorRect : CommandTyped<CommandType::BIND_SCISSOR_RECT>
+	{
+		ScissorRect mRect;
+	};
+
 	struct CommandBindPipelineBindingSet : CommandTyped<CommandType::BIND_PIPELINE_BINDING_SET>
 	{
 		ResHandle mHandle;
@@ -96,5 +112,20 @@ namespace GPU {
 	};
 
 	struct CommandEndEvent : CommandTyped<CommandType::END_EVENT> {};
+
+	struct CommandBeginFrameBindingSet : CommandTyped<CommandType::BEGIN_FRAME_BINDING_SET>
+	{
+		ResHandle mHandle;
+	};
+
+	struct CommandEndFrameBindingSet : CommandTyped<CommandType::END_FRAME_BINDING_SET> {};
+
+	struct CommandUpdateBuffer : CommandTyped<CommandType::UPDATE_BUFFER>
+	{
+		ResHandle mHandle;
+		const void* mData = nullptr;
+		I32 mOffset = 0;
+		I32 mSize = -1;
+	};
 }
 }

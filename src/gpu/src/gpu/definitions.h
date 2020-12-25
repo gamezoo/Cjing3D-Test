@@ -563,5 +563,14 @@ namespace GPU {
 		U64 mTimestamp = 0;
 		U64 mTimetampFrequency = 0;
 	};
+
+	struct ScissorRect
+	{
+	public:
+		I32 mLeft = 0;
+		I32 mTop = 0;
+		I32 mRight = 0;
+		I32 mBottom = 0;
+	};
 }
 }

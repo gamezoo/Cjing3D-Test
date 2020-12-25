@@ -31,15 +31,18 @@ namespace GPU
 		void PresentEnd()override;
 		void EndFrame() override;
 
+		bool CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc)override;
 		bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)override;
 		bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData)override;
 		bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)override;
 		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
 		bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)override;
 		bool CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)override;
-		bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs)override;
-		bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs)override;
-		bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs)override;
+		
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSRV> srvs)override;
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingUAV> uavs)override;
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingBuffer> cbvs)override;
+		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSAM> sams)override;
 
 		void DestroyResource(ResHandle handle)override;
 		void SetResourceName(ResHandle resource, const char* name)override;
@@ -67,6 +70,7 @@ namespace GPU
 		ResourcePool<PipelineStateDX11> mPipelineStates;
 		ResourcePool<PipelineBindingSetDX11> mPipelineBindingSets;
 		ResourcePool<CommandListDX11*> mCommandLists;
+		ResourcePool<FrameBindingSetDX11> mFrameBindingSets;
 	};
 }
 }
