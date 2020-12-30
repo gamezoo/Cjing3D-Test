@@ -22,6 +22,7 @@ int WINAPI WinMain(
 	config.mTargetFrameRate = 60;
 	config.mFlag = InitConfigFlag::PresentFlag_WinApp;
 	config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
+	config.mIsApp = false;
 
 	auto renderPath = CJING_MAKE_SHARED<RenderPath3D>();
 	Win32::GameAppWin32 gameApp(hInstance);

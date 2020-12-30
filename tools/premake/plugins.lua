@@ -1,4 +1,7 @@
 
+-- all plugins
+all_plugins = {}
+
 local function setup_platform_win32()
     systemversion(windows_sdk_version())
 end 
@@ -50,12 +53,13 @@ function link_plugin(plugin_name)
     end 
 end 
 
-function create_plugin(plugin_name, plugin_dependencies)
+function create_plugin(plugin_name, plugin_dependencies, ext_func)
     print("[Plugin]", plugin_name)
+    table.insert(all_plugins, plugin_name)
 
     project (plugin_name)
     location("build/" ..  platform_dir)
-    objdir("build/" ..  platform_dir .. "/temp")
+    objdir("build/" ..  platform_dir .. "/" .. plugin_name .. "/temp")
     kind "StaticLib"
     language "C++"
     conformanceMode(true)
@@ -83,7 +87,7 @@ function create_plugin(plugin_name, plugin_dependencies)
         -- 3rdParty
         "../../3rdparty", 
     }
-    
+
     -- Debug config
     filter {"configurations:Debug"}
         targetdir ("lib/" .. platform_dir .. "/Debug")
@@ -95,4 +99,10 @@ function create_plugin(plugin_name, plugin_dependencies)
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
         set_plugin_env(plugin_dependencies, "Release")
+    filter { }
+
+    -- do ext function
+    if ext_func ~= nil then 
+        ext_func()
+    end 
 end

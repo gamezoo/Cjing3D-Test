@@ -79,7 +79,7 @@ namespace Cjing3D
 			}
 		};
 
-	private:
+	protected:
 		ContainerAllocator mAllocator;
 		Hasher  mHasher;
 		KeyT*   mKeys	   = nullptr;
@@ -208,7 +208,7 @@ namespace Cjing3D
 		Iterator end() { return Iterator{ this, -1 }; }
 		ConstIterator end() const { return ConstIterator{ this, -1 }; }
 
-	private:
+	protected:
 		I32 GetIndexByKey(const KeyT& key)const
 		{
 			U32 hash = HashKey(key);

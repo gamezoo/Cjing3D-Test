@@ -1,4 +1,0 @@
-
-all_plugins = {
-    "resConverter"
-}

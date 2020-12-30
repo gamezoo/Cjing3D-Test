@@ -1,8 +1,8 @@
-dofile("../../tools/premake/options.lua")
-dofile("../../tools/premake/globals.lua")
-dofile("../../tools/premake/plugins.lua")
-dofile("../../tools/premake/example_app.lua")
-dofile("../../src/definitions.lua")
+dofile("../tools/premake/options.lua")
+dofile("../tools/premake/globals.lua")
+dofile("../tools/premake/plugins.lua")
+dofile("../tools/premake/example_app.lua")
+dofile("../src/definitions.lua")
 
 editor_name = "editor"
 app_name = "app"
@@ -38,6 +38,9 @@ solution ("Cjing3D")
 dofile "../src/project.lua"
 
 -- example projects
+print("-------------------------------------------------------------")
+print("[APPS]")
+print("-------------------------------------------------------------")
 if build_editor then 
     create_example_app(editor_name, "src/editor", get_current_script_path(), "WindowedApp")
 end 
@@ -45,3 +48,4 @@ end
 if build_app then 
     create_example_app(app_name, "src/app", get_current_script_path(), "WindowedApp")
 end 
+print("-------------------------------------------------------------")

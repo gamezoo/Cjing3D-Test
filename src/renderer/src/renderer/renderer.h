@@ -2,6 +2,7 @@
 
 #include "core\common\common.h"
 #include "gpu\gpu.h"
+#include "shader.h"
 
 namespace Cjing3D
 {

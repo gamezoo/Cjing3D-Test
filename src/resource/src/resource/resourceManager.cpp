@@ -68,6 +68,8 @@ namespace ResourceManager
 
 		volatile I32 mPendingResJobs = 0;
 		volatile I32 mConversionJobs = 0;
+
+		bool mConvertEnable = true;
 		bool mIsInitialized = false;
 
 	public:
@@ -213,7 +215,7 @@ namespace ResourceManager
 		if (mFilesystem->IsFileExists(metaPath.c_str()))
 		{
 			JsonArchive archive(ArchiveMode::ArchiveMode_Read, *mFilesystem);
-			archive.Read("dependencies", ret);
+			archive.Read("sources", ret);
 		}
 		return ret;
 	}
@@ -404,10 +406,13 @@ namespace ResourceManager
 	void ResourceConvertJob::OnWork(I32 param)
 	{
 		Concurrency::AtomicIncrement(&mImpl->mConversionJobs);
+
+		MaxPathString mExt;
+		Path::GetPathExtension(Span(mSrcPath, StringLength(mSrcPath)), mExt.toSpan());		
 		for (auto plugin : mImpl->mConverterPlugins)
 		{
 			auto converter = plugin->CreateConverter();
-			if (converter && converter->SupportsType(nullptr, mResType))
+			if (converter && converter->SupportsType(mExt.c_str(), mResType))
 			{
 				// convert src resource
 				ResConverterContext context(*mImpl->mFilesystem);
@@ -556,6 +561,12 @@ namespace ResourceManager
 		mImpl->mResourceFactoires.erase(type.Type());
 	}
 
+	void SetConvertEnable(bool convertEnable)
+	{
+		Debug::CheckAssertion(IsInitialized());
+		mImpl->mConvertEnable = convertEnable;
+	}
+
 	Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate)
 	{
 		Debug::CheckAssertion(IsInitialized());
@@ -636,23 +647,33 @@ namespace ResourceManager
 				bool needConvert = true;
 				if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
 				{
-					MaxPathString metaPath(inPath.c_str());
-					metaPath.append(".metadata");
-
-					if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
+					// TODO
+					if (mImpl->mConvertEnable)
 					{
-						// check res metadata last modified time
-						U64 srcModTime = mImpl->mFilesystem->GetLastModTime(inPath.c_str());
-						U64 metaModTime = mImpl->mFilesystem->GetLastModTime(metaPath.c_str());
+						MaxPathString metaPath(inPath.c_str());
+						metaPath.append(".metadata");
 
-						if (metaModTime >= srcModTime) {
-							needConvert = false;
+						if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
+						{
+							// check res metadata last modified time
+							U64 srcModTime = mImpl->mFilesystem->GetLastModTime(inPath.c_str());
+							U64 metaModTime = mImpl->mFilesystem->GetLastModTime(metaPath.c_str());
+
+							if (metaModTime >= srcModTime) {
+								needConvert = false;
+							}
 						}
 					}
 				}
 
 				if (needConvert == true)
 				{
+					if (!mImpl->mConvertEnable) 
+					{
+						mImpl->ReleaseResource(ret);
+						return nullptr;
+					}
+
 					// load job
 					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
 					
@@ -712,9 +733,19 @@ namespace ResourceManager
 		return resource->IsLoaded();
 	}
 
+	void ProcessReleasedResources()
+	{
+		Debug::CheckAssertion(IsInitialized());
+		return mImpl->ProcessReleasedResources();
+	}
+
 	void WaitForResource(Resource* resource)
 	{
 		Debug::CheckAssertion(IsInitialized());
+		if (resource == nullptr) {
+			return;
+		}
+
 #ifdef _DEBUG
 		F64 maxWaitTime = 100.0f;
 #else

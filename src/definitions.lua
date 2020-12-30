@@ -45,6 +45,7 @@ dependencies_mapping =
 
     [PROJECT_RENDERER_NAME] = { 
         PROJECT_GPU_NAME,
+        PROJECT_RESOURCE_NAME
     },
 }
 

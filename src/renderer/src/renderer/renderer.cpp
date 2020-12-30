@@ -1,4 +1,6 @@
 #include "renderer.h"
+#include "resource\resourceManager.h"
+#include "core\platform\platform.h"
 
 namespace Cjing3D
 {
@@ -21,6 +23,13 @@ namespace Renderer
 		// initialize gpu 
 		GPU::Initialize(params);
 
+		// register render res factories
+		Shader::RegisterFactory();
+
+		// test
+		auto shader = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/default.esf"));
+		ResourceManager::WaitForResource(shader);
+
 		mIsInitialize = true;
 	}
 
@@ -34,6 +43,10 @@ namespace Renderer
 		if (!mIsInitialize) {
 			return;
 		}
+
+		// unregister render res factories
+		ResourceManager::ProcessReleasedResources();
+		Shader::UnregisterFactory();
 
 		// uninitialize gpu
 		GPU::Uninitialize();

@@ -1,9 +1,18 @@
 {
     ///////////////////////////////////////////////////////////////////
-    // platform definitions
-    jcs_def<Windows> :
+    // common definitions
+    jcs_def :
     {
-        premake_path : "../tools/premake/premake5",
+        cjing_build_dir : "../tools/cjing_build",
+    },
+
+    ///////////////////////////////////////////////////////////////////
+    // platform tools
+    tools<Windows>: 
+    {
+        jsc: "py -3 ${cjing_build_dir}/scripts/jsc/jsc.py",
+        premake: "${cjing_build_dir}/premake/premake5.exe",
+        pre_parser : "../tools/pre_parser/pre_parser.py",
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -24,14 +33,6 @@
 
         // build app
         build_app : true,
-
-        // tools path
-        tools : 
-        {
-            jsc : "../tools/build_scripts/jsc/jsc.py",
-            pre_parser : "../tools/pre_parser/pre_parser.py",
-            premake : "${premake_path}",
-        }
     },
 
     ///////////////////////////////////////////////////////////////////

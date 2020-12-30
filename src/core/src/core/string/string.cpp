@@ -1,6 +1,7 @@
 #include "string.h"
 #include "core\memory\memory.h"
 #include "core\helper\debug.h"
+#include "math\hash.h"
 
 #include <string>
 
@@ -130,6 +131,16 @@ namespace Cjing3D
 	int ReverseFindSubstring(const char* str, const char* substr)
 	{
 		return std::string(str).rfind(substr);
+	}
+
+	U32 HashFunc(U32 Input, const String& Data)
+	{
+		return SDBHash(Input, Data.data(), Data.size());
+	}
+
+	U64 HashFunc(U64 Input, const String& Data)
+	{
+		return FNV1aHash(Input, Data.data(), Data.size());
 	}
 
 #if (CJING_MEMORY_ALLOCATOR == CJING_MEMORY_ALLOCATOR_DEFAULT)

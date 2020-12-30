@@ -51,3 +51,4 @@ project (PROJECT_MATH_NAME)
     filter {"configurations:Release"}
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
+    filter { }

@@ -18,6 +18,7 @@ int WINAPI WinMain(
 	config.mIsLockFrameRate = true;
 	config.mTargetFrameRate = 60;
 	config.mTitle = "CJING3D Editor";
+	config.mIsApp = false;
 
 	Win32::GameAppWin32 gameApp(hInstance);
 	gameApp.Run(config, nullptr);

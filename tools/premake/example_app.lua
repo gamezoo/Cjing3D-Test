@@ -27,11 +27,9 @@ function get_current_script_path()
 end
 
 function create_example_app(project_name, source_directory, root_directory, app_kind)
-    print("-------------------------------------------------------------")
     print("[APP]", project_name)
-    print("-------------------------------------------------------------")
 
-    local project_dir = root_directory .. "/build/" .. platform_dir
+    local project_dir = root_directory .. "/build/" .. platform_dir .. "/" .. project_name
     local target_dir  = root_directory .. "/bin/" .. platform_dir
     local source_dir  = root_directory .. source_directory
 
@@ -70,11 +68,18 @@ function create_example_app(project_name, source_directory, root_directory, app_
             source_dir .. "/**.inl"
         }
 
-        --------------------------------------------------------------
-        -- config
-        targetdir (target_dir)
-        debugdir (target_dir)
+        -- Debug dir
+        local debug_dir = ""
+        if work_dir ~= nil then 
+            debug_dir = env_dir .. work_dir
+        else
+            debug_dir = env_dir .. "assets"
+        end 
+        debugdir (debug_dir)
 
+        --------------------------------------------------------------
+        -- Config
+        targetdir (target_dir)
         -- Debug config
         filter {"configurations:Debug"}
             targetname(project_name)
@@ -88,5 +93,6 @@ function create_example_app(project_name, source_directory, root_directory, app_
             defines { "NDEBUG" }
             setup_engine("Release")
             link_all_plugins("Release")
+        filter { }
         --------------------------------------------------------------
 end

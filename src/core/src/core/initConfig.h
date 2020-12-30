@@ -22,6 +22,7 @@ namespace Cjing3D
 		U32    mTargetFrameRate = 60;
 		U32    mMultiSampleCount = 1;
 		bool   mIsFullScreen = false;
+		bool   mIsApp = false;
 		I32    mFlag = 0;
 	};
 }

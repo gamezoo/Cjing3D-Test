@@ -64,3 +64,4 @@ project (PROJECT_CORE_NAME)
         defines { "NDEBUG" }
         setup_dependent_libs(PROJECT_CORE_NAME, "Release")
         links {"physfs-static"}
+    filter { }

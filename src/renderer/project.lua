@@ -58,3 +58,4 @@ project (PROJECT_RENDERER_NAME)
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
         setup_dependent_libs(PROJECT_RENDERER_NAME, "Release")
+    filter { }

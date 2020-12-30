@@ -13,6 +13,7 @@ namespace Cjing3D
 		bool IsInitialized();
 		void RegisterFactory(ResourceType type, ResourceFactory* factory);
 		void UnregisterFactory(ResourceType type);
+		void SetConvertEnable(bool convertEnable);
 
 		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate);
 
@@ -32,6 +33,7 @@ namespace Cjing3D
 		void AcquireResource(Resource* resource);
 		bool ReleaseResource(Resource** resource);
 		bool IsResourceLoaded(Resource* resource);
+		void ProcessReleasedResources();
 		void WaitForResource(Resource* resource);
 		void WaitAll();
 

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "core\container\span.h"
+#include "core\common\definitions.h"
 
+#include <stdarg.h>
 #include <string_view>
 #include <string>
 
@@ -153,6 +155,15 @@ namespace Cjing3D
 			return Span(mData);
 		}
 
+		StaticString& Sprintf(const char* format, ...)
+		{
+			va_list args;
+			va_start(args, format);
+			vsnprintf(mData, N, format, args);
+			va_end(args);
+			return *this;
+		}
+
 	private:
 		char mData[N] = "\0";
 	};
@@ -265,6 +276,10 @@ namespace Cjing3D
 			char  mSmallData[BUFFER_MINIMUN_SIZE];
 		};
 	};
+
+	// hash func
+	U32 HashFunc(U32 Input, const String& Data);
+	U64 HashFunc(U64 Input, const String& Data);
 
 	using WString = std::wstring;
 	using StringView = std::string_view;

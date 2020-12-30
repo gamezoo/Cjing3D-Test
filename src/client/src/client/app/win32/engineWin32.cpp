@@ -84,6 +84,12 @@ namespace Cjing3D::Win32
 		// init resource manager
 		ResourceManager::Initialize(filesystem);
 
+		bool resConvertEnable = false;
+		if (!mInitConfig.mIsApp) {
+			resConvertEnable = true;
+		}
+		ResourceManager::SetConvertEnable(resConvertEnable);
+
 		// init input system
 		mImpl->mInputSystem = CJING_NEW(Win32::InputManagerWin32);
 		mImpl->mInputSystem->Initialize(*mImpl->mGameWindowWin32);

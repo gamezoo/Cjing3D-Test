@@ -173,6 +173,58 @@ namespace Platform {
 		callback(StringUtils::WStringToString(wStr));
 	}
 
+	bool ShellExecuteOpen(const char* path, const char* args)
+	{
+		const WPathString wpath(path);
+		if (args != nullptr)
+		{
+			const WPathString wargs(args);
+			const uintptr_t ret = (uintptr_t)::ShellExecute(NULL, NULL, wpath, wargs, NULL, SW_SHOW);
+			return ret >= 32;
+		}
+		else
+		{
+			const uintptr_t ret = (uintptr_t)::ShellExecute(NULL, NULL, wpath, NULL, NULL, SW_SHOW);
+			return ret >= 32;
+		}
+	}
+
+	bool ShellExecuteOpenAndWait(const char* path, const char* args)
+	{
+		const WPathString wpath(path);
+		SHELLEXECUTEINFO info = {};
+		info.cbSize = sizeof(SHELLEXECUTEINFO);
+		info.fMask = SEE_MASK_NOCLOSEPROCESS;
+		info.hwnd = NULL;
+		info.lpVerb = L"open";
+		info.lpFile = wpath;
+
+		if (args != nullptr)
+		{
+			const WPathString wargs(args);
+			info.lpParameters = wargs;
+		}
+		else {
+			info.lpParameters = NULL;
+		}
+
+		info.lpDirectory = NULL;
+		info.nShow = SW_SHOWNORMAL;
+		info.hInstApp = NULL;
+
+		if (!::ShellExecuteEx(&info)) {
+			return false;
+		}
+
+		::WaitForSingleObject(info.hProcess, INFINITE);
+		return true;
+	}
+
+	bool ShellExecuteCmdAndWait(const char* path, const char* args)
+	{
+		return false;
+	}
+
 	WindowRect GetClientBounds(WindowType window)
 	{
 		RECT rect;

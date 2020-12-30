@@ -45,6 +45,7 @@ sdk_version = ""
 env_dir = "../"
 current_platform = "unknown"
 is_static_plugin = true
+work_dir = nil
 build_editor = true
 build_app = false
 
@@ -111,6 +112,9 @@ function setup_env_from_options()
     end 
     if _OPTIONS["build_app"] then	
         build_app = true
+    end 
+    if _OPTIONS["work_dir"] then
+        work_dir = _OPTIONS["work_dir"]
     end 
 end
 

@@ -2,6 +2,7 @@
 
 #include "core\common\common.h"
 #include "core\initConfig.h"
+#include "core\scene\universe.h"
 #include "platform\gameWindow.h"
 
 namespace Cjing3D
@@ -37,6 +38,11 @@ namespace Cjing3D
 		DynamicArray<ModulerPlugin*>& GetModulerPlugins() { 
 			return mModulerPlugins; 
 		}
+
+		// universe methods
+		void StartUniverse(Universe& universe);
+		void StopUniverse(Universe& universe);
+		void UpdateUniverse(Universe& universe);
 
 	protected:
 		SharedPtr<GameWindow> mGameWindow = nullptr;

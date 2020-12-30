@@ -51,3 +51,10 @@ newoption
 	trigger = "build_app",
 	description = "build default app."
 }
+
+newoption 
+{
+   trigger     = "work_dir",
+   value       = "dir",
+   description = "specify location of engine work"
+}

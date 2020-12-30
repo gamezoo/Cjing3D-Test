@@ -17,7 +17,6 @@ namespace Cjing3D
 		ResConverterContext(BaseFileSystem& filesystem);
 		virtual ~ResConverterContext();
 
-		void AddDependency(const char* filePath);
 		void AddSource(const char* path);
 		void AddOutput(const char* path);
 		bool Convert(IResConverter* converter, const ResourceType& resType, const char* srcPath, const char* destPath);

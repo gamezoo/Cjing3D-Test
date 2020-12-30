@@ -59,3 +59,4 @@ project (PROJECT_LUA_BINDER_NAME)
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
         links {"lua_lib"}
+    filter { }

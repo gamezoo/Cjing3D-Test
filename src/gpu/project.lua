@@ -85,3 +85,4 @@ project (PROJECT_GPU_NAME)
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
         setup_dependent_libs(PROJECT_GPU_NAME, "Release")
+    filter { }

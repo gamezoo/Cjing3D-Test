@@ -18,11 +18,6 @@ namespace Cjing3D
 		CJING_SAFE_DELETE(mSerializer);
 	}
 
-	void ResConverterContext::AddDependency(const char* filePath)
-	{
-		mDependencies.push(filePath);
-	}
-
 	void ResConverterContext::AddSource(const char* path)
 	{
 		mSources.push(path);
@@ -63,7 +58,6 @@ namespace Cjing3D
 				JobSystem::YieldCPU();
 			}
 
-			mDeserializer->Write("dependencies",  mDependencies);
 			mDeserializer->Write("sources", mSources);
 			mDeserializer->Write("outputs", mOutputs);
 			mDeserializer->Save(mMetaFilePath.c_str());
