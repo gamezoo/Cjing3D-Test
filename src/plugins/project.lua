@@ -6,7 +6,7 @@ group "plugins"
 -- plugin shader converter
 create_plugin(
     "shaderConverter",
-    { PROJECT_RESOURCE_NAME },
+    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME },
     function()
         -- libdirs
         libdirs {  "../../3rdparty/fcpp/lib/" .. platform_dir }

@@ -10,6 +10,7 @@
     // platform tools
     tools<Windows>: 
     {
+        type : tools,
         jsc: "py -3 ${cjing_build_dir}/scripts/jsc/jsc.py",
         premake: "${cjing_build_dir}/premake/premake5.exe",
         pre_parser : "../tools/pre_parser/pre_parser.py",
@@ -25,14 +26,7 @@
             assets_dir : ""
         },
 
-        // env directory
-        env_dir : "../",
-
-        // build editor
-        build_editor : true,
-
-        // build app
-        build_app : true,
+        print_header : true,
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -46,45 +40,63 @@
             platforms : "x64"
         },
 
-        // visual studio version
-        vs_version: "latest",
-
-        // winsdk version
-        sdk_version : "latest",
-
         // clean
-        clean : [
-            "build/win32",
-            "bin/win32"
-        ],
+        clean : {
+            type: clean,
+            directories : [
+                "build/win32",
+                "bin/win32"
+            ]
+        },
 
         // libs
-        libs : [
-            "cd ..\\3rdparty && .\\build_libs.bat ",
-        ],  
+        libs : {
+            type : shell,
+            explicit: true,
+            commands : [
+                "cd ..\\3rdparty && .\\build_libs.cmd -win32"
+            ]
+        },  
+
+        // dll
+        dlls : {
+            type : copy,
+            files : [
+                ["../3rdparty/shared_libs/win32", "bin/win32/${platforms}/Debug/"],
+                ["../3rdparty/shared_libs/win32", "bin/win32/${platforms}/Release/"],
+            ]
+        },
 
         // premake
-        premake : [
-            "vs_version",   // To genenrate vs sln, the first param must is "vs_version"
-            "--renderer=dx11",
-            "--platform_dir=win32",
-        ],
+        premake : {
+            args : [
+                "%{vs_version}",   // To genenrate vs sln, the first param must is "vs_version"
+                "--env_dir=../",
+                "--renderer=dx11",
+                "--platform_dir=win32",
+                "--sdk_version=%{windows_sdk_version}",
+                "--build_app",     // create default app project
+                // "--no_editor",  // does not create default editor project
+            ]
+        },
 
         // copy
-        copy : [
-            ["${assets_dir}", "bin/win32/${platforms}/Debug/data/"],
-            ["${assets_dir}", "bin/win32/${platforms}/Release/data/"],
-            ["../3rdparty/shared_libs/win32", "bin/win32/${platforms}/Debug/"],
-            ["../3rdparty/shared_libs/win32", "bin/win32/${platforms}/Release/"],
-        ],
+        copy : {
+            type : none,
+            files : [
+                ["${assets_dir}", "bin/win32/${platforms}/Debug/data/"],
+                ["${assets_dir}", "bin/win32/${platforms}/Release/data/"],
+            ]
+        },
 
         // build
         build : {
-            dir : "build/win32"
+            type : none,
         },
 
         // data dir
         data_dir : {
+            type : datas,
             Debug   : "bin/win32/${platforms}/Debug/data/",
             Release : "bin/win32/${platforms}/Debug/data/",
         }

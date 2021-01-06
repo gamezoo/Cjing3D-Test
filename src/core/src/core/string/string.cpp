@@ -221,6 +221,12 @@ namespace Cjing3D
 		*this = Span(str + pos, len);
 	}
 
+	String::String(const char* begin, const char* end)
+	{
+		mSize = 0;
+		*this = Span(begin, end);
+	}
+
 	String::~String()
 	{
 		if (!isSmall()) {

@@ -189,6 +189,7 @@ namespace Cjing3D
 		String(const std::string& str);
 		String(Span<const char> str);
 		String(const char* str, size_t pos, size_t len);
+		String(const char* begin, const char* end);
 		~String();
 
 		String& operator=(const String& rhs);

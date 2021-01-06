@@ -2,6 +2,7 @@
 import os
 import platform
 import glob
+import shutil
 
 #################################################################
 ## common utils
@@ -48,10 +49,34 @@ def locate_winsdk_version_list():
                 return sorted(os.listdir(child_dir), reverse=False)
     return None
 
-def path_replace_os_sep(path):
+def format_file_path(path):
     path = path.replace("/", os.sep)
     path = path.replace("\\", os.sep)
     return path
+
+def walk_directory(dir_path):
+    files_path_list = []
+    for root, dirs, files in os.walk(dir_path):
+        for file in files:
+            files_path_list.append(format_file_path(os.path.join(root, dirs)))
+    return files_path_list
+
+def copy_file_or_create_dir(src_file, dst_file):
+    if not os.path.exists(src_file):
+        print("error: src file does not exists:" + src_file)
+        return False
+    try:
+        dir = os.path.dirname(dst_file)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        src_file = os.path.normpath(src_file)
+        dst_file = os.path.normpath(dst_file)
+        print("copy " + src_file + " to " + dst_file)
+        return True
+    except Exception as e:
+        print("error: failed to copy" + src_file)
+        return False
 
 #################################################################
 ## vs utils
@@ -59,6 +84,17 @@ def path_replace_os_sep(path):
 support_vs_version = [
     "vs2019"
 ]
+
+def locate_msbuild():
+    vs_root_dir = locate_vs_root()
+    if len(vs_root_dir) <= 0:
+        return None
+
+    # get latest msbuild.exe
+    msbuild = sorted(glob.glob(os.path.join(vs_root_dir, "**/msbuild.exe"), recursive=True), reverse=False)
+    if len(msbuild) > 0:
+        return msbuild[0]
+    return None
 
 def check_vs_version(vs_version):
     if vs_version == "latest":
@@ -87,7 +123,6 @@ def locate_vs_root():
         if env_dir:
             if vs_directory_name in os.listdir(env_dir):
                 vs_root = os.path.join(env_dir, vs_directory_name)
-                print(vs_root)
     return vs_root
     
 

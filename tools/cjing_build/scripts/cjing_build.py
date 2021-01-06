@@ -5,130 +5,240 @@ import time
 import shutil
 import collections
 import subprocess
+import importlib
 import platform
 import utils
+
 import jsc.jsc as jsc
 
+# major version
+major_version = 0
+# features [0-100]
+minor_version = 2
+# patch update; bug fixes [0-1000]
+match_version = 0
+
+def get_version():
+    return "v" + str(major_version) + "." + str(minor_version) + "." + str(match_version)
+
+##########################################################################################
+# Task Tools
+##########################################################################################
 def get_tools(tool_name, config):
-    return utils.path_replace_os_sep(config["tools"][tool_name])
+    return utils.format_file_path(config["tools"][tool_name])
+
+def get_task_files_raw(files_task):
+    files = []
+    # 如果src_dir则获取目录下所有的文件路径
+    if os.path.isdir(files_task[0]):
+        dir_files = utils.walk_directory(files_task[0])
+        if len(dir_files) > 0:
+            for file in dir_files:
+                files.append((
+                    file, 
+                    file.replace(utils.format_file_path(files_task[0]), utils.format_file_path(files_task[1]))
+                ))
+    # 如果是文件则直接添加目标文件
+    else:
+        files.append((
+            utils.format_file_path(files_task[0]),
+            utils.format_file_path(files_task[1])
+        ))
+
+    return files
+
+def get_task_files(config, task_name):
+    task_files = []
+    task = config[task_name]
+    if "files" not in task.keys():
+        return task_files
+
+    files = task["files"]
+    for file_task in files:
+        # 如果目标是字符串则改为[("", "")]形式，并交由后续处理
+        if type(file_task) == str:
+            path = file_task
+            file_task = [path, ""]
+
+        if type(file_task) == list:
+            task_files.extend(get_task_files_raw(file_task))
+        
+
+    return task_files
 
 ##########################################################################################
 # Task Methods
 ##########################################################################################
 
-def taks_run_libs(config):
-    print("-----------------------------------------------------------------------")
-    print("Task: build libs")
-    print("-----------------------------------------------------------------------")
+def task_run_tools(config, task_name, tool_name):
+    if tool_name not in config["tools"].keys():
+        return
+    tool_exe = utils.format_file_path(config["tools"][tool_name])
+    cmd = tool_exe
+    if "args" in config[task_name].keys():
+        cmd += " "
+        for arg in config[task_name]["args"]:
+            # check vs_version
+            vs_str = "%{vs_version}"
+            if arg.find(vs_str) != -1:
+                arg = arg.replace(vs_str, config["user_vars"]["vs_version"]) 
+
+            # check win sdk version
+            wsv_str = "%{windows_sdk_version}"
+            if arg.find(wsv_str) != -1:
+                arg = arg.replace(wsv_str, config["user_vars"]["windows_sdk_version"]) 
+
+            cmd += arg + " "
+
+    child = subprocess.Popen(cmd, shell=True)
+    e = child.wait()
+    if e:
+        print("[error] failed to run tool:" + cmd)
+        exit(e)
     
-    for lib_cmd in config["libs"]:    
-        args = config["env_dir"] + "/" + " "
-        args += config["sdk_version"] + " "
-        if "vs_version" not in config:
-            config["vs_version"] = "vs2019"
-        args += config["vs_version"] + " "
-        final_cmd = lib_cmd + "\"" + config["vcvarsall_dir"] + "\"" + " " + args
 
-        p = subprocess.Popen(final_cmd, shell=True)
-        p.wait()
+def task_run_scripts(config, task_name, task_type, task_scritps):
+    if "files" in config[task_name].keys():
+        task_scritps.get(task_type)(config, task_name, get_task_files(config, task_name))
+    else:
+        task_scritps.get(task_type)(config, task_name, [])
 
-def task_run_premake(config):
+def print_task_header(task_name):
     print("-----------------------------------------------------------------------")
-    print("Task: Premake")
+    print("Task: -", task_name)
     print("-----------------------------------------------------------------------")
-    premake_cmd = get_tools("premake", config)
-    if not premake_cmd:
-        print("error: cannot find tool:premake")
+
+def taks_run_copy(config, task_name, files):
+    if files == None or len(files) <= 0:
+        return    
+    for file_task in files:
+        utils.copy_file_or_create_dir(file_task[0], file_task[1])
+
+def taks_run_shell(config, task_name, files):   
+    if "commands" not in config[task_name]:
+        return
+    commands = config[task_name]["commands"]
+    if type(commands) != list:
+        print("error: task shell's commands must be array of strings")
         exit(1)
-    # 遍历添加所有config permake cmd
-    for cmd in config["premake"]:
-        if cmd == "vs_version":
-            cmd = config["vs_version"]
-        premake_cmd += " " + cmd
-    # add env dir
-    if "env_dir" in config.keys():
-        premake_cmd += " --env_dir=\"" + config["env_dir"] + "\""
-    # add sdk version
-    if "sdk_version" in config.keys():
-        premake_cmd += " --sdk_version=\"" + str(config["sdk_version"]) + "\""
-    # build editor
-    if "build_editor" not in config.keys() or not config["build_editor"]:
-        premake_cmd += " --no_editor"
-    # build app
-    if "build_app" in config.keys() and config["build_app"]:
-        premake_cmd += " --build_app"
 
-    print(premake_cmd)
-    subprocess.call(premake_cmd, shell=True)
+    for command in commands:
+        child = subprocess.Popen(command, shell=True)
+        e = child.wait()
+        if e:
+            print("error: faild to run command:" + command)
+            exit(1)
+    
+def get_build_cmd(config, file_name, args):
+    make_config = config["build"]
+    buildtool = make_config["buildtool"]
 
-def taks_run_copy(config):
-    print("-----------------------------------------------------------------------")
-    print("Task: Copy")
-    print("-----------------------------------------------------------------------")
+    extra_args = ""
+    for arg in args:
+        if arg == "all":
+            continue
+        extra_args += arg + " "
 
-def task_run_build(config):
-    print("-----------------------------------------------------------------------")
-    print("Task: Build")
-    print("-----------------------------------------------------------------------")
+    build_cmd = ""
 
-def task_run_clean(config):
-    print("-----------------------------------------------------------------------")
-    print("Task: Clean")
-    print("-----------------------------------------------------------------------")
+    # msbuild
+    if buildtool == "msbuild":
+        msbuild = utils.locate_msbuild()
+        if not msbuild:
+            msbuild = "msbuild"
+        else:
+            msbuild = "\"" + msbuild + "\""
+        build_cmd = msbuild + " " + file_name + " " + extra_args
 
-    for clean_task in config["clean"]:
-        if os.path.isdir(clean_task):
-            print("clean directory:" + clean_task)
+    return build_cmd
+
+def task_run_build(config, task_name, files, args):
+    if len(files) <= 0:
+        print("error: no target to build")
+        exit(1)
+
+    if "build" not in config.keys():
+        print("error: config.jsc miss the build config")
+        exit(1)
+
+    buildtool = config["build"]["buildtool"]
+    # msbuild 需要预先设置环境
+    if buildtool == "msbuild":
+        set_env_cmd =  "pushd \ && cd /d \"" + config["user_vars"]["vcvarsall_dir"] + "\" && vcvarsall.bat x86_amd64 && popd"
+        subprocess.call(set_env_cmd, shell=True)
+
+    build_files = []
+    for file in files:
+        filename = os.path.splitext(os.path.basename(file[0]))[0]
+        if args[0] == "all":
+            pass
+        elif args[0] != filename:
+            continue
+        build_files.append(file)
+
+    if len(build_files) <= 0:
+        print("error: no target to build")
+        exit(1)
+
+    cwd = os.getcwd()
+    for build_file in build_files:
+        file_path = build_file[0]
+        os.chdir(os.path.dirname(file_path))
+
+        cmd = get_build_cmd(config, os.path.basename(file_path), args)
+        p = subprocess.Popen(cmd, shell=True)
+        e = p.wait()
+        if e != 0:
+            exit(1)
+        os.chdir(cwd)
+
+def task_run_clean(config, task_name):
+    if "clean" not in config.keys():
+        return
+    print_task_header(task_name)
+
+    clean_task = config[task_name]
+    if "directories" in clean_task:
+        for directory in clean_task["directories"]:
+            print("clean directory:" + directory)
             shutil.rmtree(clean_task)
-        elif os.path.isfile(clean_task):
-            print("clean file:" + clean_task)
+
+    if "files" in clean_task:
+        for file in clean_task["files"]:
+            print("clean file:" + file)
             os.remove(clean_task)
 
-def generate_cjingbuild_config(config, profile):
-    pass
-
 ##########################################################################################
-
-def check_vs_version(config):
-    vs_version = config["vs_version"]
-    if not utils.check_vs_version(vs_version):
-        print("error: unsupported visual studio version:" + str(version))
-        exit(1)
-    if vs_version == "latest":
-        config["vs_version"] = utils.locate_laste_vs_version()
-        print("set vs version:" + config["vs_version"])
 
 def set_user_config_update(key, value, config):
     config[key] = value
 
     user_cfg = dict()
+    user_cfg["user_vars"] = dict()
     if os.path.exists("config_user.jsc"):
-        user_cfg = json.loads(open("config_user.jsc", "r").read())
-    user_cfg[key] = value
+        user_cfg["user_vars"] = json.loads(open("config_user.jsc", "r").read())["user_vars"]
+    user_cfg["user_vars"][key] = value
 
     file = open("config_user.jsc", "w+")
     file.write(json.dumps(user_cfg, indent=4))
     file.close()
 
-# 
-def set_user_config_winsdk_version(config, wanted_sdk_version):
-    if "sdk_version" in config.keys():
-        if not wanted_sdk_version or wanted_sdk_version == "latest":
-            return
+def set_user_config_vs_version(config):
+    vs_version = utils.locate_laste_vs_version()
+    if vs_version == "":
+        print("error: count not find avaiable visual studio")
+        exit(1)
+    set_user_config_update("vs_version", vs_version, config)
+
+def set_user_config_winsdk_version(config):
+    if "windows_sdk_version" in config.keys():
+        return
 
     sdk_version_list = utils.locate_winsdk_version_list()
-    if sdk_version_list:
-        sdk_version = ""
-        if not wanted_sdk_version or wanted_sdk_version == "latest":
-            sdk_version = sdk_version_list[0]
-        elif wanted_sdk_version not in sdk_version_list:
-            print("error:Windows SDK is not installed. version:" + wanted_sdk_version)
-            exit(1)
-        else:
-            sdk_version = wanted_sdk_version
-
+    if sdk_version_list and len(sdk_version_list) > 0:
+        sdk_version = sdk_version_list[0]
         if sdk_version:
-            set_user_config_update("sdk_version", sdk_version, config)
+            set_user_config_update("windows_sdk_version", sdk_version, config)
     else:
         print("error:Cannot find one setted Windows SDK")
         print("error:Some task is invalid")
@@ -150,15 +260,18 @@ def set_user_config_vc_vars(config):
         print("error:Some task is invalid")
         exit(1)
     
-# 构建user config
+# 构建user config，主要用于获取winsdk version和vs version
 def set_user_config(config):
     user_cfg = dict()
+    user_cfg["user_vars"] = dict()
+
     if os.path.exists("config_user.jsc"):
         user_cfg = json.loads(open("config_user.jsc", "r").read())
 
     if utils.get_platform_name() == "win32":
-        set_user_config_vc_vars(user_cfg)
-        set_user_config_winsdk_version(user_cfg, config["sdk_version"])
+        set_user_config_vs_version(user_cfg["user_vars"])
+        set_user_config_vc_vars(user_cfg["user_vars"])
+        set_user_config_winsdk_version(user_cfg["user_vars"])
 
     # 需要将user_config合并到config中
     if os.path.exists("config_user.jsc"):
@@ -168,7 +281,7 @@ def set_user_config(config):
 
 def print_help(config):
     print("-----------------------------------------------------------------------")
-    print("Cjing build system -help ")
+    print("Cjing Build system " + get_version())
     print("-----------------------------------------------------------------------")
     print("usage: pmbuild <options> <profile> <tasks...>")
     print("cmd arguments:")
@@ -176,101 +289,181 @@ def print_help(config):
     print("      -help (display help)")
     print("      -show_cfg (print cfg json)")
     print("profile:(edit in config.jsc)")
-    for p in config.keys():
-        print(" " * 6 + p)
+    if config:
+        for p in config.keys():
+            print(" " * 6 + p)
     print("task:")
     print("      -all ")
     print("      -libs")
     print("      -premake")
     print("      -copy")
 
+##########################################################################################
+# Main Functions
+##########################################################################################
+
+def general_task_order(config_profile, is_all_task):
+    task_order = []
+
+    for task_name in config_profile.keys():
+        task = config_profile[task_name]
+        if type(task) != dict:
+            continue
+
+        if "type" not in task:
+            continue
+
+        # clean任务已经提前执行
+        task_type_filter = ["clean", "datas", "tools", "none"]
+        if task["type"] in task_type_filter:
+            continue
+        
+        # 如果task["explicit"] = True，则需要在sys.argv显示传递命令参数
+        if "explicit" in task.keys():
+            if task["explicit"] == True and ("-" + task_name) not in sys.argv:
+                continue
+
+        # 如果sys.argv传递参数中显示禁止命令，则不执行
+        if "-not" + task_name in sys.argv:
+            continue
+        if "-" + task_name in sys.argv or is_all_task:
+            task_order.append(task_name)
+
+    return task_order
+
+def do_normal(profile_cfg, all_cfg, user_args):
+    # task scirps
+    task_scripts = {
+        "copy"  : taks_run_copy,
+        "shell" : taks_run_shell,
+        "build" : task_run_build,
+    }
+
+    # 执行extensions
+    #   extensions: {
+    #     texture: {
+    #         search_path: "XXX/tools/ext"      #寻找的路径
+    #         module: "texture_ext"             #使用的模块脚本(py)
+    #         function: "run_texture"           #执行的函数
+    #     }
+    #  }
+    if "extensions" in all_cfg.keys():
+        for ext_name in all_cfg["extensions"].keys():
+            ext = all_cfg["extensions"][ext_name]
+            if "search_path" in ext.keys():
+                sys.path.append(ext["search_path"])
+            scripts = getattr(importlib.import_module(ext["module"]), ext["function"])
+
+    # 给所有未设置type的task设置type
+    for task_name in profile_cfg.keys():
+        if task_name == "user_vars":
+            continue
+
+        task = profile_cfg[task_name]
+        if type(task) == dict and "type" not in task.keys():
+            profile_cfg[task_name]["type"] = task_name
+
+    # 优先执行所有clean tasks
+    if "-clean" in user_args:
+        for name, task in profile_cfg:
+            if "type" not in task:
+                continue
+            if task["type"] == "clean":
+                task_run_clean(profile_cfg, name)
+
+    # run tasks
+    task_order = general_task_order(profile_cfg, "-all" in user_args)
+    if len(task_order) == 0:
+        exit(0)
+
+    for task_name in task_order:
+        task = profile_cfg[task_name]
+        if type(task) != dict: 
+            continue
+        if "type" not in task:
+            continue
+
+        print_task_header(task_name)
+
+        task_type = task["type"]
+        if task_type in task_scripts.keys():
+            task_run_scripts(profile_cfg, task_name, task_type, task_scripts)
+        elif task_type in profile_cfg["tools"].keys():
+            task_run_tools(profile_cfg, task_name, task_type)
+
 def main():
     start_time = time.time()
 
     if not os.path.exists("config.jsc"):
-        print("[error] must have a config.jsc ni current directory.")
+        print("[error] no config.jsc in current directory.")
         exit(1)
     
-    config_jsc = jsc.parse_jsc(open("config.jsc", "r").read())
-    if not config_jsc:
+    all_cfg = jsc.parse_jsc(open("config.jsc", "r").read())
+    if not all_cfg:
         print("[error] invalid config:config.jsc.")
         exit(1)
 
-    # parse args
-    #######################################
-    # option
-    option_index = 0
-    if "-help" in sys.argv:
-        print_help(config_jsc)
-        option_index += 1
+    if len(sys.argv) <= 1:
+        exit(0)
 
-    if "-show_cfg" in sys.argv:
-        print("cfg_json:")
-        print(json.dumps(config_jsc, indent=4))
-        option_index += 1
+    build_mode = "normal"
+    profile_index = 1
+    if len(sys.argv) > 1 and sys.argv[1] == "build":
+        profile_index = 2
+        build_mode = "build"
 
-    if (len(sys.argv) <= option_index + 1):
-        exit(1)
+    # user pass args
+    user_args = [
+        "-help",
+        "-clean",
+        "-all"
+    ]
+    for arg in reversed(user_args):
+        if arg not in sys.argv:
+            user_args.remove(arg)
+        else:
+            sys.argv.remove(arg)
 
-   #######################################
     # profile
-    profile = sys.argv[option_index + 1]
-    if profile not in config_jsc:
-        print("[error] " + profile + " is not a valid profile")
-        exit(0)     
-    profile_cfg = config_jsc[profile]
+    if profile_index < len(sys.argv):
+        profile_name = sys.argv[profile_index]
+        if profile_name not in all_cfg:
+            print("[error] " + profile_name + " is not a valid profile")
+            exit(0)
+        profile_cfg = all_cfg[profile_name]
+    else:
+        profile_cfg = all_cfg
+        
+    # only display help
+    if "-help" in user_args and len(sys.argv) == 1:
+        print_help(all_cfg)
+        exit(0)
+
+    # print title header
+    print("-----------------------------------------------------------------------")
+    print("Cjing Build " + get_version())
+    print("-----------------------------------------------------------------------")
 
     # set user config
     set_user_config(profile_cfg)
+    if "user_vars" not in profile_cfg.keys():
+        profile_cfg["user_vars"] = dict()
 
     # set tools
-    if "tools" in config_jsc.keys():
-        profile_cfg["tools"] = config_jsc["tools"]
+    profile_cfg["tools"] = dict()
+    if "tools" in all_cfg.keys():
+        profile_cfg["tools"] = all_cfg["tools"]
 
-    # check vs version
-    if "vs_version" in profile_cfg:
-        check_vs_version(profile_cfg)
-
-   #######################################
-    # tasks
-    tasks = collections.OrderedDict()
-    tasks["libs"]    = { "run" : taks_run_libs, "exclusive" : True}
-    tasks["premake"] = { "run" : task_run_premake}
-    tasks["copy"]    = { "run" : taks_run_copy}
-    tasks["build"]   = { "run" : task_run_build}
-
-    # clean总是最先执行，所以独立出来优先处理
-    if "-clean" in sys.argv:
-        task_run_clean(profile_cfg)
-
-    for key in tasks.keys():
-        if key not in profile_cfg.keys():
-            continue
-        task_start_time = time.time()
-        run_task = False
-
-        if "-all" in sys.argv:
-            if "exclusive" in tasks[key].keys() and tasks[key]["exclusive"]:
-                continue
-            run_task = True
-        elif "-" + key in sys.argv:
-            run_task = True
-
-        if run_task:
-            tasks.get(key, )["run"](profile_cfg)
-            print("Took (" + str(int((time.time() - task_start_time) * 1000)) + "ms)")
-            print("-----------------------------------------------------------------------")
-            print("")
-
-    generate_cjingbuild_config(profile_cfg, profile)
+    # do main task
+    if build_mode == "build":
+        files = get_task_files(profile_cfg, "build")
+        task_run_build(profile_cfg, "build", files, sys.argv[3:])
+    else:
+        do_normal(profile_cfg, all_cfg, user_args)
 
     # finish jobs
-    print("***********************************************************************")
-    print("Finish all jobs. Took (" + str(int((time.time() - start_time) * 1000)) + "ms)")
-    print("***********************************************************************")
+    print("-----------------------------------------------------------------------")
+    print("Finished. Took (" + str(int((time.time() - start_time) * 1000)) + "ms)")
 
 if __name__ == '__main__':
-    print("***********************************************************************")
-    print("Cjing Build system v0.1.0")
-    print("***********************************************************************")
     main()

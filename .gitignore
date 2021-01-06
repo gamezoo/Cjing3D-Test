@@ -1,5 +1,4 @@
 
-3rdparty
 assets
 tools/build_scripts/__pycache__/utils.cpython-37.pyc
 editor/bin
@@ -25,3 +24,11 @@ src/gpu/build
 src/gpu/lib
 src/renderer/build
 src/renderer/lib
+3rdparty/lua/build
+3rdparty/lua/lib
+3rdparty/fcpp/build
+3rdparty/fcpp/lib
+3rdparty/bullet
+3rdparty/imgui
+3rdparty/optick
+3rdparty/config_user.jsc

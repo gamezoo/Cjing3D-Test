@@ -16,7 +16,7 @@ namespace Cjing3D
 
 		KeyT* insert(KeyT key)
 		{
-			if (auto ret = find(key))
+			if (auto ret = this->find(key))
 			{
 				*ret = key;
 				return ret;
@@ -25,7 +25,7 @@ namespace Cjing3D
 			if ((++this->mSize) >= this->mCapacityThreshold) {
 				this->Grow();
 			}
-			return InsertImpl(HashKey(key), std::move(key), std::move(key));
+			return this->InsertImpl(this->HashKey(key), std::move(key), std::move(key));
 		}
 	};
 }

@@ -209,6 +209,7 @@ namespace GPU {
 		BLEND_INV_SRC1_COLOR,
 		BLEND_SRC1_ALPHA,
 		BLEND_INV_SRC1_ALPHA,
+		BLEND_MAX
 	};
 
 	enum ColorWriteEnable
