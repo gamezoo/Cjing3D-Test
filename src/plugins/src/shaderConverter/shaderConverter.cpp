@@ -1,9 +1,12 @@
 #include "shaderConverter.h"
 #include "shaderParser.h"
+#include "shaderMetadata.h"
 #include "core\memory\linearAllocator.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
+
+#include "gpu\definitions.h"
 
 #ifdef CJING3D_RENDERER_DX11
 #include "shaderCompilerHLSL.h"
@@ -18,6 +21,8 @@ namespace Cjing3D
 {
 	namespace
 	{
+		/// ///////////////////////////////////////////////////////////////////////
+		/// ShaderPreprocessor
 		class ShaderPreprocessor
 		{
 		private:
@@ -95,12 +100,15 @@ namespace Cjing3D
 				tag.data = (void*)0;
 				mTags.push(tag);
 
+				// convert to unix line endings
+				String srcBuffer = StringUtils::ReplaceString(source, "\r\n", "\n");
+
 				// create input data
 				mInputOffset = 0;
-				mInputSize = StringLength(source) + 1;
+				mInputSize = srcBuffer.length() + 1;
 				mInputData = (char*)mAllocator.Allocate(mInputSize);
 				Memory::Memset(mInputData, 0, mInputSize);
-				CopyString(Span(mInputData, mInputSize), source);
+				CopyString(Span(mInputData, mInputSize), srcBuffer.c_str());
 
 				// do preprocess
 				Concurrency::ScopedMutex lock(mMutex);
@@ -110,8 +118,7 @@ namespace Cjing3D
 			static void FppError(void* userData, char* format, va_list varArgs)
 			{
 				StaticString<128> errMsg;
-				sprintf(errMsg.data(), format, varArgs);
-				Debug::Warning(errMsg);
+				Debug::Warning(errMsg.Sprintfv(format, varArgs));
 			}
 
 			static char* FppInput(char* buffer, int size, void* userData)
@@ -155,7 +162,6 @@ namespace Cjing3D
 			const DynamicArray<const char*>& GetDependencies()const { return mDependencies; }
 			const char* GetOutput()const { return mOutput.c_str(); }
 		};
-
 		Concurrency::Mutex ShaderPreprocessor::mMutex;
 	}
 
@@ -181,16 +187,23 @@ namespace Cjing3D
 		context.AddSource(src);
 
 		// 1. preprocess source, acquire all dependencies
-		MaxPathString rootPath;
-		if (!Path(src).SplitPath(rootPath.data(), rootPath.size()))
+		MaxPathString parentPath;
+		if (!Path(src).SplitPath(parentPath.data(), parentPath.size()))
 		{
 			Debug::Warning("[ShaderConverter] Invalid path:%s", src);
 			return false;
 		}
 
+		// get shader root path
+		Path fullRootPath = context.GetFileSystem().GetBasePath();
+		Path fullSrcPath = fullRootPath;
+
+		fullRootPath.AppendPath(parentPath.c_str());	
+		fullSrcPath.AppendPath(src);
+
 		ShaderPreprocessor preprocessor;
-		preprocessor.AddInclude(rootPath.c_str());
-		if (!preprocessor.Preprocess(src, source.data()))
+		preprocessor.AddInclude(fullRootPath.c_str());
+		if (!preprocessor.Preprocess(fullSrcPath.c_str(), source.data()))
 		{
 			Debug::Warning("[ShaderConverter] failed to preprocess shader source.");
 			return false;
@@ -201,7 +214,7 @@ namespace Cjing3D
 			context.AddSource(dep);
 		}
 
-		// 2. parse shader source
+		// 2. parse shader source into an shader ast
 		ShaderParser parser;
 		auto shaderFileNode = parser.Parse(src, preprocessor.GetOutput());
 		if (!shaderFileNode)
@@ -210,17 +223,51 @@ namespace Cjing3D
 			return false;
 		}
 
+		// parse shader ast to create shader metadata
+		ShaderAST::ShaderMetadata shaderMetadata;
+		shaderFileNode->Visit(&shaderMetadata);
+		
+		// get tech and shaders from shader metadata
+		DynamicArray<String> techFunctions;
+		ShaderMap shaderMap;
+
+		const auto& techniques = shaderMetadata.GetTechniques();
+		for (const auto& tech : techniques)
+		{
+			if (!tech.mVS.empty()) 
+			{
+				techFunctions.push(tech.mVS);
+				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_VS].insert(tech.mVS);
+			}
+			if (!tech.mPS.empty()) 
+			{
+				techFunctions.push(tech.mPS);
+				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_PS].insert(tech.mPS);
+			}
+		}
+
 		// 3. compile shader source
 #ifdef CJING3D_RENDERER_DX11
-		ShaderCompilerHLSL shaderCompiler;
+		ShaderCompilerHLSL shaderCompiler(src);
 #endif
-
+		if (!shaderCompiler.GenerateAndCompile(shaderFileNode, techFunctions, shaderMap))
+		{
+			Debug::Warning("[ShaderConverter] failed to generate and compile shader source.");
+			return false;
+		}
 
 		// 4. write compiled file
 
-		return false;
 
-		/*if (!fileSystem.WriteFile(dest, buffer.data(), buffer.size())) {
+		// test
+		if (true) {
+			return false;
+		}
+
+		// 5. write metadata
+		const char* metadataBuffer = nullptr;
+		U32 metadataSize = 0;
+		if (!fileSystem.WriteFile(dest, metadataBuffer, metadataSize)) {
 			return false;
 		}
 		else
@@ -228,12 +275,12 @@ namespace Cjing3D
 			context.AddOutput(dest);
 			context.SetMetaData<ShaderMetaObject>(data);
 			return true;
-		}*/
+		}
 	}
 
 	bool ShaderResConverter::SupportsType(const char* ext, const ResourceType& type)
 	{
-		return type == ResourceType("Shader") && EqualString(ext, "esf");
+		return type == ResourceType("Shader") && EqualString(ext, "jsf");
 	}
 
 	LUMIX_PLUGIN_ENTRY(shaderConverter)

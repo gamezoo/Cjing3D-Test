@@ -17,7 +17,7 @@ namespace Cjing3D
 	if (token.mType != expectedType) {													  \
 		Error(StaticString<128>().Sprintf("Excepted %s, but get %s", expectedStr, token.mValue).c_str());	  \
 	}
-#define PASS_TOKEN()																	  \
+#define NEXT_TOKEN()																	  \
 	token = GetNextToken();																  \
 	if (!token) {																          \
 		Error("Get Token EOF!");													      \
@@ -48,6 +48,7 @@ namespace Cjing3D
 	/// Type keywords
 	ShaderAST::BaseTypeNode BASE_TYPE_KEYS[] = {
 		{"void", 0},
+		{"function", 0},
 		{"float", 4},
 		{"float2", 8},
 		{"float3", 12},
@@ -103,64 +104,21 @@ namespace Cjing3D
 	};
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
-	/// ShaderAST
-	namespace ShaderAST
-	{
-		bool BaseTypeNode::CheckEnumString(const char* name) const
-		{
-			I32 value = 0;
-			return mEnumToValueFunc != nullptr ? mEnumToValueFunc(value, name) : false;
-		}
-
-		DeclarationNode* BaseTypeNode::FindMemberDecl(const char* name)
-		{
-			for (auto member : mMembers)
-			{
-				if (member->mName == name) {
-					return member;
-				}
-			}
-			return nullptr;
-		}
-
-		DeclarationNode* FileNode::FindVariable(const char* name)
-		{
-			for (auto variable : mVariables)
-			{
-				if (variable->mName == name) {
-					return variable;
-				}
-			}
-			return nullptr;
-		}
-
-		DeclarationNode* FileNode::FindFunction(const char* name)
-		{
-			for (auto function : mFunctions)
-			{
-				if (function->mName == name) {
-					return function;
-				}
-			}
-			return nullptr;
-		}
-	}
-
-	/// /////////////////////////////////////////////////////////////////////////////////////////
 	/// ShaderParser
-
 	ShaderParser::ShaderParser()
 	{
 		mStructTypeSet.insert("struct");
 
 		// reversed keys
-		AddReversedNodes(REVERSED_STORAGE_KEYS);
-		AddReversedNodes(REVERSED_MODIFIER_KEYS);
-		AddReversedNodes(BASE_TYPE_KEYS);
-		AddReversedNodes(SRV_TYPE_KEYS);
-		AddReversedNodes(UAV_TYPE_KEYS);
-		AddReversedNodes(CBV_TYPE_KEYS);
-		
+		AddReversedKeys(REVERSED_STORAGE_KEYS);
+		AddReversedKeys(REVERSED_MODIFIER_KEYS);
+
+		// record nodes
+		RecordNodes(REVERSED_MODIFIER_KEYS);
+		RecordNodes(BASE_TYPE_KEYS);
+		RecordNodes(SRV_TYPE_KEYS);
+		RecordNodes(UAV_TYPE_KEYS);
+		RecordNodes(CBV_TYPE_KEYS);
 	}
 
 	ShaderParser::~ShaderParser()
@@ -175,9 +133,9 @@ namespace Cjing3D
 		mShaderFileName = filename;
 		I32 sourceLength = StringLength(source);
 
-		// 1.shader preprocess pass添加了#line，这里需要先移除#line
+		// 1.Parse #line directives
 		String currentLine;
-		auto GetLineString = [&currentLine, &source, sourceLength](I32 offset)->bool {
+		auto GetLineString = [&currentLine, &source, sourceLength](I32& offset)->bool {
 			currentLine.clear();
 			while (offset < sourceLength)
 			{
@@ -191,16 +149,35 @@ namespace Cjing3D
 			}
 			return currentLine.size() > 0;
 		};
+
 		I32 offset = 0;
+		I32 sourceLine = 1;
+		String fileName;
 		while (offset < sourceLength)
 		{
 			if (GetLineString(offset))
 			{
 				if (currentLine.find("#line") == 0)
 				{
+					I32 lineNumPos = currentLine.find(" ");
+					if (lineNumPos != -1) {
+						lineNumPos++;
+					}
 
+					I32 lineFilePos = currentLine.find(" ", lineNumPos);
+					if (lineFilePos != -1) 
+					{
+						lineFilePos++;
+						fileName = (currentLine.c_str() + lineFilePos);
+					}
+
+					auto& lineDirective = mLineDirectives.emplace();
+					lineDirective.mLine = atoi(currentLine.c_str() + lineNumPos);
+					lineDirective.mFileName = fileName;
+					lineDirective.mSourceLine = sourceLine;
 				}
 			}
+			sourceLine++;
 		}
 
 		// 2.parse shader file
@@ -222,16 +199,16 @@ namespace Cjing3D
 				{
 					// declare custom struct type
 					// FORMAT: declare_struct_type XXXX;
-					PASS_TOKEN();
+					NEXT_TOKEN();
 					CHECK_TOKEN(ShaderAST::TokenType::ID, nullptr);
 					mStructTypeSet.insert(token.mValue);
-					PASS_TOKEN();
+					NEXT_TOKEN();
 					CHECK_TOKEN(ShaderAST::TokenType::CHAR, ";");
 
 					mCurrentAttributes.clear();
 				}
 
-				else if (mStructTypeSet.find(StringUtils::StringToHash(token.mValue)) != nullptr)
+				else if (mStructTypeSet.find(token.mValue) != nullptr)
 				{
 					// parse custom struct type
 					ShaderAST::StructNode* node = ParseStruct(token);
@@ -271,9 +248,9 @@ namespace Cjing3D
 			token = GetNextToken();
 		}
 
-
 		return fileNode;
 	}
+
 	ShaderAST::Token ShaderParser::GetNextToken()
 	{
 		if (stb_c_lexer_get_token(&mLexer))
@@ -282,10 +259,13 @@ namespace Cjing3D
 			if (mLexer.token == CLEX_parse_error) {
 				return ret;
 			}
-			else if (mLexer.token >= 0 && mLexer.token < 256)
+
+			if (mLexer.token >= 0 && mLexer.token < CLEX_eof)
 			{
+				char tokenStr[] = { (char)mLexer.token, '\0' };
 				ret.mType = ShaderAST::TokenType::CHAR;
-				ret.mValue = (char)mLexer.token;
+				ret.mValue = tokenStr;
+				return ret;
 			}
 
 			switch (mLexer.token)
@@ -312,8 +292,7 @@ namespace Cjing3D
 				ret.mType = ShaderAST::TokenType::CHAR;
 				ret.mValue = mLexer.string;
 				break;
-			}
-			
+			}	
 			return ret;
 		}
 
@@ -323,11 +302,9 @@ namespace Cjing3D
 	void ShaderParser::Error(const char* errMsg)
 	{
 		// get line number
-		stb_lex_location location;
-		stb_c_lexer_get_location(&mLexer, mLexer.parse_point, &location);
-
-		I32 lineNum = location.line_number;
-		I32 lineOffset = location.line_offset;
+		I32 lineNum = 1;
+		I32 lineOffset = 0;
+		GetCurrentLine(lineNum, lineOffset);
 
 		std::stringstream os;
 		os << std::endl;
@@ -365,7 +342,7 @@ namespace Cjing3D
 		// };
 
 		// parse struct name
-		PASS_TOKEN();
+		NEXT_TOKEN();
 		CHECK_TOKEN(ShaderAST::TokenType::ID, nullptr);
 
 		// check if struct name is defined
@@ -384,19 +361,20 @@ namespace Cjing3D
 		ShaderAST::StructNode* structNode = AddNode<ShaderAST::StructNode>(token.mValue);
 		structNode->mTypeName = structTypeName;
 		structNode->mBaseType = AddNode<ShaderAST::BaseTypeNode>(token.mValue, -1);
+		structNode->mBaseType->mStruct = structNode;
 		structNode->mAttributes = std::move(mCurrentAttributes);
 
-		PASS_TOKEN();
+		NEXT_TOKEN();
 		// parse members
 		if (token.mValue == "{")
 		{
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			while (token.mValue != "}")
 			{
 				// parse member attributes
 				while (auto attribute = ParseAttribute(token))
 				{
-					PASS_TOKEN();
+					NEXT_TOKEN();
 					mCurrentAttributes.push(attribute);
 				}
 
@@ -408,9 +386,9 @@ namespace Cjing3D
 					CHECK_TOKEN(ShaderAST::TokenType::CHAR, ";");
 					structNode->mBaseType->mMembers.push(memberDecl);
 				}
-				PASS_TOKEN();
+				NEXT_TOKEN();
 			}
-			PASS_TOKEN();
+			NEXT_TOKEN();
 		}
 
 		CHECK_TOKEN(ShaderAST::TokenType::CHAR, ";");
@@ -431,7 +409,7 @@ namespace Cjing3D
 				if (token.mType != ShaderAST::TokenType::CHAR || token.mValue != "{") {
 					return nullptr;
 				}
-				PASS_TOKEN();
+				NEXT_TOKEN();
 
 				ShaderAST::ValuesNode* values = AddNode<ShaderAST::ValuesNode>();
 				const char* parsePos = mLexer.parse_point;
@@ -446,6 +424,10 @@ namespace Cjing3D
 						return values;
 					}
 
+					if (token.mType == ShaderAST::TokenType::CHAR && token.mValue == ",") {
+						NEXT_TOKEN();
+					}
+
 					if (parsePos == mLexer.parse_point)
 					{		
 						Error(StaticString<128>().Sprintf("Missing \'}\', current token:\'%s\'.", token.mValue).c_str());
@@ -453,7 +435,7 @@ namespace Cjing3D
 					}
 					parsePos = mLexer.parse_point;
 				}
-				PASS_TOKEN();
+				NEXT_TOKEN();
 				return values;
 			};
 			valueNode = ParseValues(token);
@@ -479,15 +461,15 @@ namespace Cjing3D
 			switch (token.mType)
 			{
 			case ShaderAST::TokenType::INT:
-				valueNode->mType = ShaderAST::ValueType::INT;
+				valueNode->mValueType = ShaderAST::ValueType::INT;
 				valueNode->mIntValue = token.mInt;
 				break;
 			case ShaderAST::TokenType::FLOAT:
-				valueNode->mType = ShaderAST::ValueType::FLOAT;
+				valueNode->mValueType = ShaderAST::ValueType::FLOAT;
 				valueNode->mFloatValue = token.mFloat;
 				break;
 			case ShaderAST::TokenType::STRING:
-				valueNode->mType = ShaderAST::ValueType::STRING;
+				valueNode->mValueType = ShaderAST::ValueType::STRING;
 				valueNode->mStringValue = token.mValue;
 				break;
 			case ShaderAST::TokenType::ID:
@@ -497,7 +479,7 @@ namespace Cjing3D
 				{
 					if (baseType.CheckEnumString(token.mValue.c_str()))
 					{
-						valueNode->mType = ShaderAST::ValueType::ENUM;
+						valueNode->mValueType = ShaderAST::ValueType::ENUM;
 						valueNode->mStringValue = token.mValue;
 					}
 					else
@@ -508,24 +490,46 @@ namespace Cjing3D
 				}
 				else
 				{
-					// try to match a variable in shader file
-					if (auto variableNode = mFileNode->FindVariable(token.mValue))
+					if (declaration != nullptr && declaration->mType->mBaseType->mName == "function")
 					{
-						// check type
-						if (variableNode->mType->mBaseType != &baseType)
+						// value type is function
+						if (auto func = mFileNode->FindFunction(token.mValue))
 						{
-							Error(StaticString<128>().Sprintf(
-								"Invalid variable:\'%s\', expected type:\'%s\'.", token.mValue, variableNode->mName).c_str());
+							if (!func->mIsFunction)
+							{
+								Error(StaticString<128>().Sprintf("Unexpected function value:\'%s\'.", token.mValue).c_str());
+								return nullptr;
+							}
+							valueNode->mValueType = ShaderAST::ValueType::FUNCTION;
+							valueNode->mStringValue = token.mValue;
+						}
+						else
+						{
+							Error(StaticString<128>().Sprintf("Unexpected function value:\'%s\'.", token.mValue).c_str());
 							return nullptr;
 						}
-
-						valueNode->mType = ShaderAST::ValueType::ID;
-						valueNode->mStringValue = token.mValue;
 					}
 					else
 					{
-						Error(StaticString<128>().Sprintf("Unexpected value:\'%s\'.", token.mValue).c_str());
-						return nullptr;
+						// try to match a variable in shader file
+						if (auto variableNode = mFileNode->FindVariable(token.mValue))
+						{
+							// check type
+							if (variableNode->mType->mBaseType != &baseType)
+							{
+								Error(StaticString<128>().Sprintf(
+									"Invalid variable:\'%s\', expected type:\'%s\'.", token.mValue, variableNode->mName).c_str());
+								return nullptr;
+							}
+
+							valueNode->mValueType = ShaderAST::ValueType::ID;
+							valueNode->mStringValue = token.mValue;
+						}
+						else
+						{
+							Error(StaticString<128>().Sprintf("Unexpected value:\'%s\'.", token.mValue).c_str());
+							return nullptr;
+						}
 					}
 				}
 			}
@@ -534,7 +538,7 @@ namespace Cjing3D
 				break;
 			};
 			
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			return valueNode;
 		}
 		else
@@ -549,7 +553,7 @@ namespace Cjing3D
 		if (token.mType != ShaderAST::TokenType::CHAR || token.mValue != ".") {
 			return nullptr;
 		}
-		PASS_TOKEN();
+		NEXT_TOKEN();
 
 		// check member type
 		ShaderAST::DeclarationNode* memberType = baseType.FindMemberDecl(token.mValue);
@@ -570,9 +574,9 @@ namespace Cjing3D
 		memberValue->mMemberStr = token.mValue;
 
 		// FORMAT: xxx.bbb = ccc
-		PASS_TOKEN();
+		NEXT_TOKEN();
 		CHECK_TOKEN(ShaderAST::TokenType::CHAR, "=");
-		PASS_TOKEN();
+		NEXT_TOKEN();
 
 		memberValue->mValue = ParseValue(token, *memberType->mType->mBaseType, memberType);
 		return memberValue;
@@ -583,14 +587,14 @@ namespace Cjing3D
 		if (token.mValue != "[") {
 			return nullptr;
 		}
-		PASS_TOKEN();
+		NEXT_TOKEN();
 		CHECK_TOKEN(ShaderAST::TokenType::ID, nullptr);
 
 		// format:
 		// [Attribute(param, param)]
 		ShaderAST::AttributeNode* attributeNode = AddNode<ShaderAST::AttributeNode>(token.mValue);
 
-		PASS_TOKEN();
+		NEXT_TOKEN();
 		
 		if (token.mValue == "(")
 		{
@@ -604,7 +608,7 @@ namespace Cjing3D
 				}
 			};
 
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			while (token.mValue != ")")
 			{
 				switch (token.mType)
@@ -627,16 +631,16 @@ namespace Cjing3D
 					return nullptr;
 					break;
 				}
-				PASS_TOKEN();
+				NEXT_TOKEN();
 
 				if (token.mType == ShaderAST::TokenType::CHAR && token.mValue == ",")
 				{
 					FlushStringParam();
-					PASS_TOKEN();
+					NEXT_TOKEN();
 				}
 			}
 			FlushStringParam();
-			PASS_TOKEN();
+			NEXT_TOKEN();
 		}
 
 		CHECK_TOKEN(ShaderAST::TokenType::CHAR, "]");
@@ -650,7 +654,7 @@ namespace Cjing3D
 		auto ParseReversedKeys = [&token, this]() {
 			ShaderAST::StorageTypeNode* node = nullptr;
 			if (Find(node, token.mValue)) {
-				PASS_TOKEN();
+				NEXT_TOKEN();
 			}
 			return node;
 		};
@@ -667,7 +671,7 @@ namespace Cjing3D
 		auto ParseModifier = [&token, this]() {
 			ShaderAST::ModifierNode* node = nullptr;
 			if (Find(node, token.mValue)) {
-				PASS_TOKEN();
+				NEXT_TOKEN();
 			}
 			return node;
 		};
@@ -683,8 +687,10 @@ namespace Cjing3D
 				return node;
 			}
 
-			if (Find(node, token.mValue)) {
-				PASS_TOKEN();
+			if (!Find(node, token.mValue)) 
+			{
+				Error(StaticString<128>().Sprintf("Missing type:\'%s\'.", token.mValue.c_str()).c_str());
+				return node;
 			}
 			return node;
 		};
@@ -693,34 +699,36 @@ namespace Cjing3D
 		// check and parse template
 		// template only support type format
 		// ex: Texture2D<unorm float2> res;
-		PASS_TOKEN();
+		NEXT_TOKEN();
 		if (token.mValue == "<")
 		{
-			PASS_TOKEN();
+			NEXT_TOKEN();
 
 			while (ShaderAST::ModifierNode* modifier = ParseModifier()) {
 				typeNode->mTemplateModifiers.push(modifier);
 			}
 			typeNode->mTemplateBaseType = ParseType();
 
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			CHECK_TOKEN(ShaderAST::TokenType::CHAR, ">");
-			PASS_TOKEN();
+			NEXT_TOKEN();
 		}
 
 		// variable name
-		CHECK_TOKEN(ShaderAST::TokenType::ID, "");
-		if (CheckReserved(token)) {
+		CHECK_TOKEN(ShaderAST::TokenType::ID, nullptr);
+		if (!CheckReserved(token)) {
 			return nullptr;
 		}
 
 		////////////////////////////////////////////////////////////////////////
-		ShaderAST::DeclarationNode* node = AddNode<ShaderAST::DeclarationNode>();
+		
+		// add declaration node
+		ShaderAST::DeclarationNode* node = AddNode<ShaderAST::DeclarationNode>(token.mValue);
 		node->mType = typeNode;
 		node->mTypeStorages = std::move(storageTypes);
 		node->mAttributes = std::move(mCurrentAttributes);
 
-		PASS_TOKEN();
+		NEXT_TOKEN();
 
 		// try to parse array
 		node->mArrayDims.fill(0);
@@ -731,17 +739,17 @@ namespace Cjing3D
 			I32 currentDim = 0;
 			while (token.mValue == "[" && currentDim < 3)
 			{
-				PASS_TOKEN();
+				NEXT_TOKEN();
 				CHECK_TOKEN(ShaderAST::TokenType::INT, nullptr);
 				node->mArrayDims[currentDim++] = token.mInt;
-				PASS_TOKEN();
+				NEXT_TOKEN();
 				CHECK_TOKEN(ShaderAST::TokenType::CHAR, "]");
 			}
 		}
 		// try to parse func
 		else if (token.mValue == "(")
 		{
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			// format Func(float a, float b)
 			// current token : float
 			I32 currentArgsCount = 0;
@@ -755,12 +763,12 @@ namespace Cjing3D
 					node->mArgs.push(argNode);
 
 					if (token.mValue == ",") {
-						PASS_TOKEN();
+						NEXT_TOKEN();
 					}
 				}
 			}
 			// skip ")"
-			PASS_TOKEN();
+			NEXT_TOKEN();
 		}
 
 		// try to parse semantic
@@ -768,7 +776,7 @@ namespace Cjing3D
 		if (token.mValue == ":")
 		{
 			// skip ":"
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			CHECK_TOKEN(ShaderAST::TokenType::ID, nullptr);
 
 			if (token.mValue == "register")
@@ -781,16 +789,16 @@ namespace Cjing3D
 				isDeclared = true;
 			
 				// format: Texture2D xxx : register(t0)
-				PASS_TOKEN();
+				NEXT_TOKEN();
 				CHECK_TOKEN(ShaderAST::TokenType::CHAR, "(");
-				PASS_TOKEN();
+				NEXT_TOKEN();
 
 				node->mRegister = token.mValue;
 
 				// skip ")"
-				PASS_TOKEN();
+				NEXT_TOKEN();
 				CHECK_TOKEN(ShaderAST::TokenType::CHAR, ")");
-				PASS_TOKEN();
+				NEXT_TOKEN();
 			}
 			else
 			{
@@ -808,7 +816,7 @@ namespace Cjing3D
 				// format: float4 pos : SV_POSITION
 				node->mSemantic = token.mValue;
 
-				PASS_TOKEN();
+				NEXT_TOKEN();
 			}
 		}
 
@@ -821,7 +829,7 @@ namespace Cjing3D
 		
 		if (token.mValue == "=") 
 		{
-			PASS_TOKEN();
+			NEXT_TOKEN();
 			node->mValue = ParseValue(token, *node->mType->mBaseType, node);
 		}
 
@@ -831,21 +839,23 @@ namespace Cjing3D
 	bool ShaderParser::ParseFunctionBody(ShaderAST::Token& token, ShaderAST::DeclarationNode& node)
 	{
 		// parse function body and get function raw code
-		stb_lex_location location;
-		stb_c_lexer_get_location(&mLexer, mLexer.parse_point, &location);
+		I32 lineNum = 1;
+		I32 lineOffset = 0;
+		GetCurrentLine(lineNum, lineOffset);
 
-		node.mFileLine = location.line_number;
+		node.mFileLine = lineNum;
 		node.mFileName = mShaderFileName;
 
 		const char* begin = mLexer.parse_point;
-		const char* end = mLexer.parse_point;
+		const char* end = nullptr;
 
 		I32 scopeLevel = 1;
 		I32 bracketLevel = 0;
 		I32 parenLevel = 0;
 		while (scopeLevel > 0)
 		{
-			PASS_TOKEN();
+			end = mLexer.parse_point;
+			NEXT_TOKEN();
 			if (token.mValue.empty()) {
 				continue;
 			}
@@ -902,9 +912,26 @@ namespace Cjing3D
 		}
 
 		ShaderAST::ValueNode* valueNode = AddNode<ShaderAST::ValueNode>();
-		valueNode->mType = ShaderAST::ValueType::RAW_CODE;
+		valueNode->mValueType = ShaderAST::ValueType::RAW_CODE;
 		valueNode->mStringValue = String(begin, end);
+		node.mValue = valueNode;
 
 		return true;
+	}
+
+	void ShaderParser::GetCurrentLine(I32& outLineNum, I32& outLineOff) const
+	{
+		stb_lex_location location;
+		stb_c_lexer_get_location(&mLexer, mLexer.parse_point, &location);
+
+		outLineNum = location.line_number;
+		outLineOff = location.line_offset;
+
+		for (const auto& lineDir : mLineDirectives)
+		{
+			if (location.line_number >= lineDir.mSourceLine) {
+				outLineNum = (location.line_number - lineDir.mSourceLine) + lineDir.mLine - 1;
+			}
+		}
 	}
 }

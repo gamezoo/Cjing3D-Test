@@ -94,6 +94,10 @@ namespace Cjing3D
 			return mData;
 		}
 
+		void clear() {
+			mData[0] = '\0';
+		}
+
 		const char back()const {
 			return mData[StringLength(mData) - 1];
 		}
@@ -161,6 +165,12 @@ namespace Cjing3D
 			va_start(args, format);
 			vsnprintf(mData, N, format, args);
 			va_end(args);
+			return *this;
+		}
+
+		StaticString& Sprintfv(const char* format, va_list args)
+		{
+			vsprintf_s(mData, N, format, args);
 			return *this;
 		}
 

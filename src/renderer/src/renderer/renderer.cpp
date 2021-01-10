@@ -27,7 +27,7 @@ namespace Renderer
 		Shader::RegisterFactory();
 
 		// test
-		auto shader = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/default.esf"));
+		auto shader = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/default_pipeline.jsf"));
 		ResourceManager::WaitForResource(shader);
 
 		mIsInitialize = true;
