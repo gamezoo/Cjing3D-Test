@@ -29,7 +29,8 @@ namespace Cjing3D {
 	{
 		void Info(const char* msg, ...);
 		void LogArgs(const char* msg, va_list args, const char* prefix = nullptr);
-		void Log(const char* msg, const char* prefix, ...);
+		void Log(const char* msg, ...);
+		void LogWithPrefix(const char* prefix, const char* msg, ...);
 		void PrintConsoleHeader();
 	}
 

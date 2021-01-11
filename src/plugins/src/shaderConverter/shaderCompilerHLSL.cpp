@@ -1,5 +1,11 @@
+#if defined(CJING3D_RENDERER_DX11) || defined(CJING3D_RENDERER_DX12)
+
 #include "shaderCompilerHLSL.h"
 #include "core\platform\platform.h"
+
+#if !defined(CJING_HLSL_SHADER_MAJOR_VER) || CJING_HLSL_SHADER_MAJOR_VER < 6
+#include <d3dcompiler.h>
+#endif
 
 namespace Cjing3D
 {
@@ -12,6 +18,43 @@ namespace Cjing3D
 		GPU::SHADERSTAGES mStage;
 		I32 mMajorVer = 0;
 		I32 mMinorVer = 0;
+	};
+
+	// d3d compiler lib
+	struct ShaderCompilerHLSLImpl
+	{
+	public:
+#if !defined(CJING_HLSL_SHADER_MAJOR_VER) || CJING_HLSL_SHADER_MAJOR_VER < 6
+		void* mLibHandle = nullptr;
+		DynamicArray<ComPtr<ID3DBlob>> mBytecodes;
+
+		decltype(D3DCompile)* mD3DCompileFunc = nullptr;
+		decltype(D3DStripShader)* mD3DStripShaderFunc = nullptr;
+
+	public:
+		ShaderCompilerHLSLImpl()
+		{
+			auto lib = Platform::LibraryOpen(D3DCOMPILER_DLL_A);
+			Debug::CheckAssertion(lib != nullptr);
+			if (lib != nullptr)
+			{
+				mLibHandle = lib;
+				mD3DCompileFunc = (decltype(D3DCompile)*)(Platform::LibrarySymbol(lib, "D3DCompile"));
+				mD3DStripShaderFunc = (decltype(D3DStripShader)*)(Platform::LibrarySymbol(lib, "D3DStripShader"));
+			}
+		}
+
+		~ShaderCompilerHLSLImpl()
+		{
+			mBytecodes.clear();
+			if (mLibHandle != nullptr) {
+				Platform::LibraryClose(mLibHandle);
+			}
+		}
+#else
+		ShaderCompilerHLSLImpl() {}
+		~ShaderCompilerHLSLImpl() {}
+#endif
 	};
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +125,7 @@ namespace Cjing3D
 			attribute->Visit(this);
 		}
 		
-		WriteCode("struct %s", node->mName);
+		WriteCode("struct %s", node->mName.c_str());
 		WriteNextLine();
 		WriteCode("{");
 		WriteNextLine();
@@ -99,7 +142,7 @@ namespace Cjing3D
 		}
 		PopScope();
 
-		WriteCode("}");
+		WriteCode("};");
 		WriteNextLine();
 		WriteNextLine();
 	}
@@ -195,6 +238,7 @@ namespace Cjing3D
 
 			WriteNextLine();
 			WriteCode("}");
+			WriteNextLine();
 			WriteNextLine();
 		}
 	}
@@ -402,15 +446,18 @@ namespace Cjing3D
 	/// /////////////////////////////////////////////////////////////////////////////////////////
 	/// shader compiler
 	ShaderCompilerHLSL::ShaderCompilerHLSL(const char* srcPath) :
+		ShaderCompiler(srcPath),
 		mSrcPath(srcPath)
 	{
+		mImpl = CJING_NEW(ShaderCompilerHLSLImpl);
 	}
 
 	ShaderCompilerHLSL::~ShaderCompilerHLSL()
 	{
+		CJING_SAFE_DELETE(mImpl);
 	}
 
-	bool ShaderCompilerHLSL::GenerateAndCompile(ShaderAST::FileNode* fileNode, DynamicArray<String>& techFunctions, ShaderMap& shaderMap)
+	bool ShaderCompilerHLSL::GenerateAndCompile(ShaderAST::FileNode* fileNode, DynamicArray<String>& techFunctions, ShaderMap& shaderMap, DynamicArray<ShaderCompileOutput>& outputs)
 	{
 		DynamicArray<CompileInfo> compileInfos;
 
@@ -420,16 +467,13 @@ namespace Cjing3D
 
 		//////////////////////////////////////////////
 		// test
-		auto output = generator.GetOutputCode();
-		Logger::Log("\n%s", output.c_str(), nullptr);
-		if (true) {
-			return false;
-		}
+		auto outputCode = generator.GetOutputCode();
+		Logger::Log("\n%s", outputCode.c_str());
 		/////////////////////////////////////////////
 
 		// 2. compile shader source
-		const I32 majorVer = 5;
-		const I32 minorVer = 1;
+		I32 majorVer = 5;
+		I32 minorVer = 1;
 #ifdef CJING_HLSL_SHADER_MAJOR_VER
 		majorVer = CJING_HLSL_SHADER_MAJOR_VER;
 #endif
@@ -443,7 +487,7 @@ namespace Cjing3D
 			{
 				CompileInfo& info = compileInfos.emplace();
 				info.mCode = generator.GetOutputCode();
-				info.mEntryPoint = shaderFuncName.second;
+				info.mEntryPoint = shaderFuncName;
 				info.mStage = stage;				
 				info.mMajorVer = majorVer;
 				info.mMinorVer = minorVer;
@@ -452,17 +496,20 @@ namespace Cjing3D
 
 		for (const auto& compileInfo : compileInfos)
 		{
-			if (!Compile(compileInfo.mCode, compileInfo.mEntryPoint, 
-				compileInfo.mStage, compileInfo.mMajorVer, compileInfo.mMinorVer))
+			auto compileOutput = Compile(compileInfo.mCode, compileInfo.mEntryPoint,
+				compileInfo.mStage, compileInfo.mMajorVer, compileInfo.mMinorVer);
+			if (!compileOutput)
 			{
-				Debug::Error("Failed to compile shader source.");
+				Debug::Error("Failed to compile shader source:%s", compileOutput.mErrMsg.c_str());
 				return false;
 			}
+
+			outputs.push(compileOutput);
 		}
 		return true;
 	}
 
-	bool ShaderCompilerHLSL::Compile(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)
+	ShaderCompileOutput ShaderCompilerHLSL::Compile(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)
 	{
 		if (major == 6) {
 			return CompileHLSL6(code, entryPoint, stage, major, minor);
@@ -472,16 +519,80 @@ namespace Cjing3D
 		}
 
 		Debug::Error("Unsupport hlsl shader model:%d_%d", major, minor);
-		return false;
+		return ShaderCompileOutput();
 	}
 
-	bool ShaderCompilerHLSL::CompileHLSL5(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)
+	ShaderCompileOutput ShaderCompilerHLSL::CompileHLSL5(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)
 	{
-		return false;
+#if !defined(CJING_HLSL_SHADER_MAJOR_VER) || CJING_HLSL_SHADER_MAJOR_VER < 6
+		StaticString<16> target;
+		switch (stage)
+		{
+		case GPU::SHADERSTAGES_VS:
+			target.Sprintf("vs_%i_%i", major, minor);
+			break;
+		case GPU::SHADERSTAGES_GS:
+			target.Sprintf("gs_%i_%i", major, minor);
+			break;
+		case GPU::SHADERSTAGES_HS:
+			target.Sprintf("hs_%i_%i", major, minor);
+			break;
+		case GPU::SHADERSTAGES_DS:
+			target.Sprintf("ds_%i_%i", major, minor);
+			break;
+		case GPU::SHADERSTAGES_PS:
+			target.Sprintf("ps_%i_%i", major, minor);
+			break;
+		case GPU::SHADERSTAGES_CS:
+			target.Sprintf("cs_%i_%i", major, minor);
+			break;
+		default:
+			break;
+		}
+
+		ShaderCompileOutput output;
+
+		// compile source code
+		ComPtr<ID3DBlob> byteCode;
+		ComPtr<ID3DBlob> errMsg;
+		UINT flag = D3DCOMPILE_OPTIMIZATION_LEVEL3 | D3DCOMPILE_DEBUG;
+		HRESULT hr = mImpl->mD3DCompileFunc(
+			code, StringLength(code), mSrcPath, nullptr, nullptr, 
+			entryPoint, target.c_str(), flag, 0, &byteCode, &errMsg);
+		if (FAILED(hr))
+		{
+			if (errMsg) {
+				output.mErrMsg = Span(
+					(const char*)errMsg->GetBufferPointer(),
+					errMsg->GetBufferSize()
+				);
+			}
+			return output;
+		}
+
+		// keep comptr ref
+		mImpl->mBytecodes.push(byteCode);	
+
+		output.mByteCode = (const U8*)byteCode->GetBufferPointer();
+		output.mByteCodeLenght = (U32)byteCode->GetBufferSize();
+		output.mStage = stage;
+
+		// strip shader compiled code(temoves unwanted blobs)
+		UINT stripFlag = D3DCOMPILER_STRIP_REFLECTION_DATA | D3DCOMPILER_STRIP_DEBUG_INFO;
+		mImpl->mD3DStripShaderFunc(output.mByteCode, output.mByteCodeLenght, stripFlag, NULL);
+
+		return output;
+#else
+		return ShaderCompileOutput();
+#endif
 	}
 
-	bool ShaderCompilerHLSL::CompileHLSL6(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)
+	ShaderCompileOutput ShaderCompilerHLSL::CompileHLSL6(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)
 	{
-		return false;
+		ShaderCompileOutput output;
+
+		return output;
 	}
 }
+
+#endif

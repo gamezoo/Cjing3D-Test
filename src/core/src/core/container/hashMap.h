@@ -203,6 +203,16 @@ namespace Cjing3D
 			return ret;
 		}
 
+		KeyT& GetKeyByIndex(I32 i)
+		{
+			return mKeys[i];
+		}
+
+		const KeyT& GetKeyByIndex(I32 i)const
+		{
+			return mKeys[i];
+		}
+
 		Iterator begin() { return Iterator{ this, LookupIndex(0) }; }
 		ConstIterator begin() const { return ConstIterator{ this, LookupIndex(0) }; }
 		Iterator end() { return Iterator{ this, -1 }; }

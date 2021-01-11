@@ -12,10 +12,10 @@ namespace Cjing3D
 
 #define CHECK_TOKEN(expectedType, expectedStr)											  \
 	if (expectedStr != nullptr && token.mValue != expectedStr) {						  \
-		Error(StaticString<128>().Sprintf("Excepted %s, but get %s", expectedStr, token.mValue).c_str());	  \
+		Error(StaticString<128>().Sprintf("Excepted %s, but get %s", expectedStr, token.mValue.c_str()).c_str());	  \
 	}																					  \
 	if (token.mType != expectedType) {													  \
-		Error(StaticString<128>().Sprintf("Excepted %s, but get %s", expectedStr, token.mValue).c_str());	  \
+		Error(StaticString<128>().Sprintf("Excepted %s, but get %s", expectedStr, token.mValue.c_str()).c_str());	  \
 	}
 #define NEXT_TOKEN()																	  \
 	token = GetNextToken();																  \
@@ -318,7 +318,7 @@ namespace Cjing3D
 	{
 		if (mReversedKeys.find(token.mValue) != nullptr)
 		{
-			Debug::Error("[ShaderParse] %s is reversed keyword.", token.mValue);
+			Debug::Error("[ShaderParse] %s is reversed keyword.", token.mValue.c_str());
 			return false;
 		}
 		return true;
@@ -327,11 +327,11 @@ namespace Cjing3D
 	ShaderAST::StructNode* ShaderParser::ParseStruct(ShaderAST::Token& token)
 	{
 		CHECK_TOKEN(ShaderAST::TokenType::ID, nullptr);
-		const char* structTypeName = token.mValue;
+		String structTypeName = token.mValue;
 
 		if (mStructTypeSet.find(token.mValue) == nullptr) 
 		{
-			Error(StaticString<128>().Sprintf("Invalid struct type:\'%s\'.", token.mValue).c_str());
+			Error(StaticString<128>().Sprintf("Invalid struct type:\'%s\'.", token.mValue.c_str()).c_str());
 			return nullptr;
 		}
 
@@ -349,7 +349,7 @@ namespace Cjing3D
 		ShaderAST::BaseTypeNode* baseType = nullptr;
 		if (Find(baseType, token.mValue))
 		{
-			Error(StaticString<128>().Sprintf("Struct type redefine:\'%s\'.", token.mValue).c_str());
+			Error(StaticString<128>().Sprintf("Struct type redefine:\'%s\'.", token.mValue.c_str()).c_str());
 			return nullptr;
 		}
 
@@ -430,7 +430,7 @@ namespace Cjing3D
 
 					if (parsePos == mLexer.parse_point)
 					{		
-						Error(StaticString<128>().Sprintf("Missing \'}\', current token:\'%s\'.", token.mValue).c_str());
+						Error(StaticString<128>().Sprintf("Missing \'}\', current token:\'%s\'.", token.mValue.c_str()).c_str());
 						return values;
 					}
 					parsePos = mLexer.parse_point;
@@ -484,7 +484,7 @@ namespace Cjing3D
 					}
 					else
 					{
-						Error(StaticString<128>().Sprintf("Unexpected enum value:\'%s\'.", token.mValue).c_str());
+						Error(StaticString<128>().Sprintf("Unexpected enum value:\'%s\'.", token.mValue.c_str()).c_str());
 						return nullptr;
 					}
 				}
@@ -497,7 +497,7 @@ namespace Cjing3D
 						{
 							if (!func->mIsFunction)
 							{
-								Error(StaticString<128>().Sprintf("Unexpected function value:\'%s\'.", token.mValue).c_str());
+								Error(StaticString<128>().Sprintf("Unexpected function value:\'%s\'.", token.mValue.c_str()).c_str());
 								return nullptr;
 							}
 							valueNode->mValueType = ShaderAST::ValueType::FUNCTION;
@@ -505,7 +505,7 @@ namespace Cjing3D
 						}
 						else
 						{
-							Error(StaticString<128>().Sprintf("Unexpected function value:\'%s\'.", token.mValue).c_str());
+							Error(StaticString<128>().Sprintf("Unexpected function value:\'%s\'.", token.mValue.c_str()).c_str());
 							return nullptr;
 						}
 					}
@@ -518,7 +518,7 @@ namespace Cjing3D
 							if (variableNode->mType->mBaseType != &baseType)
 							{
 								Error(StaticString<128>().Sprintf(
-									"Invalid variable:\'%s\', expected type:\'%s\'.", token.mValue, variableNode->mName).c_str());
+									"Invalid variable:\'%s\', expected type:\'%s\'.", token.mValue.c_str(), variableNode->mName.c_str()).c_str());
 								return nullptr;
 							}
 
@@ -527,7 +527,7 @@ namespace Cjing3D
 						}
 						else
 						{
-							Error(StaticString<128>().Sprintf("Unexpected value:\'%s\'.", token.mValue).c_str());
+							Error(StaticString<128>().Sprintf("Unexpected value:\'%s\'.", token.mValue.c_str()).c_str());
 							return nullptr;
 						}
 					}
@@ -543,7 +543,7 @@ namespace Cjing3D
 		}
 		else
 		{
-			Error(StaticString<128>().Sprintf("Unexpected value type::\'%s\'.", token.mValue).c_str());
+			Error(StaticString<128>().Sprintf("Unexpected value type::\'%s\'.", token.mValue.c_str()).c_str());
 			return nullptr;
 		}
 	}
@@ -560,7 +560,7 @@ namespace Cjing3D
 		if (memberType == nullptr)
 		{
 			StaticString<128> errMsg;
-			errMsg.Sprintf("Invalid member:\'%s\'.Valid values:", token.mValue);
+			errMsg.Sprintf("Invalid member:\'%s\'.Valid values:", token.mValue.c_str());
 			for (auto member : baseType.mMembers) 
 			{
 				errMsg.append(member->mName);
@@ -627,7 +627,7 @@ namespace Cjing3D
 					stringParam.append(token.mValue);
 					break;
 				default:
-					Error(StaticString<128>().Sprintf("Unexpected attribute param::\'%s\'.", token.mValue).c_str());
+					Error(StaticString<128>().Sprintf("Unexpected attribute param::\'%s\'.", token.mValue.c_str()).c_str());
 					return nullptr;
 					break;
 				}

@@ -102,7 +102,21 @@ namespace Cjing3D
 #endif
 		}
 
-		void Log(const char* msg, const char* prefix, ...)
+		void Log(const char* msg, ...)
+		{
+			LogContext* logContext = GetLogContext();
+			va_list args;
+			va_start(args, msg);
+			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), msg, args);
+			va_end(args);
+			PrintImpl(logContext->buffer_.data(), nullptr);
+
+#ifdef CJING_LOG_WITH_FILE
+			PrintImpl(logContext->buffer_.data(), nullptr, GetLoggerFile());
+#endif
+		}
+
+		void LogWithPrefix(const char* prefix, const char* msg, ...)
 		{
 			LogContext* logContext = GetLogContext();
 			va_list args;
@@ -132,6 +146,7 @@ namespace Cjing3D
 			bool DieOnError = false;
 			bool debugWarningPause = true;
 			bool enableBreakOnAssertion_ = true;
+			Concurrency::Mutex mMutex;
 		}
 
 		void SetDieOnError(bool t)
@@ -161,6 +176,7 @@ namespace Cjing3D
 
 		void Warning(const char* format, ...)
 		{
+			Concurrency::ScopedMutex lock(mMutex);
 			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_YELLOW);
 			va_list args;
 			va_start(args, format);
@@ -171,6 +187,7 @@ namespace Cjing3D
 
 		void Error(const char* format, ...)
 		{
+			Concurrency::ScopedMutex lock(mMutex);
 			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_RED);
 			va_list args;
 			va_start(args, format);
@@ -253,6 +270,7 @@ namespace Cjing3D
 
 		void Die(const char* format, ...)
 		{
+			Concurrency::ScopedMutex lock(mMutex);
 			String128 buffer;
 			va_list args;
 			va_start(args, format);

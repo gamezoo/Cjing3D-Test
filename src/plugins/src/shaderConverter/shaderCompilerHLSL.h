@@ -1,10 +1,9 @@
 #pragma once
 
-#include "shaderAST.h"
+#if defined(CJING3D_RENDERER_DX11) || defined(CJING3D_RENDERER_DX12)
+
+#include "shaderCompiler.h"
 #include "shaderMetadata.h"
-#include "core\container\set.h"
-#include "core\container\staticArray.h"
-#include "gpu\definitions.h"
 
 namespace Cjing3D
 {
@@ -50,20 +49,22 @@ namespace Cjing3D
 		DynamicArray<ShaderAST::DeclarationNode*> mVariables;
 	};
 
-	class ShaderCompilerHLSL
+	class ShaderCompilerHLSL : public ShaderCompiler
 	{
 	public:
 		ShaderCompilerHLSL(const char* srcPath);
-		~ShaderCompilerHLSL();
+		virtual ~ShaderCompilerHLSL();
 
-		bool GenerateAndCompile(ShaderAST::FileNode* fileNode, DynamicArray<String>& techFunctions, ShaderMap& shaderMap);
-		bool Compile(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor);
+		bool GenerateAndCompile(ShaderAST::FileNode* fileNode, DynamicArray<String>& techFunctions, ShaderMap& shaderMap, DynamicArray<ShaderCompileOutput>& outputs)override;
+		ShaderCompileOutput Compile(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor)override;
 
 	private:
-		bool CompileHLSL5(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor);
-		bool CompileHLSL6(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor);
+		ShaderCompileOutput CompileHLSL5(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor);
+		ShaderCompileOutput CompileHLSL6(const char* code, const char* entryPoint, GPU::SHADERSTAGES stage, I32 major, I32 minor);
 
-
+		struct ShaderCompilerHLSLImpl* mImpl = nullptr;
 		const char* mSrcPath;
 	};
 }
+
+#endif
