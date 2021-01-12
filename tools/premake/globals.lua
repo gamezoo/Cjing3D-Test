@@ -123,6 +123,8 @@ function setup_env_from_action()
         current_platform = "win32" 
     end 
 
+    print("[premake]:env_dir:", env_dir)
+    print("[premake]:work_dir:", work_dir)
     print("[premake]:current_platform:", current_platform)
     print("[premake]:current renderer:", renderer and renderer or "NULL")
 

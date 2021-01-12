@@ -43,6 +43,7 @@ public:
 	bool IsEmpty()const { return mPath[0] == '\0'; }
 	bool SplitPath(char* outPath, size_t pathLen, char* outFile = nullptr, size_t fileLen = 0, char* outExt = nullptr, size_t extLen = 0)const;
 	void AppendPath(const Path& path);
+	void AppendPath(const char* path);
 	void Normalize();
 	bool IsAbsolutePath()const;
 

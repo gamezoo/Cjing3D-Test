@@ -9,6 +9,7 @@
 #include "core\jobsystem\jobsystem.h"
 #include "core\scripts\luaContext.h"
 #include "core\helper\profiler.h"
+#include "core\helper\buildConfig.h"
 #include "resource\resourceManager.h"
 #include "renderer\renderer.h"
 #include "gpu\device.h"
@@ -80,6 +81,9 @@ namespace Cjing3D::Win32
 			filesystem = CJING_NEW(FileSystemPhysfs)(dirPath.c_str());
 		}
 		mImpl->mFileSystem = filesystem;
+
+		// init build config (filesystem must is initialized, must before resourceManager)
+		BuildConfig::Initialize(filesystem);
 
 		// init resource manager
 		ResourceManager::Initialize(filesystem);

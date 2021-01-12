@@ -11,6 +11,8 @@ namespace Cjing3D
 
 	using ShaderMap = StaticArray<Set<String>, GPU::SHADERSTAGES::SHADERSTAGES_COUNT>;
 
+	class ResConverterContext;
+
 	class ShaderGeneratorHLSL : public ShaderAST::NodeVisitor
 	{
 	public:
@@ -52,7 +54,7 @@ namespace Cjing3D
 	class ShaderCompilerHLSL : public ShaderCompiler
 	{
 	public:
-		ShaderCompilerHLSL(const char* srcPath);
+		ShaderCompilerHLSL(const char* srcPath, const char* parentPath, ResConverterContext& context);
 		virtual ~ShaderCompilerHLSL();
 
 		bool GenerateAndCompile(ShaderAST::FileNode* fileNode, DynamicArray<String>& techFunctions, ShaderMap& shaderMap, DynamicArray<ShaderCompileOutput>& outputs)override;
@@ -64,6 +66,8 @@ namespace Cjing3D
 
 		struct ShaderCompilerHLSLImpl* mImpl = nullptr;
 		const char* mSrcPath;
+		const char* mParentPath;
+		ResConverterContext& mContext;
 	};
 }
 

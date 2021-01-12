@@ -220,6 +220,11 @@ namespace Platform {
 		return true;
 	}
 
+	void CallSystem(const char* cmd)
+	{
+		system(cmd);
+	}
+
 	bool ShellExecuteCmdAndWait(const char* path, const char* args)
 	{
 		return false;

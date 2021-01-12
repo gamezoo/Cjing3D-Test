@@ -248,17 +248,16 @@ namespace Cjing3D
 
 		// 3. compile shader source
 #ifdef CJING3D_RENDERER_DX11
-		ShaderCompilerHLSL shaderCompiler(src);
+		ShaderCompilerHLSL shaderCompiler(src, fullRootPath.c_str(), context);
 #endif
 		DynamicArray<ShaderCompileOutput> compileOutput;
 		if (!shaderCompiler.GenerateAndCompile(shaderFileNode, techFunctions, shaderMap, compileOutput))
 		{
 			Debug::Warning("[ShaderConverter] failed to generate and compile shader source.");
 			return false;
-		}
+		}		
 
 		// 4. write compiled file
-
 
 		// test
 		if (true) {

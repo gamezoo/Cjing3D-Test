@@ -47,6 +47,7 @@ namespace Platform {
 	void ShowBrowseForFolder(const char* title, std::function<void(const char*)> callback);
 	bool ShellExecuteOpen(const char* path, const char* args);
 	bool ShellExecuteOpenAndWait(const char* path, const char* args);
+	void CallSystem(const char* cmd);
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// window

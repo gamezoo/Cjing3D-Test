@@ -24,8 +24,6 @@ def get_version():
 ##########################################################################################
 # Task Tools
 ##########################################################################################
-def get_tools(tool_name, config):
-    return utils.format_file_path(config["tools"][tool_name])
 
 def get_task_files_raw(files_task):
     files = []
@@ -208,6 +206,59 @@ def task_run_clean(config, task_name):
             print("clean file:" + file)
             os.remove(clean_task)
 
+def task_run_shaders(config, task_name, args):
+    if "shaders" not in config.keys():
+        return
+    print_task_header(task_name)
+
+    # compile shader source
+    if "shader_compiler" not in config["tools"].keys():
+        return
+
+    tool_exe = utils.format_file_path(config["tools"]["shader_compiler"])
+    cmd = tool_exe
+    if "args" in config[task_name].keys():
+        cmd += " "
+        for arg in config[task_name]["args"]:
+            cmd += arg + " "
+    if len(args) > 0:
+        for arg in args:
+            cmd += arg + " "
+ 
+    child = subprocess.Popen(cmd, shell=True)
+    e = child.wait()
+    if e:
+        print("[error] failed to compile shader:" + cmd)
+        exit(e)
+
+def task_run_generate_build_config(config, task_name, files):
+    if "build_config" not in config.keys():
+        return
+    profile = config["user_vars"]["profile"]
+    build_config = config[task_name]
+    cwd = os.getcwd()
+    dest_dir = build_config["dest"]
+
+    data = {
+        "profile" : profile,
+        "build_cmd": utils.format_file_path(build_config["build_cmd"]),
+        "build": "cd /d " + cwd + " && " + utils.format_file_path(build_config["build_cmd"]) + " "
+    }
+
+    # make dir
+    dir = os.path.dirname(dest_dir)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    # generate config
+    np = os.path.join(dest_dir, "build_config.json")
+    np = os.path.normpath(np)
+    file = open(np, "w+")
+    file.write(json.dumps(data, indent=4))
+
+    print("build config generated:", np)
+
+
 ##########################################################################################
 
 def set_user_config_update(key, value, config):
@@ -337,6 +388,7 @@ def do_normal(profile_cfg, all_cfg, user_args):
         "copy"  : taks_run_copy,
         "shell" : taks_run_shell,
         "build" : task_run_build,
+        "build_config" : task_run_generate_build_config,
     }
 
     # 执行extensions
@@ -411,6 +463,9 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "build":
         profile_index = 2
         build_mode = "build"
+    elif len(sys.argv) > 1 and sys.argv[1] == "shader":
+        profile_index = 2
+        build_mode = "shaders"
 
     # user pass args
     user_args = [
@@ -448,6 +503,8 @@ def main():
     set_user_config(profile_cfg)
     if "user_vars" not in profile_cfg.keys():
         profile_cfg["user_vars"] = dict()
+    if profile_index < len(sys.argv):
+        profile_cfg["user_vars"]["profile"] = sys.argv[profile_index]
 
     # set tools
     profile_cfg["tools"] = dict()
@@ -458,6 +515,8 @@ def main():
     if build_mode == "build":
         files = get_task_files(profile_cfg, "build")
         task_run_build(profile_cfg, "build", files, sys.argv[3:])
+    elif build_mode == "shaders":
+        task_run_shaders(profile_cfg, "shaders", sys.argv[3:])
     else:
         do_normal(profile_cfg, all_cfg, user_args)
 

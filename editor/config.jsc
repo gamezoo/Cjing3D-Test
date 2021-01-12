@@ -4,6 +4,7 @@
     jcs_def :
     {
         cjing_build_dir : "../tools/cjing_build",
+        assert_dir : "../assets",
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -13,7 +14,8 @@
         type : tools,
         jsc: "py -3 ${cjing_build_dir}/scripts/jsc/jsc.py",
         premake: "${cjing_build_dir}/premake/premake5.exe",
-        pre_parser : "../tools/pre_parser/pre_parser.py",
+        pre_parser : "py -3 ../tools/pre_parser/pre_parser.py",
+        shader_compiler : "py -3 ../tools/shader_compiler/shader_compiler.py",
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -27,6 +29,12 @@
         },
 
         print_header : true,
+
+        // build config
+        build_config : {
+            build_cmd: "${cjing_build_dir}/cjing_build",
+            dest : "${assert_dir}"
+        },
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -58,6 +66,15 @@
             ]
         },  
 
+        // shader compiler
+        shaders : {
+            type : none,
+            args : [
+                "-shader_platform hlsl",
+                "-shader_version 6_5",
+            ]
+        },
+
         // dll
         dlls : {
             type : copy,
@@ -72,6 +89,7 @@
             args : [
                 "%{vs_version}",   // To genenrate vs sln, the first param must is "vs_version"
                 "--env_dir=../",
+                "--work_dir=${assert_dir}",
                 "--renderer=dx11",
                 "--platform_dir=win32",
                 "--sdk_version=%{windows_sdk_version}",

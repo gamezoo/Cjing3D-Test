@@ -312,6 +312,31 @@ void Path::AppendPath(const Path& path)
 	mPath.append(path.mPath);
 }
 
+void Path::AppendPath(const char* path)
+{
+	if (path == nullptr) {
+		return;
+	}
+
+	if (IsEmpty()) {
+		*this = path;
+		return;
+	}
+
+	bool isPath1Absoluted = IsAbsolutePath();
+	bool isPath2Absoluted = FindStringChar(path, ':', 0) != -1;
+	if (isPath1Absoluted && isPath2Absoluted) {
+		return;
+	}
+
+	Normalize();
+
+	if (mPath.back() != PATH_SEPERATOR) {
+		mPath.append(PATH_SEPERATOR);
+	}
+	mPath.append(path);
+}
+
 void Path::Normalize()
 {
 	if (IsEmpty()) {

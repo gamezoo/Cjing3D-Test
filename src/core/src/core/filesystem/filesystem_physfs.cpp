@@ -155,11 +155,16 @@ namespace Cjing3D {
 			return false;
 		}
 
-		size = static_cast<size_t>(PHYSFS_fileLength(file));
-		*buffer = CJING_NEW_ARR(char, size);
-		PHYSFS_read(file, buffer, 1, (PHYSFS_uint32)size);
+		I32 length = static_cast<size_t>(PHYSFS_fileLength(file));
+		*buffer = (char*)CJING_MALLOC(sizeof(char) * length);
+		auto readSize = PHYSFS_read(file, *buffer, 1, (PHYSFS_uint32)length);
+		if (readSize != length)
+		{
+			Debug::Warning("[fileData] The file \"%s\" read failed,%s", name, PHYSFS_getLastError());
+			return false;
+		}
 		PHYSFS_close(file);
-
+		size = length;
 		return true;
 	}
 
@@ -180,7 +185,14 @@ namespace Cjing3D {
 
 		size_t size = static_cast<size_t>(PHYSFS_fileLength(file));
 		data.resize(size);
-		PHYSFS_read(file, data.data(), 1, (PHYSFS_uint32)size);
+		
+		auto readed = PHYSFS_read(file, data.data(), 1, (PHYSFS_uint32)size);
+		if (readed != size)
+		{
+			Debug::Warning("[fileData] The file \"%s\" read failed,%s", name, PHYSFS_getLastError());
+			return false;
+		}
+
 		PHYSFS_close(file);
 
 		return true;
@@ -188,7 +200,7 @@ namespace Cjing3D {
 
 	bool FileSystemPhysfs::DeleteFile(const char* name)
 	{
-		if (PHYSFS_delete(name)) {
+		if (!PHYSFS_delete(name)) {
 			return false;
 		}
 		return true;

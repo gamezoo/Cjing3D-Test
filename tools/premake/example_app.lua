@@ -71,7 +71,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
         -- Debug dir
         local debug_dir = ""
         if work_dir ~= nil then 
-            debug_dir = env_dir .. work_dir
+            debug_dir = work_dir
         else
             debug_dir = env_dir .. "assets"
         end 

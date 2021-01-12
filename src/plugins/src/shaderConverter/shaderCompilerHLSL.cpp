@@ -2,6 +2,9 @@
 
 #include "shaderCompilerHLSL.h"
 #include "core\platform\platform.h"
+#include "core\helper\buildConfig.h"
+#include "core\string\stringUtils.h"
+#include "shaderConverter.h"
 
 #if !defined(CJING_HLSL_SHADER_MAJOR_VER) || CJING_HLSL_SHADER_MAJOR_VER < 6
 #include <d3dcompiler.h>
@@ -71,6 +74,7 @@ namespace Cjing3D
 	void ShaderGeneratorHLSL::PushScope()
 	{
 		mCodeIndent++;
+		mIsNewLine = true;
 	}
 
 	void ShaderGeneratorHLSL::PopScope()
@@ -82,6 +86,7 @@ namespace Cjing3D
 	void ShaderGeneratorHLSL::WriteNextLine()
 	{
 		mGeneratedCode.append("\n");
+		mIsNewLine = true;
 	}
 
 	void ShaderGeneratorHLSL::WriteSpace()
@@ -95,7 +100,7 @@ namespace Cjing3D
 		{
 			mIsNewLine = false;
 			for (int i = 0; i < mCodeIndent; i++) {
-				mGeneratedCode.append("\t");
+				mGeneratedCode.append("    ");
 			}
 		}
 
@@ -230,15 +235,11 @@ namespace Cjing3D
 			// function body
 			WriteNextLine();
 			WriteCode("{");
-			PushScope();
-			{
-				WriteFuncRaw(node->mValue->mStringValue.c_str());
-			}
-			PopScope();
-
+			WriteFuncRaw(node->mValue->mStringValue.c_str());
 			WriteNextLine();
 			WriteCode("}");
 			WriteNextLine();
+
 			WriteNextLine();
 		}
 	}
@@ -445,9 +446,11 @@ namespace Cjing3D
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
 	/// shader compiler
-	ShaderCompilerHLSL::ShaderCompilerHLSL(const char* srcPath) :
+	ShaderCompilerHLSL::ShaderCompilerHLSL(const char* srcPath, const char* parentPath, ResConverterContext& context) :
 		ShaderCompiler(srcPath),
-		mSrcPath(srcPath)
+		mSrcPath(srcPath),
+		mParentPath(parentPath),
+		mContext(context)
 	{
 		mImpl = CJING_NEW(ShaderCompilerHLSLImpl);
 	}
@@ -591,6 +594,79 @@ namespace Cjing3D
 	{
 		ShaderCompileOutput output;
 
+		// 1.write a temp file
+		String tempPath = mSrcPath;
+		tempPath.append(".shdraw");
+
+		auto& fileSystem = mContext.GetFileSystem();
+		if (!fileSystem.WriteFile(tempPath.c_str(), code, StringLength(code))) 
+		{
+			output.mErrMsg = "[CompileHLSL6] Failed to write temp shader source.";
+			return output;
+		}
+
+		// 2. call "build shader" cmd to compile shader source
+		Path fullTempPath = fileSystem.GetBasePath();
+		fullTempPath.AppendPath(tempPath);
+
+		String cmd = BuildConfig::GetBuildCmd();
+		cmd.append(" shader");
+		cmd.append(" ");
+		cmd.append(BuildConfig::GetProfile());
+		cmd.append(" -i ");
+		cmd.append(fullTempPath.c_str());
+		cmd.append(" -o ");
+		cmd.append(mParentPath);
+		cmd.append(" -e ");
+		cmd.append(entryPoint);
+		cmd.append(" -t ");
+		switch (stage)
+		{
+		case GPU::SHADERSTAGES_VS:
+			cmd.append("vs");
+			break;
+		case GPU::SHADERSTAGES_GS:
+			cmd.append("gs");
+			break;
+		case GPU::SHADERSTAGES_HS:
+			cmd.append("hs");
+			break;
+		case GPU::SHADERSTAGES_DS:
+			cmd.append("ds");
+			break;
+		case GPU::SHADERSTAGES_PS:
+			cmd.append("ps");
+			break;
+		case GPU::SHADERSTAGES_CS:
+			cmd.append("cs");
+			break;
+		default:
+			break;
+		}
+		Platform::CallSystem(cmd.c_str());
+
+		fileSystem.DeleteFile(tempPath.c_str());
+
+		// 2. read temp compiled file and delete it
+		String csoPath = mSrcPath;
+		csoPath.append(".cso");
+		if (!fileSystem.IsFileExists(csoPath.c_str()))
+		{
+			output.mErrMsg = "[CompileHLSL6] Failed to compile shader source.";
+			return output;
+		}
+		DynamicArray<char> compiledCode;
+		if (!fileSystem.ReadFile(csoPath.c_str(), compiledCode))
+		{		
+			output.mErrMsg = "[CompileHLSL6] Failed to compile shader source.";
+			return output;
+		}
+
+		output.mByteCode = (const U8*)compiledCode.data();
+		output.mByteCodeLenght = (U32)compiledCode.size();
+		output.mStage = stage;
+
+		fileSystem.DeleteFile(csoPath.c_str());
 		return output;
 	}
 }
