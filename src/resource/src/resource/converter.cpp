@@ -46,7 +46,7 @@ namespace Cjing3D
 		auto time = Timer::GetAbsoluteTime();
 		Logger::Info("[Resource] Converting \"%s\"", srcPath);
 		bool ret = converter->Convert(*this, resType, srcPath, destPath);
-		Logger::Info("[Resource] Convert finished \"%s\" in %.2f ms.", srcPath, Timer::GetAbsoluteTime() - time);;
+		Logger::Info("[Resource] Convert finished \"%s\" in %.2f ms.", srcPath, Timer::GetAbsoluteTime() - time);
 
 		// write metadata file
 		if (ret == true)

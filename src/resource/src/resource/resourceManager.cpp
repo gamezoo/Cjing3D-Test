@@ -459,7 +459,7 @@ namespace ResourceManager
 				}
 				else
 				{
-					JobSystem::JobHandle jobHandle;
+					JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
 					mResLoadJob->RunTask(0, JobSystem::Priority::LOW, &jobHandle);
 					JobSystem::Wait(&jobHandle);
 				}
@@ -666,30 +666,8 @@ namespace ResourceManager
 					}
 				}
 
-				if (needConvert == true)
-				{
-					if (!mImpl->mConvertEnable) 
-					{
-						mImpl->ReleaseResource(ret);
-						return nullptr;
-					}
-
-					// load job
-					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
-					
-					// convert job
-					auto* convertJob = CJING_NEW(ResourceConvertJob)(*ret, type, inPath.c_str(), convertedfullPath.c_str());
-					convertJob->SetLoadJob(loadJob);
-					convertJob->SetIsImmediate(isImmediate);
-					
-					if (isImmediate) {
-						convertJob->RunTaskImmediate(0);
-					}
-					else {
-						convertJob->RunTask(0, JobSystem::Priority::LOW);
-					}
-				}
-				else
+				// 如果convert_output存在，直接加载文件
+				if (needConvert == false)
 				{
 					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
 					if (isImmediate) {
@@ -698,6 +676,30 @@ namespace ResourceManager
 					else {
 						loadJob->RunTask(0, JobSystem::Priority::LOW);
 					}
+					return ret;
+				}
+
+				// check whether the current system support converting (editor/app)
+				if (!mImpl->mConvertEnable)
+				{
+					mImpl->ReleaseResource(ret);
+					Debug::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
+					return nullptr;
+				}
+
+				// load job
+				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
+
+				// convert job
+				auto* convertJob = CJING_NEW(ResourceConvertJob)(*ret, type, inPath.c_str(), convertedfullPath.c_str());
+				convertJob->SetLoadJob(loadJob);
+				convertJob->SetIsImmediate(isImmediate);
+
+				if (isImmediate) {
+					convertJob->RunTaskImmediate(0);
+				}
+				else {
+					convertJob->RunTask(0, JobSystem::Priority::LOW);
 				}
 			}
 			return ret;

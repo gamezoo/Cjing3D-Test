@@ -5,6 +5,7 @@
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
+#include "renderer\shaderImpl.h"
 
 #include "gpu\definitions.h"
 
@@ -257,25 +258,80 @@ namespace Cjing3D
 			return false;
 		}		
 
-		// 4. write compiled file
+		// 4. process binding set
 
-		// test
-		if (true) {
-			return false;
-		}
-
-		// 5. write metadata
-		const char* metadataBuffer = nullptr;
-		U32 metadataSize = 0;
-		if (!fileSystem.WriteFile(dest, metadataBuffer, metadataSize)) {
-			return false;
-		}
-		else
+		// 5. prepare shader headers for writing
+		// bytecode headers
+		DynamicArray<ShaderBytecodeHeader> bytecodeHeaders;
+		I32 offset = 0;
+		for (const auto& compileInfo : compileOutput)
 		{
-			context.AddOutput(dest);
-			context.SetMetaData<ShaderMetaObject>(data);
-			return true;
+			ShaderBytecodeHeader& bytecodeHeader = bytecodeHeaders.emplace();
+			bytecodeHeader.mStage = compileInfo.mStage;
+			bytecodeHeader.mOffset = offset;
+			bytecodeHeader.mBytes = compileInfo.mByteCodeSize;
+
+			offset += compileInfo.mByteCodeSize;
 		}
+
+		// technique headers
+		DynamicArray<ShaderTechniqueHeader> techniqueHeaders;
+		auto FindShaderIdx = [&](const char* name) -> I32 {
+			if (!name) {
+				return -1;
+			}
+			I32 idx = 0;
+			for (const auto& compile : compileOutput)
+			{
+				if (compile.mEntryPoint == name) {
+					return idx;
+				}
+				idx++;
+			}
+			return -1;
+		};
+		for (const auto& tech : techniques)
+		{
+			ShaderTechniqueHeader& header = techniqueHeaders.emplace();
+			header.mIdxVS = FindShaderIdx(tech.mVS);
+			header.mIdxGS = FindShaderIdx(tech.mGS);
+			header.mIdxDS = FindShaderIdx(tech.mDS);
+			header.mIdxHS = FindShaderIdx(tech.mHS);
+			header.mIdxPS = FindShaderIdx(tech.mPS);
+			header.mIdxCS = FindShaderIdx(tech.mCS);
+		}
+
+		// general header
+		ShaderGeneralHeader generalHeader;
+		generalHeader.mNumShaders = compileOutput.size();
+		generalHeader.mNumTechniques = techniques.size();
+
+		// 6. write shader
+		File* file = CJING_NEW(File);
+		if (!fileSystem.OpenFile(dest, *file, FileFlags::DEFAULT_WRITE)) 
+		{
+			CJING_SAFE_DELETE(file);
+			return false;
+		}
+		file->Write(&generalHeader, sizeof(generalHeader));
+
+		if (!bytecodeHeaders.empty()) {
+			file->Write(bytecodeHeaders.data(), bytecodeHeaders.size() * sizeof(ShaderBytecodeHeader));
+		}
+		if (!techniqueHeaders.empty()) {
+			file->Write(techniqueHeaders.data(), techniqueHeaders.size() * sizeof(ShaderTechniqueHeader));
+		}
+
+		// write bytecode
+		for (const auto& compileInfo : compileOutput) {
+			file->Write(compileInfo.mByteCode, compileInfo.mByteCodeSize);
+		}
+
+		context.AddOutput(dest);
+		context.SetMetaData<ShaderMetaObject>(data);
+
+		CJING_SAFE_DELETE(file);
+		return true;
 	}
 
 	bool ShaderResConverter::SupportsType(const char* ext, const ResourceType& type)

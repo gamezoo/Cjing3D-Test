@@ -15,11 +15,12 @@ namespace Cjing3D
 	struct ShaderCompileOutput
 	{
 		const U8* mByteCode = nullptr;
-		U32 mByteCodeLenght = 0;
+		U32 mByteCodeSize = 0;
 		String mErrMsg;
+		String mEntryPoint;
 		GPU::SHADERSTAGES mStage;
 
-		explicit operator bool()const { return mByteCodeLenght > 0; }
+		explicit operator bool()const { return mByteCodeSize > 0; }
 	};
 
 	class ShaderCompiler

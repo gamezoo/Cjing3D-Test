@@ -617,7 +617,7 @@ namespace JobSystem
 		JobHandle localHandle = [&]() -> JobHandle 
 		{
 			if (!jobHandle) {
-				return gManagerImpl->AllocateHandle();;
+				return gManagerImpl->AllocateHandle();
 			}
 			if (*jobHandle != INVALID_HANDLE && !gManagerImpl->IsHandleZero(*jobHandle))  {
 				return *jobHandle;

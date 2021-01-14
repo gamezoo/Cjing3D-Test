@@ -476,7 +476,7 @@ namespace Cjing3D
 
 		// 2. compile shader source
 		I32 majorVer = 5;
-		I32 minorVer = 1;
+		I32 minorVer = 0;
 #ifdef CJING_HLSL_SHADER_MAJOR_VER
 		majorVer = CJING_HLSL_SHADER_MAJOR_VER;
 #endif
@@ -577,12 +577,13 @@ namespace Cjing3D
 		mImpl->mBytecodes.push(byteCode);	
 
 		output.mByteCode = (const U8*)byteCode->GetBufferPointer();
-		output.mByteCodeLenght = (U32)byteCode->GetBufferSize();
+		output.mByteCodeSize = (U32)byteCode->GetBufferSize();
 		output.mStage = stage;
+		output.mEntryPoint = entryPoint;
 
 		// strip shader compiled code(temoves unwanted blobs)
 		UINT stripFlag = D3DCOMPILER_STRIP_REFLECTION_DATA | D3DCOMPILER_STRIP_DEBUG_INFO;
-		mImpl->mD3DStripShaderFunc(output.mByteCode, output.mByteCodeLenght, stripFlag, NULL);
+		mImpl->mD3DStripShaderFunc(output.mByteCode, output.mByteCodeSize, stripFlag, NULL);
 
 		return output;
 #else
@@ -663,8 +664,9 @@ namespace Cjing3D
 		}
 
 		output.mByteCode = (const U8*)compiledCode.data();
-		output.mByteCodeLenght = (U32)compiledCode.size();
+		output.mByteCodeSize = (U32)compiledCode.size();
 		output.mStage = stage;
+		output.mEntryPoint = entryPoint;
 
 		fileSystem.DeleteFile(csoPath.c_str());
 		return output;

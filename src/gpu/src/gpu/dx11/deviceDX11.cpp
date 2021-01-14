@@ -1157,6 +1157,7 @@ namespace GPU
 		shader->mStage = stage;
 		shader->mByteCode = CJING_NEW_ARR(U8, length);
 		shader->mByteCodeSize = length;
+		Memory::Memcpy(shader->mByteCode, bytecode, length);
 
 		HRESULT ret;
 		switch (stage)
