@@ -18,6 +18,8 @@ namespace Cjing3D
 		virtual void Uninitialize();
 
 		void SetRenderPath(RenderPath* renderPath);
+		RenderPath* GetRenderPath();
+		Universe* GetUniverse();
 
 	protected:
 		virtual void OnLoad() {}
@@ -35,6 +37,7 @@ namespace Cjing3D
 		SharedPtr<Engine>     mEngine = nullptr;
 		SharedPtr<GameWindow> mGameWindow = nullptr;
 
+		Universe* mUniverse = nullptr;
 		RenderPath* mRenderPath = nullptr;
 	};
 }

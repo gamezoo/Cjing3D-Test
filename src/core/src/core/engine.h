@@ -40,6 +40,9 @@ namespace Cjing3D
 		}
 
 		// universe methods
+		Universe* CreateUniverse();
+		void DestroyUniverse(Universe* universe);
+
 		void StartUniverse(Universe& universe);
 		void StopUniverse(Universe& universe);
 		void UpdateUniverse(Universe& universe);

@@ -416,6 +416,20 @@ namespace GPU {
 		SUBRESOURCE_DSV,
 	};
 
+	enum IMAGE_LAYOUT
+	{
+		IMAGE_LAYOUT_UNDEFINED,					// discard contents
+		IMAGE_LAYOUT_GENERAL,					// supports everything
+		IMAGE_LAYOUT_RENDERTARGET,				// render target, write enabled
+		IMAGE_LAYOUT_DEPTHSTENCIL,				// depth stencil, write enabled
+		IMAGE_LAYOUT_DEPTHSTENCIL_READONLY,		// depth stencil, read only
+		IMAGE_LAYOUT_SHADER_RESOURCE,			// shader resource, read only
+		IMAGE_LAYOUT_UNORDERED_ACCESS,			// shader resource, write enabled
+		IMAGE_LAYOUT_COPY_SRC,					// copy from
+		IMAGE_LAYOUT_COPY_DST,					// copy to
+		IMAGE_LAYOUT_SHADING_RATE_SOURCE,		// shading rate control per tile
+	};
+
 	struct ViewPort
 	{
 		F32 mTopLeftX = 0.0f;
@@ -498,7 +512,7 @@ namespace GPU {
 		U32 mForcedSampleCount = 0;
 	};
 
-	struct GPUBufferDesc
+	struct BufferDesc
 	{
 		U32 mByteWidth = 0;
 		USAGE mUsage = USAGE_DEFAULT;

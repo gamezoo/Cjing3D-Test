@@ -1118,7 +1118,7 @@ namespace GPU
 		return SUCCEEDED(ret);
 	}
 
-	bool GraphicsDeviceDx11::CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData)
+	bool GraphicsDeviceDx11::CreateBuffer(ResHandle handle, const BufferDesc* desc, const SubresourceData* initialData)
 	{
 		auto buffer = mBuffers.Write(handle);
 		buffer->mDesc = *desc;

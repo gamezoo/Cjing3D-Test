@@ -50,6 +50,10 @@ namespace GPU {
 			}
 			ScopedEvent(ScopedEvent&& rhs) = default;
 
+			explicit operator bool()const {
+				return true;
+			}
+
 		private:
 			friend class CommandList;
 			ScopedEvent(CommandList& cmd) : mCmd(cmd) {}

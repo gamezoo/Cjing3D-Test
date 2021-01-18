@@ -24,7 +24,7 @@ namespace GPU
 
 		virtual bool CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc) = 0;
 		virtual bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData) = 0;
-		virtual bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData) = 0;
+		virtual bool CreateBuffer(ResHandle handle, const BufferDesc* desc, const SubresourceData* initialData) = 0;
 		virtual bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length) = 0;
 		virtual bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc) = 0;
 		virtual bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc) = 0;

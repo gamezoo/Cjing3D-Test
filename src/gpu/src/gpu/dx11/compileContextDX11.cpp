@@ -391,7 +391,7 @@ namespace GPU
         }
 
         ID3D11DeviceContext& context = *mCommandList.GetContext();
-        const GPUBufferDesc& desc = buffer->mDesc;
+        const BufferDesc& desc = buffer->mDesc;
         if (desc.mUsage == USAGE_DYNAMIC)
         {
             D3D11_MAPPED_SUBRESOURCE mappedResource;

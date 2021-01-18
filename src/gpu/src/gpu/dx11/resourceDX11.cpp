@@ -26,7 +26,7 @@ namespace GPU
 		}
 
 		// create gpu allocator buffer
-		GPUBufferDesc desc = {};
+		BufferDesc desc = {};
 		desc.mByteWidth = GPUAllocatorDX11::DefaultBufferSize;
 		desc.mBindFlags = BIND_SHADER_RESOURCE | BIND_INDEX_BUFFER | BIND_VERTEX_BUFFER;
 		desc.mUsage = USAGE_DYNAMIC;

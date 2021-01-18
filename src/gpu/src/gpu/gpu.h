@@ -32,8 +32,8 @@ namespace GPU
 
 	ResHandle AllocateHandle(ResourceType type);
 	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc);
-	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData);
-	ResHandle CreateBuffer(const GPUBufferDesc* desc, const SubresourceData* initialData);
+	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData, const char* name = nullptr);
+	ResHandle CreateBuffer(const BufferDesc* desc, const SubresourceData* initialData, const char* name = nullptr);
 	ResHandle CreateShader(SHADERSTAGES stage, const void* bytecode, size_t length);
 	ResHandle CreateSampler(const SamplerDesc* desc);
 	ResHandle CreatePipelineState(const PipelineStateDesc* desc);

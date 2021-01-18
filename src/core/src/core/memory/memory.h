@@ -139,6 +139,9 @@ inline void operator delete(void*, Cjing3D::NewPlaceHolder, void*) { }
 namespace Cjing3D
 {
 #ifdef USE_STL_SMART_POINTER
+	
+	///////////////////////////////////////////////////////////////////////
+	// Shared pointer
 	template<typename T>
 	inline void SmartPointDeleter(T* v)
 	{
@@ -166,28 +169,74 @@ namespace Cjing3D
 	template<typename T>
 	using ENABLE_SHARED_FROM_THIS = std::enable_shared_from_this<T>;
 
-	template<typename T>
-	using UniquePtr = std::unique_ptr<T, decltype(SmartPointDeleter<T>)*>;
 
+	///////////////////////////////////////////////////////////////////////
+	// Unique pointer
 	template<typename T>
-	UniquePtr<T> NULL_UNIQUE()
+	class UniquePtr
 	{
-		static UniquePtr<T> nullUniquePtr(nullptr, SmartPointDeleter<T>);
-		return nullUniquePtr;
-	}
+	public:
+		UniquePtr() : mPtr(nullptr) {}
+		UniquePtr(T* ptr) : mPtr(ptr) {}
+		~UniquePtr()
+		{
+			if (mPtr) {
+				CJING_DELETE(mPtr);
+			}
+		}
+
+		template <typename T2>
+		UniquePtr(UniquePtr<T2>&& rhs)
+		{
+			*this = static_cast<UniquePtr<T2>&&>(rhs);
+		}
+
+		template <typename T2>
+		UniquePtr& operator=(UniquePtr<T2>&& rhs)
+		{
+			if (mPtr) {
+				CJING_DELETE(mPtr);
+			}
+		
+			mPtr = static_cast<T*>(rhs.Detach());
+			return *this;
+		}
+
+		UniquePtr(const UniquePtr& rhs) = delete;
+		UniquePtr& operator=(const UniquePtr& rhs) = delete;
+
+		T* Detach()
+		{
+			T* ret = mPtr;
+			mPtr = nullptr;
+			return ret;
+		}
+
+		T* Get()const {
+			return mPtr;
+		}
+		T& operator*() const {
+			return *mPtr;
+		}
+		T* operator->()const {
+			return mPtr;
+		}
+
+	private:
+		T* mPtr = nullptr;
+	};
 
 	template< typename T>
 	UniquePtr<T> CJING_UNIQUE(T* ptr)
 	{
-		return UniquePtr<T>(ptr, SmartPointDeleter<T>);
+		return UniquePtr<T>(ptr);
 	}
 
 	template< typename T, typename... Args >
 	UniquePtr<T> CJING_MAKE_UNIQUE(Args&&... args)
 	{
 		return UniquePtr<T>(
-			CJING_NEW(T) { std::forward<Args>(args)... },
-			SmartPointDeleter<T>
+			CJING_NEW(T) { std::forward<Args>(args)... }
 		);
 	}
 #endif

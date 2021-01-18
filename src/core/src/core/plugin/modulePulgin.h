@@ -1,6 +1,7 @@
 #pragma once
 
 #include "plugin.h"
+#include "core\scene\universe.h"
 
 namespace Cjing3D
 {
@@ -14,5 +15,6 @@ namespace Cjing3D
 		virtual void Initialize() = 0;
 		virtual void Uninitialize() = 0;
 		virtual void Update(F32 dt) = 0;
+		virtual void CreateScene(Universe& universe) = 0;
 	};
 }

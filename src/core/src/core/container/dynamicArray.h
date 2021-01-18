@@ -241,12 +241,23 @@ namespace Cjing3D
 			if (index < mSize)
 			{
 				mData[index].~T();
-				if (index < mSize - 1)
-				{
+				if (index < mSize - 1) {
 					Memory::Memcpy(mData + index, mData + index + 1, sizeof(T) * (mSize - index - 1));
 				}
 				--mSize;
 			}
+		}
+
+		T* erase(T* it)
+		{
+			assert(it >= begin() && it < end());
+			it->~T();
+			auto index = it - begin();
+			if (index < mSize - 1) {
+				Memory::Memcpy(mData + index, mData + index + 1, sizeof(T) * (mSize - index - 1));
+			}
+			--mSize;
+			return it;
 		}
 
 		void push(const T& value)

@@ -33,7 +33,7 @@ namespace GPU
 
 		bool CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc)override;
 		bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)override;
-		bool CreateBuffer(ResHandle handle, const GPUBufferDesc* desc, const SubresourceData* initialData)override;
+		bool CreateBuffer(ResHandle handle, const BufferDesc* desc, const SubresourceData* initialData)override;
 		bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)override;
 		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
 		bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)override;

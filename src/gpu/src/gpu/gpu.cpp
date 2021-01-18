@@ -27,8 +27,13 @@ namespace GPU
 		Concurrency::Mutex mMutex;
 		U64 mCurrentFrameCount = 0;
 
-		StaticArray<CommandList, MAX_COMMANDLIST_COUNT> mCommandListHandles;
-		volatile I32 mUsedCmdCount = 0;
+		Concurrency::Mutex mCmdMutex;
+		StaticArray<CommandList, MAX_COMMANDLIST_COUNT> mAllCmdList;
+		StaticArray<I32, MAX_COMMANDLIST_COUNT> mUsedCmdList;
+		I32 mUsedCmdCount = 0;
+		StaticArray<I32, MAX_COMMANDLIST_COUNT> mAvaiableCmdList;
+		I32 mAvaiableCmdCount = 0;
+		HashMap<I32, I32> mUsedIndexMap;
 
 	public:
 		ResHandle AllocHandle(ResourceType type)
@@ -71,6 +76,16 @@ namespace GPU
 	//////////////////////////////////////////////////////////////////////////
 	// Member
 	//////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG
+#define SET_DEBUG_NAME(name)														\
+	if (name != nullptr && handle != ResHandle::INVALID_HANDLE) {					\
+		mImpl->mDevice->SetResourceName(handle, name);								\
+	}
+#else
+#define SET_DEBUG_NAME(name) static const char* debugName = "";
+#endif
+
 	void Initialize(GPUSetupParams params)
 	{
 		if (IsInitialized()) {
@@ -91,6 +106,11 @@ namespace GPU
 #endif
 		mImpl = CJING_NEW(ManagerImpl);
 		mImpl->mDevice = device;
+
+		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
+			mImpl->mAvaiableCmdList[i] = i;
+		}
+		mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
 	}
 
 	bool IsInitialized()
@@ -107,13 +127,17 @@ namespace GPU
 		// release command list handle
 		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++)
 		{
-			auto handle = mImpl->mCommandListHandles[i].GetHanlde();
+			auto handle = mImpl->mAllCmdList[i].GetHanlde();
 			if (handle != ResHandle::INVALID_HANDLE)
 			{
 				mImpl->mDevice->DestroyResource(handle);
 				mImpl->mHandleAllocator.Free(handle);
 			}
+			mImpl->mAvaiableCmdList[i] = i;
 		}
+		mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
+		mImpl->mUsedCmdCount = 0;
+		mImpl->mUsedIndexMap.clear();
 
 		for (int i = 0; i < MaxGPUFrames; i++) 
 		{
@@ -173,14 +197,16 @@ namespace GPU
 
 	void PresentEnd()
 	{
+		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
 		U32 count = mImpl->mUsedCmdCount;
-		Concurrency::AtomicExchange(&mImpl->mUsedCmdCount, 0);
+		mImpl->mUsedCmdCount = 0;
 		if (count > 0)
 		{
 			DynamicArray<ResHandle> handles;
-			for (U32 index = 0; index < count; index++) 
+			for (U32 i = 0; i < count; i++) 
 			{
-				auto& cmd = mImpl->mCommandListHandles[index];
+				I32 index = mImpl->mUsedCmdList[i];
+				auto& cmd = mImpl->mAllCmdList[index];
 				auto handle = cmd.GetHanlde();
 				if (handle != ResHandle::INVALID_HANDLE)
 				{
@@ -189,6 +215,11 @@ namespace GPU
 				}
 			}
 			mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
+		
+			for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
+				mImpl->mAvaiableCmdList[i] = i;
+			}
+			mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
 		}
 		mImpl->mDevice->PresentEnd();
 	}
@@ -207,8 +238,10 @@ namespace GPU
 
 	CommandList* CreateCommandlist()
 	{
-		U32 index = Concurrency::AtomicIncrement(&mImpl->mUsedCmdCount) - 1;
-		CommandList* cmd = &mImpl->mCommandListHandles[index];
+		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
+
+		I32 cmdIndex = mImpl->mAvaiableCmdList[--mImpl->mAvaiableCmdCount];
+		CommandList* cmd = &mImpl->mAllCmdList[cmdIndex];
 		if (cmd->GetHanlde() == ResHandle::INVALID_HANDLE)
 		{
 			ResHandle handle = mImpl->AllocHandle(RESOURCETYPE_COMMAND_LIST);
@@ -224,6 +257,11 @@ namespace GPU
 		}
 
 		mImpl->mDevice->ResetCommandList(cmd->GetHanlde());
+
+		mImpl->mUsedCmdList[mImpl->mUsedCmdCount] = cmdIndex;
+		mImpl->mUsedIndexMap.insert(cmd->GetHanlde().GetValue(), mImpl->mUsedCmdCount);
+		mImpl->mUsedCmdCount++;
+
 		return cmd;
 	}
 
@@ -235,16 +273,35 @@ namespace GPU
 
 	bool SubmitCommandList(const CommandList& cmd)
 	{
+		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
+
 		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
 		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
 
-		Concurrency::AtomicDecrement(&mImpl->mUsedCmdCount);
+		auto usedIndex = mImpl->mUsedIndexMap.find(cmd.GetHanlde().GetValue());
+		if (usedIndex == nullptr) {
+			return false;
+		}
+
+		I32 cmdIndex = mImpl->mUsedCmdList[*usedIndex];
+
+		// update cmd list
+		mImpl->mUsedCmdCount--;
+		for (int i = *usedIndex; i < mImpl->mUsedCmdCount; i++) {
+			mImpl->mUsedCmdList[i] = mImpl->mUsedCmdList[i + 1];
+		}
+		mImpl->mUsedIndexMap.erase(cmd.GetHanlde().GetValue());
+		mImpl->mAvaiableCmdList[mImpl->mAvaiableCmdCount++] = cmdIndex;
+
+		// submit cmd
 		auto handle = cmd.GetHanlde();
 		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(&handle, 1));
 	}
 
 	bool SubmitCommandList(Span<CommandList*> cmds)
 	{
+		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
+
 		DynamicArray<ResHandle> handles;
 		for (int i = 0; i < cmds.length(); i++)
 		{
@@ -253,13 +310,29 @@ namespace GPU
 				handles.push(handle);
 			}
 		}
-
 		if (handles.size() <= 0) {
 			return false;
 		}
 
 		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
-		Concurrency::AtomicSub(&mImpl->mUsedCmdCount, handles.size());
+		// update cmd list
+		for (const auto& handle : handles)
+		{
+			auto usedIndex = mImpl->mUsedIndexMap.find(handle.GetValue());
+			if (usedIndex == nullptr) {
+				return false;
+			}
+
+			I32 cmdIndex = mImpl->mUsedCmdList[*usedIndex];
+			mImpl->mUsedCmdCount--;
+			for (int i = *usedIndex; i < mImpl->mUsedCmdCount; i++) {
+				mImpl->mUsedCmdList[i] = mImpl->mUsedCmdList[i + 1];
+			}
+			mImpl->mUsedIndexMap.erase(handle.GetValue());
+			mImpl->mAvaiableCmdList[mImpl->mAvaiableCmdCount++] = cmdIndex;
+		}
+
+		// submit cmd
 		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
 	}
 
@@ -275,17 +348,19 @@ namespace GPU
 		return handle;
 	}
 
-	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData)
+	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData, const char* name)
 	{
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_TEXTURE);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTexture(handle, desc, initialData));
+		SET_DEBUG_NAME(name);
 		return handle;
 	}
 
-	ResHandle CreateBuffer(const GPUBufferDesc* desc, const SubresourceData* initialData)
+	ResHandle CreateBuffer(const BufferDesc* desc, const SubresourceData* initialData, const char* name)
 	{
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_BUFFER);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateBuffer(handle, desc, initialData));
+		SET_DEBUG_NAME(name);
 		return handle;
 	}
 

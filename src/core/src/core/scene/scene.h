@@ -4,6 +4,8 @@
 
 namespace Cjing3D
 {
+namespace ECS
+{
 	class IScene
 	{
 	public:
@@ -12,5 +14,8 @@ namespace Cjing3D
 		virtual void Initialize() = 0;
 		virtual void Uninitialize() = 0;
 		virtual void Update(F32 dt) = 0;
+		virtual void FixedUpdate() = 0;
+		virtual void Clear() = 0;
 	};
+}
 }

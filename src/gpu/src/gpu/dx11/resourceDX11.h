@@ -30,7 +30,7 @@ namespace GPU
 
 	struct BufferDX11 : ResourceDX11
 	{
-		GPUBufferDesc mDesc;
+		BufferDesc mDesc;
 	};
 
 	struct SamplerStateDX11

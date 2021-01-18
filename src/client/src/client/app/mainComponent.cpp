@@ -26,6 +26,11 @@ namespace Cjing3D
 		Timer::Instance().Start();
 		mDeltaTimeAccumulator = 0;
 
+		// init universe
+		mUniverse = mEngine->CreateUniverse();
+		Renderer::InitRenderScene(*mEngine, *mUniverse);
+
+		// onLoad
 		OnLoad();
 
 		ResourceManager::WaitAll();
@@ -39,6 +44,12 @@ namespace Cjing3D
 		}
 
 		OnUnload();
+
+		if (mUniverse != nullptr) 
+		{
+			mEngine->DestroyUniverse(mUniverse);
+			mUniverse = nullptr;
+		}
 
 		Timer::Instance().Stop();
 		mIsInitialized = false;
@@ -55,6 +66,16 @@ namespace Cjing3D
 		}
 
 		mRenderPath = renderPath;
+	}
+
+	RenderPath* MainComponent::GetRenderPath()
+	{
+		return mRenderPath;
+	}
+
+	Universe* MainComponent::GetUniverse()
+	{
+		return mUniverse;
 	}
 
 	void MainComponent::Tick()
