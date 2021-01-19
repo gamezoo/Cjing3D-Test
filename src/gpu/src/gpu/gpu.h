@@ -46,5 +46,7 @@ namespace GPU
 
 	U32  GetFormatStride(FORMAT value);
 	bool IsFormatSupportStencil(FORMAT value);
+	U32x2 GetResolution();
+
 }
 }

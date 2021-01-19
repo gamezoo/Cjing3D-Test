@@ -247,6 +247,13 @@ namespace GPU
 
 		I32 mSubresourceIndex = -1;
 		ResHandle mResource;
+
+		bool operator!=(const BindingFrameAttachment& rhs)const {
+			return mType != rhs.mType ||
+				mLoadOperator != rhs.mLoadOperator ||
+				mSubresourceIndex != rhs.mSubresourceIndex ||
+				mResource != rhs.mResource;
+		}
 	};
 
 	struct FrameBindingSetDesc

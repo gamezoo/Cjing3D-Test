@@ -51,6 +51,12 @@ namespace Cjing3D
 			mUniverse = nullptr;
 		}
 
+		if (mRenderPath != nullptr) 
+		{
+			mRenderPath->Stop();
+			mRenderPath = nullptr;
+		}
+
 		Timer::Instance().Stop();
 		mIsInitialized = false;
 	}
@@ -61,11 +67,11 @@ namespace Cjing3D
 			mRenderPath->Stop();
 		}
 
+		mRenderPath = renderPath;
+
 		if (renderPath != nullptr) {
 			renderPath->Start();
 		}
-
-		mRenderPath = renderPath;
 	}
 
 	RenderPath* MainComponent::GetRenderPath()
@@ -130,12 +136,20 @@ namespace Cjing3D
 	{
 		PROFILER_CPU_BLOCK("FiexdUpdate");
 		mEngine->FixedUpdate();
+
+		if (mRenderPath != nullptr) {
+			mRenderPath->FixedUpdate();
+		}
 	}
 
 	void MainComponent::Update(F32 deltaTime)
 	{
 		PROFILER_CPU_BLOCK("Update");
 		mEngine->Update(deltaTime);
+
+		if (mRenderPath != nullptr) {
+			mRenderPath->Update(deltaTime);
+		}
 	}
 
 	void MainComponent::Render()

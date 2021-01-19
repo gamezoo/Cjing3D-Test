@@ -77,10 +77,42 @@ namespace GPU
 	// Member
 	//////////////////////////////////////////////////////////////////////////
 
+	// DEBUG INFOS
 #ifdef DEBUG
+	struct ResourceDebugInfo
+	{
+		ResourceDebugInfo() = default;
+		ResourceDebugInfo(ResHandle handle, const char* name) :
+			mHandle(handle)
+		{
+			mName.Sprintf("%s [%u %u]", name, handle.GetIndex(), handle.GetType());
+		}
+
+		StaticString<64> mName;
+		ResHandle mHandle;
+	};
+	
+	Concurrency::Mutex debugInfoMutex;
+	StaticArray<DynamicArray<ResourceDebugInfo>, GPU::RESOURCETYPE_COUNT> mResourceDebugInfos;
+	void SetDebugInfo(ResHandle handle, const char* name)
+	{
+		Concurrency::ScopedMutex lock(debugInfoMutex);
+		auto& debugInfos = mResourceDebugInfos[(I32)handle.GetType()];
+		if (debugInfos.size() <= handle.GetIndex()) {
+			debugInfos.resize(PotRoundUp((I32)handle.GetIndex() + 1, 32));
+		}
+		debugInfos[handle.GetIndex()] = ResourceDebugInfo(handle, name);
+	}
+
+	ResourceDebugInfo GetDebugInfo(ResHandle handle)
+	{
+		return mResourceDebugInfos[(I32)handle.GetType()][handle.GetIndex()];
+	}
+
 #define SET_DEBUG_NAME(name)														\
 	if (name != nullptr && handle != ResHandle::INVALID_HANDLE) {					\
 		mImpl->mDevice->SetResourceName(handle, name);								\
+		SetDebugInfo(handle, name);													\
 	}
 #else
 #define SET_DEBUG_NAME(name) static const char* debugName = "";
@@ -169,8 +201,7 @@ namespace GPU
 					{
 						if (handles.IsAllocated(i, resIndex))
 						{
-							// TODO: get handle debug info
-							os << "- - ResHandle index:" << resIndex << std::endl;
+							os << "- - ResHandle:" << mResourceDebugInfos[i][resIndex].mName << std::endl;
 						}
 					}
 				}
@@ -505,6 +536,11 @@ namespace GPU
 			return true;
 		}
 		return false;
+	}
+
+	U32x2 GetResolution()
+	{
+		return mImpl->mDevice->GetResolution();
 	}
 }
 }

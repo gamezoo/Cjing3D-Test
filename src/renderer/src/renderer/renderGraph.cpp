@@ -1,4 +1,5 @@
 #include "renderGraph.h"
+#include "renderPassImpl.h"
 #include "core\memory\memory.h"
 #include "core\memory\linearAllocator.h"
 #include "core\container\dynamicArray.h"
@@ -9,6 +10,19 @@
 
 namespace Cjing3D
 {
+	namespace
+	{
+		bool operator==(const GPU::TextureDesc& a, const GPU::TextureDesc& b)
+		{
+			return memcmp(&a, &b, sizeof(a)) == 0;
+		}
+
+		bool operator==(const GPU::BufferDesc& a, const GPU::BufferDesc& b)
+		{
+			return memcmp(&a, &b, sizeof(a)) == 0;
+		}
+	}
+
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Impl
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +54,6 @@ namespace Cjing3D
 		DynamicArray<RenderPassInst*> mExecuteRenderPasses;
 		DynamicArray<GPU::CommandList*> mExecuteCmds;
 		Set<I32> mNeededResources;
-
 		// resource, build by setup
 		DynamicArray<ResourceInst> mResources;
 		DynamicArray<ResourceInst> mUsedResources;
@@ -55,6 +68,21 @@ namespace Cjing3D
 		void FilterRenderPass(DynamicArray<RenderPassInst*>& outRenderPasses);
 		bool CreateResource(ResourceInst& resInst);
 		void RefreshResources();
+		void CreateFrameBindingSets();
+
+		GPU::ResHandle GetTexture(const RenderGraphResource& res)
+		{
+			const auto& resInst = mResources[res.mIndex];
+			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_TEXTURE);
+			return resInst.mHandle;
+		}
+
+		GPU::ResHandle GetBuffer(const RenderGraphResource& res)
+		{
+			const auto& resInst = mResources[res.mIndex];
+			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_BUFFER);
+			return resInst.mHandle;
+		}
 	};
 
 	void RenderGraphImpl::AddDependentRenderPass(DynamicArray<RenderPassInst*>& outRenderPasses, const Span<const RenderGraphResource>& resources)
@@ -91,10 +119,12 @@ namespace Cjing3D
 		// filter render passes, remove same render passes
 		Set<I32> renderPassSet;
 		auto tempRenderPasses = outRenderPasses;
-		outRenderPasses.end();
+		outRenderPasses.clear();
 
-		for (const auto& renderPassInst : tempRenderPasses)
+		// reverse render passes
+		for (int i = tempRenderPasses.size() - 1; i >= 0; i--)
 		{
+			auto& renderPassInst = tempRenderPasses[i];
 			if (renderPassSet.find(renderPassInst->mIndex) != nullptr) {
 				continue;
 			}
@@ -129,12 +159,27 @@ namespace Cjing3D
 			ResourceInst* usedResInstPtr = nullptr;
 			for (auto& usedResInst : mUsedResources)
 			{
-				if (usedResInst.mIndex == resInst.mIndex &&
-					usedResInst.mHandle != GPU::ResHandle::INVALID_HANDLE &&
+				if (usedResInst.mHandle != GPU::ResHandle::INVALID_HANDLE &&
+					usedResInst.mType == resInst.mType &&
 					usedResInst.mIsUsed == false)
 				{
-					usedResInstPtr = &usedResInst;
-					break;
+					bool find = false;
+					switch (resInst.mType)
+					{
+					case GPU::RESOURCETYPE_BUFFER:
+						find = resInst.mBufferDesc == usedResInst.mBufferDesc;
+						break;
+					case GPU::RESOURCETYPE_TEXTURE:
+						find = resInst.mTexDesc == usedResInst.mTexDesc;
+						break;
+					default:
+						break;
+					}
+					if (find)
+					{
+						usedResInstPtr = &usedResInst;
+						break;
+					}
 				}
 			}
 
@@ -145,7 +190,7 @@ namespace Cjing3D
 			}
 			else
 			{
-				if (resInst.mHandle != GPU::ResHandle::INVALID_HANDLE)
+				if (resInst.mHandle == GPU::ResHandle::INVALID_HANDLE)
 				{
 					if (CreateResource(resInst)) 
 					{
@@ -162,8 +207,10 @@ namespace Cjing3D
 		{
 			if (!it->mIsUsed)
 			{
-				if (it->mHandle != GPU::ResHandle::INVALID_HANDLE) {
+				if (it->mHandle != GPU::ResHandle::INVALID_HANDLE) 
+				{
 					GPU::DestroyResource(it->mHandle);
+					it->mHandle = GPU::ResHandle::INVALID_HANDLE;
 				}
 				it = mUsedResources.erase(it);
 			}
@@ -172,6 +219,56 @@ namespace Cjing3D
 			}
 		}
 	}
+
+	void RenderGraphImpl::CreateFrameBindingSets()
+	{
+		for (auto& rendrPassInst : mRenderPasses)
+		{
+			auto* renderPass = rendrPassInst.mRenderPass->mImpl;
+			auto& frameBindingSetDesc = renderPass->mFrameBindingSetDesc;
+
+			// rtvs
+			for (int i = 0; i < renderPass->mRTVCount; i++)
+			{
+				GPU::BindingFrameAttachment attachment;
+				RenderGraphResource rtvRes = renderPass->mRTVs[i];
+				if (rtvRes) {
+					attachment.mResource = GetTexture(rtvRes);
+				}
+
+				auto& graphAttachment = renderPass->mRTVAttachments[i];
+				attachment.mLoadOperator = graphAttachment.mLoadOperator;
+				attachment.mType = GPU::BindingFrameAttachment::RENDERTARGET;
+				frameBindingSetDesc.mAttachments.push(attachment);
+			}
+
+			// dsv
+			if (renderPass->mDSV)
+			{
+				GPU::BindingFrameAttachment attachment;
+				attachment.mLoadOperator = renderPass->mDSVAttachment.mLoadOperator;
+				attachment.mType = GPU::BindingFrameAttachment::DEPTH_STENCIL;
+				attachment.mResource = GetTexture(renderPass->mDSV);
+				frameBindingSetDesc.mAttachments.push(attachment);
+			}
+
+			renderPass->mFrameBindingSet = GPU::CreateFrameBindingSet(&frameBindingSetDesc);
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////
+	// RenderResources
+	////////////////////////////////////////////////////////////////////////////////////////////
+	RenderGraphResources::RenderGraphResources(RenderGraphImpl& renderGraph, RenderPass* renderPass) :
+		mImpl(renderGraph),
+		mRenderPass(renderPass)
+	{
+	}
+
+	RenderGraphResources::~RenderGraphResources()
+	{
+	}
+
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// RenderGraphResBuilder
@@ -366,8 +463,10 @@ namespace Cjing3D
 	{
 		Clear();
 		for (auto& resInst : mImpl->mUsedResources) {
-			if (resInst.mHandle != GPU::ResHandle::INVALID_HANDLE) {
+			if (resInst.mHandle != GPU::ResHandle::INVALID_HANDLE) 
+			{
 				GPU::DestroyResource(resInst.mHandle);
+				resInst.mHandle = GPU::ResHandle::INVALID_HANDLE;
 			}
 		}
 		CJING_SAFE_DELETE(mImpl);
@@ -448,6 +547,9 @@ namespace Cjing3D
 		// 创建所有renderPasses所需的resources
 		mImpl->RefreshResources();
 
+		// create frameBindingSet for each renderPass
+		mImpl->CreateFrameBindingSets();
+
 		// execute all renderPasses by jobsystem
 		I32 renderPassCount = mImpl->mExecuteRenderPasses.size();
 		if (mImpl->mExecuteCmds.size() < renderPassCount)
@@ -458,7 +560,7 @@ namespace Cjing3D
 			}
 		}
 
-		JobSystem::JobHandle jobHandle;
+		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
 		DynamicArray<JobSystem::JobInfo> passJobs;
 		passJobs.reserve(renderPassCount);
 		for (int i = 0; i < renderPassCount; i++)
@@ -478,7 +580,8 @@ namespace Cjing3D
 				GPU::CommandList* cmd = impl->mExecuteCmds[param];
 				{
 					auto ent = cmd->Event(renderPassInst->mName);
-					renderPassInst->mRenderPass->Execute(*cmd);
+					RenderGraphResources resources(*impl, renderPassInst->mRenderPass);
+					renderPassInst->mRenderPass->Execute(resources, *cmd);
 				}
 
 				if (!cmd->GetCommands().empty())

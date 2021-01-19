@@ -43,4 +43,10 @@ namespace Cjing3D
 	{
 		return (1 - f) * value0 + f * value1;
 	}
+
+	template<typename T>
+	T PotRoundUp(T v, T roundUpTo)
+	{
+		return ~(roundUpTo - 1) & (v + (roundUpTo - 1));
+	}
 }

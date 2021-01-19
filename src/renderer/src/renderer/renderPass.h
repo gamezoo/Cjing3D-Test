@@ -3,12 +3,14 @@
 #include "definitions.h"
 #include "gpu\commandList.h"
 #include "core\container\span.h"
+#include "core\helper\function.h"
 
 namespace Cjing3D
 {
 	class RenderGraphResource;
 	class RenderGraphResources;
 	class RenderGraphResBuilder;
+	class RenderGraph;
 
 	class RenderPass
 	{
@@ -19,10 +21,13 @@ namespace Cjing3D
 		Span<const RenderGraphResource> GetInputs()const;
 		Span<const RenderGraphResource> GetOutputs()const;
 
-		virtual void Execute(GPU::CommandList& cmd) = 0;
+		virtual void Execute(RenderGraphResources& resources, GPU::CommandList& cmd) = 0;
 
 	private:
 		friend class RenderGraphResBuilder;
+		friend class RenderGraph;
+		friend class RenderGraphImpl;
+		friend class RenderGraphResources;
 
 		void AddInput(const RenderGraphResource& res);
 		void AddOutput(const RenderGraphResource& res);
@@ -32,12 +37,38 @@ namespace Cjing3D
 		class RenderPassImpl* mImpl = nullptr;
 	};
 
+	class CallbackRenderPass : public RenderPass
+	{
+	public:
+		using SetupFn = Function<void(RenderGraphResBuilder& builder)>;
+		using ExecuteFn = Function<void(RenderGraphResources& resources, GPU::CommandList& cmd)>;
+
+		CallbackRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc, ExecuteFn&& executeFunc) :
+			RenderPass(builder),
+			mExecuteFunc(executeFunc)
+		{
+			if (setupFunc != nullptr) {
+				setupFunc(builder);
+			}
+		}
+
+		void Execute(RenderGraphResources& resources, GPU::CommandList& cmd)override
+		{
+			if (mExecuteFunc != nullptr) {
+				mExecuteFunc(resources, cmd);
+			}
+		}
+
+	private:
+		ExecuteFn mExecuteFunc;
+	};
+
 	template<typename DataT>
 	class DataRenderPass : public RenderPass
 	{
 	public:
-		using SetupFn = void(*)(RenderGraphResBuilder& builder, DataT& data);
-		using ExecuteFn = void(*)(GPU::CommandList& cmd, DataT& data);
+		using SetupFn = Function<void(RenderGraphResBuilder& builder, DataT& data)>;
+		using ExecuteFn = Function<void(RenderGraphResources& resources, GPU::CommandList& cmd, DataT& data)>;
 
 		DataRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc, ExecuteFn&& executeFunc) :
 			RenderPass(builder),
@@ -48,10 +79,10 @@ namespace Cjing3D
 			}
 		}
 
-		void Execute(GPU::CommandList& cmd)override
+		void Execute(RenderGraphResources& resources, GPU::CommandList& cmd)override
 		{
 			if (mExecuteFunc != nullptr) {
-				mExecuteFunc(cmd, mData);
+				mExecuteFunc(resources, cmd, mData);
 			}
 		}
 

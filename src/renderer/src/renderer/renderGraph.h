@@ -40,10 +40,16 @@ namespace Cjing3D
 		I32 mVersion = 0;
 	};
 
+	// RenderGraph resources(called by renderPass:execute)
 	class RenderGraphResources
 	{
 	public:
-		
+		RenderGraphResources(RenderGraphImpl& renderGraph, RenderPass* renderPass);
+		~RenderGraphResources();
+
+	private:
+		RenderPass* mRenderPass = nullptr;
+		RenderGraphImpl& mImpl;
 	};
 
 	// RenderGraph resource builder(called by renderPass:setup)
@@ -94,20 +100,26 @@ namespace Cjing3D
 		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc* desc);
 
 		template<typename RenderPassT, typename... Args>
-		std::enable_if_t<std::is_base_of<RenderPass, RenderPassT>::value, RenderPass>&
+		std::enable_if_t<std::is_base_of<RenderPass, RenderPassT>::value, RenderPassT>&
 			AddRenderPass(const char* name, Args&&... args)
 		{
 			RenderPassT* passMem = Allocate<RenderPassT>();
 			RenderGraphResBuilder builder(*mImpl, passMem);
 			RenderPassT* ret = new(passMem) RenderPassT(builder, std::forward<Args>(args)...);
 			AddRenderPass(name, ret);
-			return ret;
+			return *ret;
 		}
 
 		template<typename DataT>
 		DataRenderPass<DataT>& AddDataRenderPass(const char* name, typename DataRenderPass<DataT>::SetupFn&& setupFunc, typename DataRenderPass<DataT>::ExecuteFn&& executeFunc)
 		{
 			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, std::move(setupFunc), std::move(executeFunc));
+			return renderPass;
+		}
+
+		CallbackRenderPass& AddCallbackRenderPass(const char* name, typename CallbackRenderPass::SetupFn&& setupFunc, typename CallbackRenderPass::ExecuteFn&& executeFunc)
+		{
+			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, std::move(setupFunc), std::move(executeFunc));
 			return renderPass;
 		}
 
