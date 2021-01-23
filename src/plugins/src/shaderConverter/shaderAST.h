@@ -122,6 +122,7 @@ namespace Cjing3D
 				mMeta(meta)
 			{};
 
+			// 记录枚举值基础类型
 			template<typename EnumT>
 			BaseTypeNode(const char* name, EnumT maxEnumValue) :
 				Node(NodeType::BASE_TYPE, name),
@@ -197,6 +198,7 @@ namespace Cjing3D
 
 			String mMemberStr;
 			ValueNode* mValue = nullptr;
+			I32 mIndex = -1;
 
 			void Visit(NodeVisitor* visitor)override;
 		};
@@ -219,6 +221,7 @@ namespace Cjing3D
 			TypeIdentNode* mType = nullptr;
 			DynamicArray<StorageTypeNode*> mTypeStorages;
 			StaticArray<I32, 3> mArrayDims;
+			I32 mCurrentDims = 0;
 			DynamicArray<DeclarationNode*> mArgs;
 			String mRegister;
 			String mSemantic;

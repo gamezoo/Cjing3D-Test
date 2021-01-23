@@ -15,6 +15,6 @@ namespace Cjing3D
 		void Update(F32 dt)override {};
 		void FixedUpdate()override {};
 		void Render()override {};
-		void Compose()override {};
+		void Compose(GPU::CommandList& cmd)override {};
 	};
 }

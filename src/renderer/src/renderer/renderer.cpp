@@ -1,8 +1,11 @@
 #include "renderer.h"
 #include "renderScene.h"
+#include "renderImage.h"
 #include "resource\resourceManager.h"
 #include "core\platform\platform.h"
 #include "core\scene\universe.h"
+
+#include "core\helper\enumTraits.h"
 
 namespace Cjing3D
 {
@@ -19,7 +22,7 @@ namespace Renderer
 
 		void PreLoadShaders();
 
-	private:
+	public:
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
 	};
 
@@ -39,7 +42,7 @@ namespace Renderer
 		// clear current resource jobs
 		ResourceManager::WaitAll();
 
-		mShaders[SHADERTYPE::SHADERTYPE_DEFAULT] = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/default_pipeline.jsf"));
+		mShaders[SHADERTYPE::SHADERTYPE_IMAGE] = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/render_image.jsf"));
 
 		// wait for all shaders
 		ResourceManager::WaitAll();
@@ -65,6 +68,9 @@ namespace Renderer
 		// initialize impl
 		mImpl = CJING_NEW(RendererImpl);
 		mImpl->PreLoadShaders();
+
+		// initialize renderImage
+		RenderImage::Initialize();
 	}
 
 	bool IsInitialized()
@@ -113,7 +119,7 @@ namespace Renderer
 
 	ShaderRef GetShader(SHADERTYPE type)
 	{
-		return ShaderRef();
+		return mImpl->mShaders[(U32)type];
 	}
 
 	ShaderRef LoadShader(const char* path, bool waitFor)

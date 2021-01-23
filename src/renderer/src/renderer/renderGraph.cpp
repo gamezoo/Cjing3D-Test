@@ -70,17 +70,23 @@ namespace Cjing3D
 		void RefreshResources();
 		void CreateFrameBindingSets();
 
-		GPU::ResHandle GetTexture(const RenderGraphResource& res)
+		GPU::ResHandle GetTexture(const RenderGraphResource& res, GPU::TextureDesc* outDesc = nullptr)
 		{
 			const auto& resInst = mResources[res.mIndex];
 			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_TEXTURE);
+			if (outDesc != nullptr) {
+				*outDesc = resInst.mTexDesc;
+			}
 			return resInst.mHandle;
 		}
 
-		GPU::ResHandle GetBuffer(const RenderGraphResource& res)
+		GPU::ResHandle GetBuffer(const RenderGraphResource& res, GPU::BufferDesc* outDesc = nullptr)
 		{
 			const auto& resInst = mResources[res.mIndex];
 			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_BUFFER);
+			if (outDesc != nullptr) {
+				*outDesc = resInst.mBufferDesc;
+			}
 			return resInst.mHandle;
 		}
 	};
@@ -269,6 +275,20 @@ namespace Cjing3D
 	{
 	}
 
+	GPU::ResHandle RenderGraphResources::GetFrameBindingSet() const
+	{
+		return mRenderPass->mImpl->mFrameBindingSet;
+	}
+
+	GPU::ResHandle RenderGraphResources::GetBuffer(RenderGraphResource res, GPU::BufferDesc* outDesc)
+	{
+		return mImpl.GetBuffer(res, outDesc);
+	}
+
+	GPU::ResHandle RenderGraphResources::GetTexture(RenderGraphResource res, GPU::TextureDesc* outDesc)
+	{
+		return mImpl.GetTexture(res, outDesc);
+	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// RenderGraphResBuilder

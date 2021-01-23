@@ -8,12 +8,11 @@ namespace Cjing3D
 
 	namespace ResourceManager
 	{
-		void Initialize(BaseFileSystem* filesystem);
+		void Initialize(BaseFileSystem* filesystem, bool convertEnable = false);
 		void Uninitialize();
 		bool IsInitialized();
 		void RegisterFactory(ResourceType type, ResourceFactory* factory);
 		void UnregisterFactory(ResourceType type);
-		void SetConvertEnable(bool convertEnable);
 
 		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate);
 

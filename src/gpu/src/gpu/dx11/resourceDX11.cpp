@@ -136,19 +136,19 @@ namespace GPU
 			mDeviceContext->VSSetShader(vs, nullptr, 0);
 			mPrevVertexShader = vs;
 		}
-		ID3D11PixelShader* ps = desc.mPS != ResHandle::INVALID_HANDLE ? mDevice.mShaders.Read(desc.mVS)->mPS.Get() : nullptr;
+		ID3D11PixelShader* ps = desc.mPS != ResHandle::INVALID_HANDLE ? mDevice.mShaders.Read(desc.mPS)->mPS.Get() : nullptr;
 		if (ps != mPrevPixelShader)
 		{
 			mDeviceContext->PSSetShader(ps, nullptr, 0);
 			mPrevPixelShader = ps;
 		}
-		ID3D11HullShader* hs = desc.mHS != ResHandle::INVALID_HANDLE ? mDevice.mShaders.Read(desc.mVS)->mHS.Get() : nullptr;
+		ID3D11HullShader* hs = desc.mHS != ResHandle::INVALID_HANDLE ? mDevice.mShaders.Read(desc.mHS)->mHS.Get() : nullptr;
 		if (hs != mPrevHullShader)
 		{
 			mDeviceContext->HSSetShader(hs, nullptr, 0);
 			mPrevHullShader = hs;
 		}
-		ID3D11DomainShader* ds = desc.mDS != ResHandle::INVALID_HANDLE ? mDevice.mShaders.Read(desc.mVS)->mDS.Get() : nullptr;
+		ID3D11DomainShader* ds = desc.mDS != ResHandle::INVALID_HANDLE ? mDevice.mShaders.Read(desc.mDS)->mDS.Get() : nullptr;
 		if (ds != mPrevDomainShader)
 		{
 			mDeviceContext->DSSetShader(ds, nullptr, 0);

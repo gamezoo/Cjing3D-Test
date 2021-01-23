@@ -49,7 +49,7 @@ namespace Cjing3D
 		ShaderAST::DeclarationNode* ParseDeclaration(ShaderAST::Token& token);
 
 		bool ParseFunctionBody(ShaderAST::Token& token, ShaderAST::DeclarationNode& node);
-		void GetCurrentLine(I32& outLineNum, I32& outLineOff)const;
+		void GetCurrentLine(I32& outLineNum, I32& outLineOff, String* outFile)const;
 
 	private:
 		template<typename T>

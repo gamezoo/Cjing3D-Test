@@ -16,8 +16,114 @@ namespace Cjing3D
 		for (auto shader : mRhiShaders) {
 			GPU::DestroyResource(shader);
 		}
+
+		for (auto pipelineState : mPipelineStates) {
+			if (pipelineState != GPU::ResHandle::INVALID_HANDLE) {
+				GPU::DestroyResource(pipelineState);
+			}
+		}
 	}
 
+	bool ShaderTechniqueImpl::IsValid()const
+	{
+		return true;
+	}
+
+	GPU::ResHandle ShaderTechniqueImpl::GetPipelineState() const
+	{
+		return mShaderImpl->mPipelineStates[mIndex];
+	}
+
+	ShaderTechniqueImpl* ShaderImpl::CreateTechnique(const char* name, const ShaderTechniqueDesc& desc)
+	{
+		Concurrency::ScopedWriteLock lock(mRWLoclk);
+
+		// 根据name和desc找到已创建的Technique index()
+		I32 findIndex = -1;
+		U64 hash = HashFunc(0, name);
+		hash = FNV1aHash(hash, &desc, sizeof(desc));
+		for (I32 index = 0; index < mTechniquesHashes.size(); index++)
+		{
+			if (mTechniquesHashes[index] == hash) {
+				findIndex = index;
+			}
+		}
+		if (findIndex == -1)
+		{
+			findIndex = mTechniquesHashes.size();
+			mTechniquesHashes.push(hash);
+			mTechniqueDescs.push(desc);
+			mPipelineStates.resize(mTechniquesHashes.size());
+		}
+
+		ShaderTechniqueImpl* impl = CJING_NEW(ShaderTechniqueImpl);
+		impl->mName = name;
+		impl->mShaderImpl = this;
+		impl->mIndex = findIndex;
+
+		if (!SetupTechnique(impl)) 
+		{
+			CJING_SAFE_DELETE(impl);
+			return nullptr;
+		}
+		mTechniques.push(impl);
+
+		return impl;
+	}
+
+	bool ShaderImpl::SetupTechnique(ShaderTechniqueImpl* technique)
+	{
+		// find target shader technique
+		const ShaderTechniqueHeader* targetHeader = nullptr;
+		for (const auto& header : mTechniqueHeaders)
+		{
+			if (technique->mName == header.mName) 
+			{
+				targetHeader = &header;
+				break;
+			}
+		}
+		if (targetHeader == nullptr)
+		{
+			Debug::Warning("Invalid technique \'%s\' in shader", technique->mName);
+			return false;
+		}
+
+		// create pipeline state
+		GPU::ResHandle handle = mPipelineStates[technique->mIndex];
+		if (handle == GPU::ResHandle::INVALID_HANDLE && GPU::IsInitialized())
+		{
+			const auto& techDesc = mTechniqueDescs[technique->mIndex];
+
+			GPU::PipelineStateDesc desc = {};
+			desc.mVS = targetHeader->mIdxVS != -1 ? mRhiShaders[targetHeader->mIdxVS] : GPU::ResHandle::INVALID_HANDLE;
+			desc.mHS = targetHeader->mIdxHS != -1 ? mRhiShaders[targetHeader->mIdxHS] : GPU::ResHandle::INVALID_HANDLE;
+			desc.mDS = targetHeader->mIdxDS != -1 ? mRhiShaders[targetHeader->mIdxDS] : GPU::ResHandle::INVALID_HANDLE;
+			desc.mGS = targetHeader->mIdxGS != -1 ? mRhiShaders[targetHeader->mIdxGS] : GPU::ResHandle::INVALID_HANDLE;
+			desc.mPS = targetHeader->mIdxPS != -1 ? mRhiShaders[targetHeader->mIdxPS] : GPU::ResHandle::INVALID_HANDLE;
+			
+			desc.mRasterizerState = techDesc.mRasterizerState;
+			desc.mDepthStencilState = techDesc.mDepthStencilState;
+			desc.mBlendState = techDesc.mBlendState;
+			desc.mInputLayout = techDesc.mInputLayout;
+			desc.mPrimitiveTopology = techDesc.mPrimitiveTopology;
+
+			handle = GPU::CreatePipelineState(&desc);
+			mPipelineStates[technique->mIndex] = handle;
+		}
+
+		if (handle == GPU::ResHandle::INVALID_HANDLE)
+		{
+			Debug::Warning("Failed to create render pipeline statefor technique.");
+			return false;
+		}
+
+		technique->mHeader = *targetHeader;
+		return true;
+	}
+
+	/// ////////////////////////////////////////////////////////////////////////////////
+	/// ShaderFactory
 	class ShaderFactory : public ResourceFactory
 	{
 	public:
@@ -72,8 +178,8 @@ namespace Cjing3D
 			}
 
 			// technique headers
-			shaderImpl->mTechniques.resize(generalHeader.mNumTechniques);
-			if (!file.Read(shaderImpl->mTechniques.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
+			shaderImpl->mTechniqueHeaders.resize(generalHeader.mNumTechniques);
+			if (!file.Read(shaderImpl->mTechniqueHeaders.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
 			{
 				Debug::Warning("Failed to read shader bytecode header");
 				CJING_SAFE_DELETE(shaderImpl);
@@ -133,9 +239,45 @@ namespace Cjing3D
 			return true;
 		}
 	};
-
 	DEFINE_RESOURCE(Shader, "Shader");
 
+	/// ////////////////////////////////////////////////////////////////////////////////
+	/// ShaderTechnique
+	ShaderTechnique::ShaderTechnique()
+	{
+	}
+
+	ShaderTechnique::~ShaderTechnique()
+	{
+		if (mImpl != nullptr)
+		{
+			CJING_DELETE(mImpl);
+		}
+	}
+
+	GPU::ResHandle ShaderTechnique::GetPipelineState() const
+	{
+		return mImpl != nullptr ? mImpl->GetPipelineState() : GPU::ResHandle::INVALID_HANDLE;
+	}
+
+	ShaderTechnique::ShaderTechnique(ShaderTechnique&& rhs)
+	{
+		std::swap(mImpl, rhs.mImpl);
+	}
+
+	ShaderTechnique& ShaderTechnique::operator=(ShaderTechnique&& rhs)
+	{
+		std::swap(mImpl, rhs.mImpl);
+		return *this;
+	}
+
+	ShaderTechnique::operator bool() const
+	{
+		return mImpl != nullptr && mImpl->IsValid();
+	}
+
+	/// ////////////////////////////////////////////////////////////////////////////////
+	/// Shader
 	Shader::Shader()
 	{
 	}
@@ -143,5 +285,20 @@ namespace Cjing3D
 	Shader::~Shader()
 	{
 		CJING_SAFE_DELETE(mImpl);
+	}
+
+	ShaderTechnique Shader::CreateTechnique(const char* name, const ShaderTechniqueDesc& desc)
+	{
+		ShaderTechnique tech;
+		tech.mImpl = mImpl->CreateTechnique(name, desc);
+		return std::move(tech);
+	}
+
+	ShaderContext::ShaderContext(GPU::CommandList& cmd)
+	{
+	}
+
+	ShaderContext::~ShaderContext()
+	{
 	}
 }

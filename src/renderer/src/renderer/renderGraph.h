@@ -47,6 +47,10 @@ namespace Cjing3D
 		RenderGraphResources(RenderGraphImpl& renderGraph, RenderPass* renderPass);
 		~RenderGraphResources();
 
+		GPU::ResHandle GetFrameBindingSet()const;
+		GPU::ResHandle GetBuffer(RenderGraphResource res, GPU::BufferDesc* outDesc = nullptr);
+		GPU::ResHandle GetTexture(RenderGraphResource res, GPU::TextureDesc* outDesc = nullptr);
+
 	private:
 		RenderPass* mRenderPass = nullptr;
 		RenderGraphImpl& mImpl;
@@ -90,6 +94,7 @@ namespace Cjing3D
 		RenderGraphImpl& mImpl;
 	};
 
+	// render graph, manage
 	class RenderGraph
 	{
 	public:

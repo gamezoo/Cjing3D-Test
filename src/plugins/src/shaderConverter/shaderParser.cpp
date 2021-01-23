@@ -100,7 +100,13 @@ namespace Cjing3D
 
 	ShaderAST::BaseTypeNode ENUM_TYPE_KEYS[] = 
 	{
-		{"Blend", GPU::Blend::BLEND_MAX}
+		{"BlendType", GPU::Blend::BLEND_COUNT},
+		{"BlendOp",   GPU::BlendOp::BLEND_OP_MAX},
+		{"StencilOp", GPU::StencilOp::STENCIL_OP_COUNT},
+		{"ComparisonFunc", GPU::ComparisonFunc::COMPARISON_COUNT },
+		{"FillMode", GPU::FillMode::FILL_COUNT },
+		{"CullMode", GPU::CullMode::CULL_COUNT },
+		{"DepthWriteMask", GPU::DepthWriteMask::DEPTH_WRITE_MASK_COUNT },
 	};
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
@@ -119,6 +125,7 @@ namespace Cjing3D
 		RecordNodes(SRV_TYPE_KEYS);
 		RecordNodes(UAV_TYPE_KEYS);
 		RecordNodes(CBV_TYPE_KEYS);
+		RecordNodes(ENUM_TYPE_KEYS);
 	}
 
 	ShaderParser::~ShaderParser()
@@ -304,11 +311,12 @@ namespace Cjing3D
 		// get line number
 		I32 lineNum = 1;
 		I32 lineOffset = 0;
-		GetCurrentLine(lineNum, lineOffset);
+		String filename = mShaderFileName;
+		GetCurrentLine(lineNum, lineOffset, &filename);
 
 		std::stringstream os;
 		os << std::endl;
-		os << "[ShaderParse]" << mShaderFileName << "(" << lineNum << "-" << lineOffset;
+		os << "[ShaderParse]" << filename << "(" << lineNum << "-" << lineOffset;
 		os << ") Error:" << errMsg << std::endl;
 
 		Debug::Error(os.str().c_str());
@@ -573,6 +581,31 @@ namespace Cjing3D
 		ShaderAST::MemberValueNode* memberValue = AddNode<ShaderAST::MemberValueNode>();
 		memberValue->mMemberStr = token.mValue;
 
+		// array
+		if (memberType->mCurrentDims > 0)
+		{
+			NEXT_TOKEN();
+
+			I32 index = 0;
+			for (int dim = 0; dim < memberType->mCurrentDims; dim++)
+			{
+				CHECK_TOKEN(ShaderAST::TokenType::CHAR, "[");
+				NEXT_TOKEN();
+				CHECK_TOKEN(ShaderAST::TokenType::INT, nullptr);
+				
+				I32 value = token.mInt;
+				for (int j = dim + 1; j < memberType->mCurrentDims; j++) {
+					value *= memberType->mArrayDims[j];
+				}
+				index += value;
+
+				NEXT_TOKEN();
+				CHECK_TOKEN(ShaderAST::TokenType::CHAR, "]");
+				NEXT_TOKEN();
+			}
+			memberValue->mIndex = index;
+		}
+
 		// FORMAT: xxx.bbb = ccc
 		NEXT_TOKEN();
 		CHECK_TOKEN(ShaderAST::TokenType::CHAR, "=");
@@ -744,7 +777,9 @@ namespace Cjing3D
 				node->mArrayDims[currentDim++] = token.mInt;
 				NEXT_TOKEN();
 				CHECK_TOKEN(ShaderAST::TokenType::CHAR, "]");
+				NEXT_TOKEN();
 			}
+			node->mCurrentDims = currentDim;
 		}
 		// try to parse func
 		else if (token.mValue == "(")
@@ -841,7 +876,7 @@ namespace Cjing3D
 		// parse function body and get function raw code
 		I32 lineNum = 1;
 		I32 lineOffset = 0;
-		GetCurrentLine(lineNum, lineOffset);
+		GetCurrentLine(lineNum, lineOffset, nullptr);
 
 		node.mFileLine = lineNum;
 		node.mFileName = mShaderFileName;
@@ -919,7 +954,7 @@ namespace Cjing3D
 		return true;
 	}
 
-	void ShaderParser::GetCurrentLine(I32& outLineNum, I32& outLineOff) const
+	void ShaderParser::GetCurrentLine(I32& outLineNum, I32& outLineOff, String* outFile) const
 	{
 		stb_lex_location location;
 		stb_c_lexer_get_location(&mLexer, mLexer.parse_point, &location);
@@ -931,6 +966,9 @@ namespace Cjing3D
 		{
 			if (location.line_number >= lineDir.mSourceLine) {
 				outLineNum = (location.line_number - lineDir.mSourceLine) + lineDir.mLine - 1;
+				if (outFile != nullptr) {
+					*outFile = lineDir.mFileName;
+				}
 			}
 		}
 	}

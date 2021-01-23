@@ -366,7 +366,8 @@ namespace Cjing3D
 				}
 
 				for (int i = 0; i < currentJson->size(); i++) {
-					archive.Read(i, obj[i]);
+					auto& v = obj.emplace();
+					archive.Read(i, v);
 				}
 			}
 

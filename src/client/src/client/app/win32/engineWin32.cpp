@@ -86,13 +86,7 @@ namespace Cjing3D::Win32
 		BuildConfig::Initialize(filesystem);
 
 		// init resource manager
-		ResourceManager::Initialize(filesystem);
-
-		bool resConvertEnable = false;
-		if (!mInitConfig.mIsApp) {
-			resConvertEnable = true;
-		}
-		ResourceManager::SetConvertEnable(resConvertEnable);
+		ResourceManager::Initialize(filesystem, mInitConfig.mEnableResConvert);
 
 		// init input system
 		mImpl->mInputSystem = CJING_NEW(Win32::InputManagerWin32);

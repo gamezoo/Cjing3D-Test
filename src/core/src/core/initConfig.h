@@ -23,6 +23,7 @@ namespace Cjing3D
 		U32    mMultiSampleCount = 1;
 		bool   mIsFullScreen = false;
 		bool   mIsApp = false;
+		bool   mEnableResConvert = false;
 		I32    mFlag = 0;
 	};
 }

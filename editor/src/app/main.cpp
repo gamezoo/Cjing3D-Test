@@ -5,7 +5,6 @@
 #include "client\app\win32\gameAppWin32.h"
 #include "client\app\mainComponent.h"
 #include "core\container\map.h"
-#include "renderer\renderPath\renderPath3D.h"
 #include "renderer\renderPath\renderGraphPath.h"
 
 using namespace Cjing3D;
@@ -24,6 +23,7 @@ int WINAPI WinMain(
 	config.mFlag = InitConfigFlag::PresentFlag_WinApp;
 	config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
 	config.mIsApp = false;
+	config.mEnableResConvert = true;
 
 	auto renderPath = CJING_MAKE_SHARED<RenderGraphPath>();
 	Win32::GameAppWin32 gameApp(hInstance);

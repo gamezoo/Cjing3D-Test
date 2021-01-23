@@ -293,6 +293,7 @@ namespace Cjing3D
 		for (const auto& tech : techniques)
 		{
 			ShaderTechniqueHeader& header = techniqueHeaders.emplace();
+			CopyString(header.mName, tech.mName.c_str());
 			header.mIdxVS = FindShaderIdx(tech.mVS);
 			header.mIdxGS = FindShaderIdx(tech.mGS);
 			header.mIdxDS = FindShaderIdx(tech.mDS);
@@ -321,6 +322,8 @@ namespace Cjing3D
 		if (!techniqueHeaders.empty()) {
 			file->Write(techniqueHeaders.data(), techniqueHeaders.size() * sizeof(ShaderTechniqueHeader));
 		}
+		// write renderStates
+
 
 		// write bytecode
 		for (const auto& compileInfo : compileOutput) {

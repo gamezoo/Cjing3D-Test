@@ -165,7 +165,7 @@ namespace Cjing3D
 		Renderer::PresentBegin(*cmd);
 		{
 			if (mRenderPath != nullptr) {
-				mRenderPath->Compose();
+				mRenderPath->Compose(*cmd);
 			}
 		}
 		Renderer::PresentEnd();

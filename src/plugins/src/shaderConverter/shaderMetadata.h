@@ -2,18 +2,22 @@
 
 #include "shaderAST.h"
 #include "core\container\hashMap.h"
+#include "gpu\definitions.h"
 
 namespace Cjing3D
 {
 namespace ShaderAST
 {
+	// shaderMetadata 用来解析source中特殊的结构体
+
 	class ShaderMetadata;
 
 	template<typename InfoT>
 	class StructVisitor : public NodeVisitor
 	{
 	public:
-		using ParseMemberValueFunc = bool(*)(InfoT& info, ValueNode* node);
+		using ParseMemberFunc = bool(*)(InfoT& info, I32 index, ValueNode* node);
+		using VisitMemberFunc = bool(*)(InfoT& info, I32 index, FileNode* fileNode, ShaderMetadata& metadata, ValueNode* node);
 
 		StructVisitor(InfoT& info, FileNode* fileNode, ShaderMetadata& metadata) :
 			mInfo(info),
@@ -30,21 +34,64 @@ namespace ShaderAST
 
 			auto parseFunc = mParseFuncs.find(node->mMemberStr);
 			if (parseFunc != nullptr) {
-				return (*parseFunc)(mInfo, node->mValue);
+				return (*parseFunc)(mInfo, node->mIndex, node->mValue);
+			}
+
+			auto visitFunc = mVisitFuncs.find(node->mMemberStr);
+			if (visitFunc != nullptr) {
+				return (*visitFunc)(mInfo, node->mIndex, mFileNode, mMetadata, node->mValue);
 			}
 
 			return true;
+		}
+
+		void AddParseFunc(const String& name, ParseMemberFunc&& func) {
+			mParseFuncs.insert(name, func);
+		}
+		void AddVisitFunc(const String& name, VisitMemberFunc&& func) {
+			mVisitFuncs.insert(name, func);
 		}
 
 	protected:
 		InfoT& mInfo;
 		FileNode* mFileNode;
 		ShaderMetadata& mMetadata;
-		HashMap<String, ParseMemberValueFunc> mParseFuncs;
+		HashMap<String, ParseMemberFunc> mParseFuncs;
+		HashMap<String, VisitMemberFunc> mVisitFuncs;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////
 	// shader technique
+	struct RenderTargetBlendStateInfo
+	{
+		String mName;
+		GPU::RenderTargetBlendStateDesc mDesc;
+	};
+
+	struct ShaderBlendStateInfo
+	{
+		String mName;
+		GPU::BlendStateDesc mDesc;
+	};
+
+	struct ShaderDepthStencilStateInfo
+	{
+		String mName;
+		GPU::DepthStencilStateDesc mDesc;
+	};
+	
+	struct ShaderRasterizerStateInfo
+	{
+		String mName;
+		GPU::RasterizerStateDesc mDesc;
+	};
+
+	struct ShaderRenderStateInfo
+	{
+		String mName;
+		GPU::RenderStateDesc mDesc;
+	};
+	
 	struct ShaderTechniqueInfo
 	{
 		String mName;
@@ -54,8 +101,45 @@ namespace ShaderAST
 		String mDS;
 		String mPS;
 		String mCS;
+		ShaderRenderStateInfo mRenderState;
 	};
 
+	// blend rendr target
+	class RenderTargetBlendStateInfoVisitor : public StructVisitor<RenderTargetBlendStateInfo>
+	{
+	public:
+		RenderTargetBlendStateInfoVisitor(RenderTargetBlendStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
+	};
+
+	// blend state
+	class ShaderBlendStateVisitor : public StructVisitor<ShaderBlendStateInfo>
+	{
+	public:
+		ShaderBlendStateVisitor(ShaderBlendStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
+	};
+
+	// depthStencilState
+	class ShaderDepthStencilStateVisitor : public StructVisitor<ShaderDepthStencilStateInfo>
+	{
+	public:
+		ShaderDepthStencilStateVisitor(ShaderDepthStencilStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
+	};
+
+	// rasterizerState
+	class ShaderRasterizerStateVisitor : public StructVisitor<ShaderRasterizerStateInfo>
+	{
+	public:
+		ShaderRasterizerStateVisitor(ShaderRasterizerStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
+	};
+
+	// renderState ast visitor
+	class ShaderRenderStateVisitor : public StructVisitor<ShaderRenderStateInfo>
+	{
+	public:
+		ShaderRenderStateVisitor(ShaderRenderStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
+	};
+
+	// technique ast visitor
 	class ShaderTechniqueVisitor : public StructVisitor<ShaderTechniqueInfo>
 	{
 	public:
@@ -76,12 +160,18 @@ namespace ShaderAST
 		bool VisitBegin(DeclarationNode* node)override;
 
 		bool IsDeclTechnique(DeclarationNode* node)const;
+		bool IsDeclTargetInternalType(DeclarationNode* node, const char* name)const;
 
 		DynamicArray<ShaderTechniqueInfo>& GetTechniques() { return mTechs; }
 		const DynamicArray<ShaderTechniqueInfo>& GetTechniques()const { return mTechs; }
 
-	private:
+	public:
 		FileNode* mFileNode = nullptr;
+		DynamicArray<RenderTargetBlendStateInfo> mRenderTargetBlendStates;
+		DynamicArray<ShaderBlendStateInfo> mShaderBlendStates;
+		DynamicArray<ShaderDepthStencilStateInfo> mShaderDepthStencilStates;
+		DynamicArray<ShaderRasterizerStateInfo> mShaderRasterizerStates;
+		DynamicArray<ShaderRenderStateInfo> mRenderStates;
 		DynamicArray<ShaderTechniqueInfo> mTechs;
 	};
 }

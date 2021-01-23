@@ -32,3 +32,4 @@ src/renderer/lib
 3rdparty/imgui
 3rdparty/optick
 3rdparty/config_user.jsc
+/editor/src/app/note.h

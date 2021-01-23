@@ -2,9 +2,9 @@
 
 #include "renderPath.h"
 #include "renderer\renderGraph.h"
-#include "renderer\renderPipeline\mainRenderPipeline.h"
 #include "renderer\texture.h"
 #include "core\event\eventSystem.h"
+#include "renderer\renderPipeline\mainRenderPipeline.h"
 
 namespace Cjing3D
 {
@@ -19,13 +19,13 @@ namespace Cjing3D
 		void Update(F32 dt)override;
 		void FixedUpdate()override;
 		void Render()override;
-		void Compose()override;
+		void Compose(GPU::CommandList& cmd)override;
 
 		void Clear();
 		void ResizeBuffers();
 
 	private:
-		RenderGraph mRenderGraph;
+		RenderGraph mMainGraph;
 		MainRenderPipeline mMainPipeline;
 		ScopedConnection mResolutionChangedHandle;
 

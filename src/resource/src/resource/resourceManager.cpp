@@ -8,6 +8,7 @@
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\plugin\pluginManager.h"
 #include "core\serialization\jsonArchive.h"
+#include "core\platform\platform.h"
 
 namespace Cjing3D
 {
@@ -33,6 +34,7 @@ namespace ResourceManager
 
 	static int ReadIOTaskFunc(void* data);
 	static int WriteIOTaskFunc(void* data);
+	static int TimesteampFunc(void* data);
 
 	//////////////////////////////////////////////////////////////////////////
 	// Impl
@@ -57,10 +59,12 @@ namespace ResourceManager
 		// resource file io
 		Concurrency::Semaphore mWriteTaskSem;
 		Concurrency::Semaphore mReadTaskSem;
+		Concurrency::Semaphore mTimesteampSem;
 		MPMCBoundedQueue<FileIOTask> mWriteTaskQueue;
 		MPMCBoundedQueue<FileIOTask> mReadTaskQueue;
 		Concurrency::Thread mWriteThread;
 		Concurrency::Thread mReadThread;
+		Concurrency::Thread mTimestampThread;
 		bool mIOExiting = false;
 
 		// converter plugins
@@ -73,7 +77,7 @@ namespace ResourceManager
 		bool mIsInitialized = false;
 
 	public:
-		ResourceManagerImpl(BaseFileSystem* filesystem);
+		ResourceManagerImpl(BaseFileSystem* filesystem, bool convertEnable);
 		~ResourceManagerImpl();
 
 		ResourceFactory* GetFactory(ResourceType type);
@@ -83,18 +87,26 @@ namespace ResourceManager
 		void RecordResource(const Path& path, ResourceType type, Resource& resource);
 		void ProcessReleasedResources();
 		DynamicArray<String> LoadResSources(const char* src);
+		bool CheckResourceIsOutofDate(Resource* resource);
 	};
 	ResourceManagerImpl* mImpl = nullptr;
 
-	ResourceManagerImpl::ResourceManagerImpl(BaseFileSystem* filesystem) :
+	ResourceManagerImpl::ResourceManagerImpl(BaseFileSystem* filesystem, bool convertEnable) :
 		mReadTaskQueue(MAX_READ_TASKS),
 		mWriteTaskQueue(MAX_WRITE_TASKS),
 		mWriteTaskSem(0, MAX_WRITE_TASKS, "ResWriteSem"),
 		mReadTaskSem(0,  MAX_READ_TASKS, "ResReadSem"),
+		mTimesteampSem(0, MAX_READ_TASKS, "TimesteampSem"),
 		mWriteThread(WriteIOTaskFunc, this, 65536, "WriteIOThread"),
 		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread"),
-		mFilesystem(filesystem)
+		mFilesystem(filesystem),
+		mConvertEnable(convertEnable)
 	{
+		// run timesteamp thread is converting is enable
+		if (convertEnable) {
+			mTimestampThread = std::move(Concurrency::Thread(TimesteampFunc, this, 65536, "TimesteampThread"));
+		}
+
 		// acquire all converter plugins
 		DynamicArray<Plugin*> plugins;
 		PluginManager::GetPlugins<ResConverterPlugin>(plugins);
@@ -122,6 +134,9 @@ namespace ResourceManager
 
 		mWriteTaskSem.Signal(1);
 		mWriteThread.Join();
+
+		mTimesteampSem.Signal(1);
+		mTimestampThread.Join();
 	}
 
 	ResourceFactory* ResourceManagerImpl::GetFactory(ResourceType type)
@@ -214,10 +229,15 @@ namespace ResourceManager
 		metaPath.append(".metadata");
 		if (mFilesystem->IsFileExists(metaPath.c_str()))
 		{
-			JsonArchive archive(ArchiveMode::ArchiveMode_Read, *mFilesystem);
+			JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, *mFilesystem);
 			archive.Read("sources", ret);
 		}
 		return ret;
+	}
+
+	bool ResourceManagerImpl::CheckResourceIsOutofDate(Resource* resource)
+	{
+		return false;
 	}
 
 	AsyncResult FileIOTask::DoRead()
@@ -338,6 +358,20 @@ namespace ResourceManager
 		return 0;
 	}
 
+	static int TimesteampFunc(void* data)
+	{
+		auto* impl = reinterpret_cast<ResourceManagerImpl*>(data);
+
+		// check resource is out of date every 100ms
+		impl->mTimesteampSem.Wait();
+		while (impl->mIsInitialized)
+		{
+			impl->mTimesteampSem.Wait(100);
+		}
+
+		return 0;
+	}
+
 	//////////////////////////////////////////////////////////////////////////
 	// Task job
 	//////////////////////////////////////////////////////////////////////////
@@ -346,7 +380,7 @@ namespace ResourceManager
 	class ResourceLoadJob : public JobSystem::TaskJob
 	{
 	public:
-		ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char* path);
+		ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char* path, const char* originalPath);
 		virtual ~ResourceLoadJob();
 
 		void OnWork(I32 param)override;
@@ -357,6 +391,7 @@ namespace ResourceManager
 		Resource& mResource;
 		String mName;
 		String mPath;
+		String mOriginalPath;
 	};
 
 	// Resource convert job
@@ -374,8 +409,8 @@ namespace ResourceManager
 	private:
 		Resource& mResource;
 		ResourceType mResType;
-		const char* mSrcPath;
-		const char* mConvertedPath;
+		String mSrcPath;
+		String mConvertedPath;
 		ResourceLoadJob* mResLoadJob;
 		bool mConversionRet;
 
@@ -408,7 +443,7 @@ namespace ResourceManager
 		Concurrency::AtomicIncrement(&mImpl->mConversionJobs);
 
 		MaxPathString mExt;
-		Path::GetPathExtension(Span(mSrcPath, StringLength(mSrcPath)), mExt.toSpan());		
+		Path::GetPathExtension(Span(mSrcPath.c_str(), StringLength(mSrcPath)), mExt.toSpan());		
 		for (auto plugin : mImpl->mConverterPlugins)
 		{
 			auto converter = plugin->CreateConverter();
@@ -416,7 +451,7 @@ namespace ResourceManager
 			{
 				// convert src resource
 				ResConverterContext context(*mImpl->mFilesystem);
-				mConversionRet = context.Convert(converter, mResType, mSrcPath, mConvertedPath);
+				mConversionRet = context.Convert(converter, mResType, mSrcPath, mConvertedPath.c_str());
 			}
 			plugin->DestroyConverter(converter);
 
@@ -473,12 +508,13 @@ namespace ResourceManager
 		CJING_DELETE(this);
 	}
 
-	ResourceLoadJob::ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char*path) :
+	ResourceLoadJob::ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char*path, const char* originalPath) :
 		JobSystem::TaskJob("ResourceLoadJob"),
 		mFactory(factory),
 		mResource(resource),
 		mName(name),
-		mPath(path)
+		mPath(path),
+		mOriginalPath(path)
 	{
 		mImpl->AcquireResource(&resource);	// add ref
 		Concurrency::AtomicIncrement(&mImpl->mPendingResJobs);
@@ -503,7 +539,7 @@ namespace ResourceManager
 		bool success = mFactory.LoadResource(&mResource, mName.c_str(), file);
 		if (success && !mResource.IsLoaded())
 		{
-			auto sources = mImpl->LoadResSources(mPath);
+			auto sources = mImpl->LoadResSources(mOriginalPath);
 			if (!sources.empty()) {
 				mResource.SetSourceFiles(sources);
 			}
@@ -526,12 +562,12 @@ namespace ResourceManager
 	//////////////////////////////////////////////////////////////////////////
 	// Manager
 	//////////////////////////////////////////////////////////////////////////
-	void Initialize(BaseFileSystem* filesystem)
+	void Initialize(BaseFileSystem* filesystem, bool convertEnable)
 	{
 		Debug::CheckAssertion(JobSystem::IsInitialized());
 		Debug::CheckAssertion(PluginManager::IsInitialized());
 		Debug::CheckAssertion(mImpl == nullptr);
-		mImpl = CJING_NEW(ResourceManagerImpl)(filesystem);
+		mImpl = CJING_NEW(ResourceManagerImpl)(filesystem, convertEnable);
 	}
 
 	void Uninitialize()
@@ -559,12 +595,6 @@ namespace ResourceManager
 			return;
 		}
 		mImpl->mResourceFactoires.erase(type.Type());
-	}
-
-	void SetConvertEnable(bool convertEnable)
-	{
-		Debug::CheckAssertion(IsInitialized());
-		mImpl->mConvertEnable = convertEnable;
 	}
 
 	Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate)
@@ -605,7 +635,7 @@ namespace ResourceManager
 				mImpl->RecordResource(inPath, type, *ret);
 				ret->SetPath(inPath);
 
-				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), inPath.c_str());
+				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), inPath.c_str(), inPath.c_str());
 				if (isImmediate) {
 					loadJob->RunTaskImmediate(0);
 				}
@@ -647,7 +677,7 @@ namespace ResourceManager
 				bool needConvert = true;
 				if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
 				{
-					// TODO
+					// 仅当系统支持converting操作才检查, TODO: use macro?
 					if (mImpl->mConvertEnable)
 					{
 						MaxPathString metaPath(inPath.c_str());
@@ -662,6 +692,27 @@ namespace ResourceManager
 							if (metaModTime >= srcModTime) {
 								needConvert = false;
 							}
+
+							// check source files is out of date
+							DynamicArray<String> sources;
+							JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, *mImpl->mFilesystem);
+							archive.Read("sources", sources);
+
+							for (const auto& sourceFile : sources)
+							{
+								U64 modTime = 0;
+								if (Path::IsAbsolutePath(sourceFile)) {
+									modTime = Platform::GetLastModTime(sourceFile);
+								}
+								else {
+									modTime = mImpl->mFilesystem->GetLastModTime(sourceFile.c_str());
+								}
+								if (modTime > metaModTime) 
+								{
+									needConvert = true;
+									break;
+								}
+							}
 						}
 					}
 				}
@@ -669,7 +720,7 @@ namespace ResourceManager
 				// 如果convert_output存在，直接加载文件
 				if (needConvert == false)
 				{
-					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
+					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
 					if (isImmediate) {
 						loadJob->RunTaskImmediate(0);
 					}
@@ -688,7 +739,7 @@ namespace ResourceManager
 				}
 
 				// load job
-				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str());
+				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
 
 				// convert job
 				auto* convertJob = CJING_NEW(ResourceConvertJob)(*ret, type, inPath.c_str(), convertedfullPath.c_str());

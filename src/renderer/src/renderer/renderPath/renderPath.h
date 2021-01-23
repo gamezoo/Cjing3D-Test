@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gpu\device.h"
+#include "gpu\commandList.h"
 
 namespace Cjing3D
 {
@@ -15,6 +16,6 @@ namespace Cjing3D
 		virtual void Update(F32 dt) {};
 		virtual void FixedUpdate() {};
 		virtual void Render() {};
-		virtual void Compose() {};
+		virtual void Compose(GPU::CommandList& cmd) {};
 	};
 }

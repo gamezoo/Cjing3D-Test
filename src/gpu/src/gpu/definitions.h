@@ -164,6 +164,7 @@ namespace GPU {
 	{
 		DEPTH_WRITE_MASK_ZERO,
 		DEPTH_WRITE_MASK_ALL,
+		DEPTH_WRITE_MASK_COUNT
 	};
 
 	enum ComparisonFunc
@@ -176,6 +177,7 @@ namespace GPU {
 		COMPARISON_NOT_EQUAL,
 		COMPARISON_GREATER_EQUAL,
 		COMPARISON_ALWAYS,
+		COMPARISON_COUNT,
 	};
 
 	enum StencilOp
@@ -188,6 +190,7 @@ namespace GPU {
 		STENCIL_OP_INVERT,
 		STENCIL_OP_INCR,
 		STENCIL_OP_DECR,
+		STENCIL_OP_COUNT,
 	};
 
 	enum Blend
@@ -209,7 +212,7 @@ namespace GPU {
 		BLEND_INV_SRC1_COLOR,
 		BLEND_SRC1_ALPHA,
 		BLEND_INV_SRC1_ALPHA,
-		BLEND_MAX
+		BLEND_COUNT
 	};
 
 	enum ColorWriteEnable
@@ -230,18 +233,21 @@ namespace GPU {
 		BLEND_OP_REV_SUBTRACT,
 		BLEND_OP_MIN,
 		BLEND_OP_MAX,
+		BLEND_OP_COUNT
 	};
 
 	enum FillMode
 	{
 		FILL_WIREFRAME,
 		FILL_SOLID,
+		FILL_COUNT,
 	};
 	enum CullMode
 	{
 		CULL_NONE,
 		CULL_FRONT,
 		CULL_BACK,
+		CULL_COUNT,
 	};
 
 	enum InputClassification
@@ -478,7 +484,7 @@ namespace GPU {
 		DepthStencilOpDesc mBackFace;
 	};
 
-	struct BlendTargetBlendStateDesc
+	struct RenderTargetBlendStateDesc
 	{
 		bool mBlendEnable;
 		Blend mSrcBlend;
@@ -494,7 +500,7 @@ namespace GPU {
 	{
 		bool mAlphaToCoverageEnable = false;
 		bool mIndependentBlendEnable = false;
-		BlendTargetBlendStateDesc mRenderTarget[8] = {};
+		RenderTargetBlendStateDesc mRenderTarget[8] = {};
 	};
 
 	struct RasterizerStateDesc
@@ -586,6 +592,14 @@ namespace GPU {
 		I32 mTop = 0;
 		I32 mRight = 0;
 		I32 mBottom = 0;
+	};
+
+	// simplified pipelineStateDesc, just used by shader technique
+	struct RenderStateDesc
+	{
+		BlendStateDesc mBlendState;
+		RasterizerStateDesc mRasterizerState;
+		DepthStencilStateDesc mDepthStencilState;
 	};
 }
 }

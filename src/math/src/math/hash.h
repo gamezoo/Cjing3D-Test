@@ -40,6 +40,8 @@ namespace Cjing3D
 		static_assert(false, "This Type of Hash function not defined");
 		return 0;
 	}
+
+	U64 HashFunc(U64 Input, const char* Data);
 	inline U64 HashFunc(U64 Input, U32 Data) { return FNV1aHash(Input, &Data, 4); }
 	inline U64 HashFunc(U64 Input, U64 Data) { return FNV1aHash(Input, &Data, sizeof(Data)); }
 	inline U64 HashFunc(U64 Input, I32 Data) { return FNV1aHash(Input, &Data, 4); }

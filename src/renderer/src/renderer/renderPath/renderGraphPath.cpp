@@ -1,5 +1,7 @@
 #include "renderGraphPath.h"
 #include "gpu\gpu.h"
+#include "renderer\renderer.h"
+#include "renderer\renderImage.h"
 
 namespace Cjing3D
 {
@@ -9,12 +11,10 @@ namespace Cjing3D
 
 	RenderGraphPath::~RenderGraphPath()
 	{
-		Clear();
 	}
 
 	void RenderGraphPath::Clear()
 	{
-		mRTMain.Clear();
 	}
 
 	void RenderGraphPath::ResizeBuffers()
@@ -49,22 +49,24 @@ namespace Cjing3D
 	{
 		mResolutionChangedHandle.Disconnect();
 
-		Clear();
-
-		mRenderGraph.Clear();
+		// clear graph
+		mMainGraph.Clear();
 		mMainPipeline.Clear();
+
+		// clear rtvs
+		mRTMain.Clear();
 	}
 
 	void RenderGraphPath::Update(F32 dt)
 	{
-		mRenderGraph.Clear();
+		mMainGraph.Clear();
 
 		// setup resources	
-		auto resRTMain = mRenderGraph.ImportTexture("rtMain", mRTMain.GetHandle(), &mRTMain.GetDesc());
+		auto resRTMain = mMainGraph.ImportTexture("rtMain", mRTMain.GetHandle(), &mRTMain.GetDesc());
 		mMainPipeline.SetResource("rtMain", resRTMain);
 
-		// setup pipelines
-		mMainPipeline.Setup(mRenderGraph);
+		//setup pipelines
+		mMainPipeline.Setup(mMainGraph);
 	}
 
 	void RenderGraphPath::FixedUpdate()
@@ -73,12 +75,22 @@ namespace Cjing3D
 
 	void RenderGraphPath::Render()
 	{
-		if (!mRenderGraph.Execute(mMainPipeline.GetResource("rtMain"))) {
+		if (!mMainGraph.Execute(mMainPipeline.GetResource("rtMain"))) {
 			Debug::Warning("Render graph failed to executed");
 		}
 	}
 
-	void RenderGraphPath::Compose()
+	void RenderGraphPath::Compose(GPU::CommandList& cmd)
 	{
+		if (mRTMain.GetHandle()) 
+		{
+			ImageParams params;
+			params.mBlendFlag = BLENDMODE_OPAQUE;
+			params.EnableFullScreen();
+
+			RenderImage::Draw(mRTMain.GetHandle(), params, cmd);
+		}
+
+		RenderPath::Compose(cmd);
 	}
 }

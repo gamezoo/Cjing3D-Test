@@ -295,7 +295,7 @@ namespace Platform {
 
 	U64 GetLastModTime(const char* file)
 	{
-		const WPathString wpath(file);
+	/*	const WPathString wpath(file);
 		FILETIME ft;
 		HANDLE handle = CreateFile(wpath, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (handle == INVALID_HANDLE_VALUE) {
@@ -312,7 +312,16 @@ namespace Platform {
 		ULARGE_INTEGER i;
 		i.LowPart = ft.dwLowDateTime;
 		i.HighPart = ft.dwHighDateTime;
-		return (U64)i.QuadPart;
+		return (U64)i.QuadPart;*/
+
+		struct stat attrib;
+		if (stat(file, &attrib) != 0)
+		{
+			Debug::Warning("Faild to get last mod time \"%s\"", file);
+			return 0;
+		}
+
+		return attrib.st_mtime;
 	}
 
 	bool CreateDir(const char* path)
