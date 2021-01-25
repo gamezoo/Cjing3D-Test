@@ -166,12 +166,12 @@ namespace Cjing3D
 		Concurrency::Mutex ShaderPreprocessor::mMutex;
 	}
 
-	void ShaderMetaObject::Serialize(JsonArchive& archive)
+	void ShaderMetaObject::Serialize(JsonArchive& archive)const
 	{
 
 	}
 
-	void ShaderMetaObject::Unserialize(JsonArchive& archive) const
+	void ShaderMetaObject::Unserialize(JsonArchive& archive) 
 	{
 
 	}
@@ -290,6 +290,7 @@ namespace Cjing3D
 			}
 			return -1;
 		};
+		const auto& renderStates = shaderMetadata.GetRenderStates();
 		for (const auto& tech : techniques)
 		{
 			ShaderTechniqueHeader& header = techniqueHeaders.emplace();
@@ -300,12 +301,25 @@ namespace Cjing3D
 			header.mIdxHS = FindShaderIdx(tech.mHS);
 			header.mIdxPS = FindShaderIdx(tech.mPS);
 			header.mIdxCS = FindShaderIdx(tech.mCS);
+
+			// find index of renderState
+			I32 idxRenderState = -1;
+			for (int i = 0; i < renderStates.size(); i++)
+			{
+				if (renderStates[i].mName == tech.mRenderState.mName)
+				{
+					idxRenderState = i;
+					break;
+				}
+			}
+			header.mIdxRenderState = idxRenderState;
 		}
 
 		// general header
 		ShaderGeneralHeader generalHeader;
 		generalHeader.mNumShaders = compileOutput.size();
 		generalHeader.mNumTechniques = techniques.size();
+		generalHeader.mNumRenderStates = renderStates.size();
 
 		// 6. write shader
 		File* file = CJING_NEW(File);
@@ -322,8 +336,35 @@ namespace Cjing3D
 		if (!techniqueHeaders.empty()) {
 			file->Write(techniqueHeaders.data(), techniqueHeaders.size() * sizeof(ShaderTechniqueHeader));
 		}
-		// write renderStates
+		// write renderStates as json
+		if (renderStates.size() > 0)
+		{
+			DynamicArray<RenderStateHeader> renderStateHeaders;
+			I32 offset = 0;
 
+			String mOutputRenderStates;
+			for (const auto& renderState : renderStates)
+			{
+				JsonArchive archive(ArchiveMode::ArchiveMode_Write);
+				RenderStateSerializer serializer;
+				serializer.SerializeRenderState(renderState.mDesc, archive);
+
+				const auto& output = archive.DumpJsonString();
+				if (output.empty()) {
+					continue;
+				}
+				mOutputRenderStates.append(output);
+
+				auto& renderStateHeader = renderStateHeaders.emplace();
+				renderStateHeader.mOffset = offset;
+				renderStateHeader.mBytes = mOutputRenderStates.size() - offset;
+				Logger::Info(output);
+				offset = mOutputRenderStates.size();
+			}
+
+			file->Write(renderStateHeaders.data(), renderStateHeaders.size() * sizeof(RenderStateHeader));
+			file->Write(mOutputRenderStates.data(), mOutputRenderStates.size());
+		}
 
 		// write bytecode
 		for (const auto& compileInfo : compileOutput) {

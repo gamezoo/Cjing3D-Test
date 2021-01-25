@@ -229,7 +229,7 @@ namespace ResourceManager
 		metaPath.append(".metadata");
 		if (mFilesystem->IsFileExists(metaPath.c_str()))
 		{
-			JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, *mFilesystem);
+			JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, mFilesystem);
 			archive.Read("sources", ret);
 		}
 		return ret;
@@ -695,7 +695,7 @@ namespace ResourceManager
 
 							// check source files is out of date
 							DynamicArray<String> sources;
-							JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, *mImpl->mFilesystem);
+							JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, mImpl->mFilesystem);
 							archive.Read("sources", sources);
 
 							for (const auto& sourceFile : sources)

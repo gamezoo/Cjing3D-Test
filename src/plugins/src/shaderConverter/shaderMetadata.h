@@ -164,6 +164,8 @@ namespace ShaderAST
 
 		DynamicArray<ShaderTechniqueInfo>& GetTechniques() { return mTechs; }
 		const DynamicArray<ShaderTechniqueInfo>& GetTechniques()const { return mTechs; }
+		DynamicArray<ShaderRenderStateInfo>& GetRenderStates() { return mRenderStates; }
+		const DynamicArray<ShaderRenderStateInfo>& GetRenderStates()const { return mRenderStates; }
 
 	public:
 		FileNode* mFileNode = nullptr;

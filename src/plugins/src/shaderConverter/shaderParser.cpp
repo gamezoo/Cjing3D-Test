@@ -107,6 +107,7 @@ namespace Cjing3D
 		{"FillMode", GPU::FillMode::FILL_COUNT },
 		{"CullMode", GPU::CullMode::CULL_COUNT },
 		{"DepthWriteMask", GPU::DepthWriteMask::DEPTH_WRITE_MASK_COUNT },
+		{"ColorWriteEnable", GPU::ColorWriteEnable::COLOR_WRITE_ENABLE_ALL},
 	};
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
@@ -605,9 +606,12 @@ namespace Cjing3D
 			}
 			memberValue->mIndex = index;
 		}
+		else
+		{
+			NEXT_TOKEN();
+		}
 
 		// FORMAT: xxx.bbb = ccc
-		NEXT_TOKEN();
 		CHECK_TOKEN(ShaderAST::TokenType::CHAR, "=");
 		NEXT_TOKEN();
 

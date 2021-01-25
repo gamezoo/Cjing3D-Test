@@ -6,12 +6,29 @@ namespace Cjing3D
 {
 	const U32 JsonArchive::currentArchiveVersion = 1;
 
-	JsonArchive::JsonArchive(ArchiveMode mode, BaseFileSystem& fileSystem) :
+	JsonArchive::JsonArchive(ArchiveMode mode, BaseFileSystem* fileSystem) :
 		ArchiveBase("", mode, fileSystem)
 	{
 	}
 
-	JsonArchive::JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
+	JsonArchive::JsonArchive(ArchiveMode mode, const char* jsonStr, size_t size) :
+		ArchiveBase("", mode, nullptr)
+	{
+		if (mMode == ArchiveMode::ArchiveMode_Read) 
+		{
+			try
+			{
+				mRootJson = nlohmann::json::parse(jsonStr, jsonStr + size);
+			}
+			catch (const std::exception& e)
+			{
+				Debug::Warning("Failed to parse json string: %s", e.what());
+				Close();
+			}
+		}
+	}
+
+	JsonArchive::JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem* fileSystem) :
 		ArchiveBase(path, mode, fileSystem)
 	{
 		if (mMode == ArchiveMode::ArchiveMode_Read) {
@@ -64,6 +81,10 @@ namespace Cjing3D
 
 	bool JsonArchive::Save(const String& path)
 	{
+		if (!mFileSystem) {
+			return false;
+		}
+
 		if (path.empty()) {
 			return false;
 		}
@@ -73,7 +94,12 @@ namespace Cjing3D
 			return false;
 		}
 
-		return mFileSystem.WriteFile(path, jsonString.c_str(), jsonString.size());
+		return mFileSystem->WriteFile(path, jsonString.c_str(), jsonString.size());
+	}
+
+	String JsonArchive::DumpJsonString() const
+	{
+		return mRootJson.dump(0);
 	}
 
 	nlohmann::json* JsonArchive::GetCurrentJson()

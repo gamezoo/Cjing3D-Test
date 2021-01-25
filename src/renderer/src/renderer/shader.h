@@ -9,9 +9,6 @@ namespace Cjing3D
 {
 	struct ShaderTechniqueDesc
 	{
-		GPU::BlendStateDesc* mBlendState = nullptr;
-		GPU::RasterizerStateDesc* mRasterizerState = nullptr;
-		GPU::DepthStencilStateDesc* mDepthStencilState = nullptr;
 		GPU::InputLayoutDesc* mInputLayout = nullptr;
 		GPU::PRIMITIVE_TOPOLOGY mPrimitiveTopology = GPU::TRIANGLELIST;
 	};

@@ -2,7 +2,53 @@
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\enumTraits.h"
 
-void Cjing3D::Variant::Serialize(JsonArchive& archive)
+void Cjing3D::Variant::Serialize(JsonArchive& archive) const
+{
+	// type
+	archive.Write("type", String(EnumTraits::EnumToName(GetType()).data()));
+
+	// value
+	switch (mType)
+	{
+	case Variant::TYPE_CHAR:
+		archive.Write("val", GetValue<char>());
+		break;
+	case Variant::TYPE_UNSIGNED_CHAR:
+		archive.Write("val", GetValue<unsigned char>());
+		break;
+	case Variant::TYPE_INT:
+		archive.Write("val", GetValue<int>());
+		break;
+	case Variant::TYPE_UNSIGNED_INT:
+		archive.Write("val", GetValue<unsigned int>());
+		break;
+	case Variant::TYPE_BOOL:
+		archive.Write("val", GetValue<bool>());
+		break;
+	case Variant::TYPE_FLOAT:
+		archive.Write("val", GetValue<F32>());
+		break;
+	case Variant::TYPE_DOUBLE:
+		archive.Write("val", GetValue<F64>());
+		break;
+	case Variant::TYPE_STRING:
+		archive.Write("val", GetValue<String>());
+		break;
+	case Variant::TYPE_I32X2:
+		archive.Write("val", GetValue<I32x2>());
+		break;
+	case Variant::TYPE_I32X3:
+		archive.Write("val", GetValue<I32x3>());
+		break;
+	case Variant::TYPE_I32X4:
+		archive.Write("val", GetValue<I32x4>());
+		break;
+	default:
+		break;
+	}
+}
+
+void Cjing3D::Variant::Unserialize(JsonArchive& archive)
 {
 	String typeString;
 	archive.Read<String>("type", typeString);
@@ -99,48 +145,3 @@ void Cjing3D::Variant::Serialize(JsonArchive& archive)
 	}
 }
 
-void Cjing3D::Variant::Unserialize(JsonArchive& archive) const
-{
-	// type
-	archive.Write("type", String(EnumTraits::EnumToName(GetType()).data()));
-
-	// value
-	switch (mType)
-	{
-	case Variant::TYPE_CHAR:
-		archive.Write("val", GetValue<char>());
-		break;
-	case Variant::TYPE_UNSIGNED_CHAR:
-		archive.Write("val", GetValue<unsigned char>());
-		break;
-	case Variant::TYPE_INT:
-		archive.Write("val", GetValue<int>());
-		break;
-	case Variant::TYPE_UNSIGNED_INT:
-		archive.Write("val", GetValue<unsigned int>());
-		break;
-	case Variant::TYPE_BOOL:
-		archive.Write("val", GetValue<bool>());
-		break;
-	case Variant::TYPE_FLOAT:
-		archive.Write("val", GetValue<F32>());
-		break;
-	case Variant::TYPE_DOUBLE:
-		archive.Write("val", GetValue<F64>());
-		break;
-	case Variant::TYPE_STRING:
-		archive.Write("val", GetValue<String>());
-		break;
-	case Variant::TYPE_I32X2:
-		archive.Write("val", GetValue<I32x2>());
-		break;
-	case Variant::TYPE_I32X3:
-		archive.Write("val", GetValue<I32x3>());
-		break;
-	case Variant::TYPE_I32X4:
-		archive.Write("val", GetValue<I32x4>());
-		break;
-	default:
-		break;
-	}
-}

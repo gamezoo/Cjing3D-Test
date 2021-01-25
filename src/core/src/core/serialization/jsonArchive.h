@@ -32,14 +32,16 @@ namespace Cjing3D
 		static const U32 currentArchiveVersion;
 
 	public:
-		JsonArchive(ArchiveMode mode, BaseFileSystem& fileSystem);
-		JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
+		JsonArchive(ArchiveMode mode, BaseFileSystem* fileSystem = nullptr);
+		JsonArchive(ArchiveMode mode, const char* jsonStr, size_t size);
+		JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem* fileSystem = nullptr);
 		~JsonArchive();
 
 		void OpenJson(const char* path);
 		void SetPath(const char* path) override;
 		bool Save(const String& path) override;
 
+		String DumpJsonString()const;
 		nlohmann::json* GetCurrentJson();
 		const nlohmann::json* GetCurrentJson()const;
 		size_t GetCurrentValueCount()const;
@@ -93,7 +95,7 @@ namespace Cjing3D
 			if (it != currentJson->end())
 			{
 				mJsonStack.push(&it.value());
-				JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
+				JsonArchiveImpl::ArchiveType<T>::Serialize(data, *this);
 				mJsonStack.pop();
 			}
 			return *this;
@@ -109,7 +111,7 @@ namespace Cjing3D
 
 			currentJson->emplace_back();
 			mJsonStack.push(&currentJson->back());
-			JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
+			JsonArchiveImpl::ArchiveType<T>::Serialize(data, *this);
 			mJsonStack.pop();
 
 			return *this;
@@ -127,7 +129,7 @@ namespace Cjing3D
 			if (it != currentJson->end())
 			{
 				mJsonStack.push(&it.value());
-				JsonArchiveImpl::ArchiveType<T>::Serialize(data, *this);
+				JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
 				mJsonStack.pop();
 			}
 
@@ -147,7 +149,7 @@ namespace Cjing3D
 			}
 
 			mJsonStack.push(&currentJson->at(index));
-			JsonArchiveImpl::ArchiveType<T>::Serialize(data, *this);
+			JsonArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
 			mJsonStack.pop();
 
 			return *this;
@@ -190,8 +192,8 @@ namespace Cjing3D
 	class JsonSerializer
 	{
 	public:
-		virtual void Serialize(JsonArchive& archive) = 0;
-		virtual void Unserialize(JsonArchive& archive)const = 0;
+		virtual void Unserialize(JsonArchive& archive) = 0;
+		virtual void Serialize(JsonArchive& archive)const = 0;
 	};
 
 	namespace JsonArchiveImpl
@@ -202,14 +204,14 @@ namespace Cjing3D
 		template<typename T>
 		struct ArchiveTypeClassMapping
 		{
-			static void Serialize(T& obj, JsonArchive& archive)
-			{
-				obj.Serialize(archive);
-			}
-
-			static void Unserialize(const T& obj, JsonArchive& archive)
+			static void Unserialize(T& obj, JsonArchive& archive)
 			{
 				obj.Unserialize(archive);
+			}
+
+			static void Serialize(const T& obj, JsonArchive& archive)
+			{
+				obj.Serialize(archive);
 			}
 		};
 
@@ -244,7 +246,7 @@ namespace Cjing3D
 		template<typename T>
 		struct ArchiveTypeCommonMapping
 		{
-			static void Serialize(T& obj, JsonArchive& archive)
+			static void Unserialize(T& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -253,7 +255,7 @@ namespace Cjing3D
 				obj = currentJson->get<T>();
 			}
 
-			static void Unserialize(const T& obj, JsonArchive& archive)
+			static void Serialize(const T& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -274,11 +276,33 @@ namespace Cjing3D
 		template<> struct ArchiveTypeNormalMapping<F32> : ArchiveTypeCommonMapping<F32> {};
 		template<> struct ArchiveTypeNormalMapping<F64> : ArchiveTypeCommonMapping<F64> {};
 
+		// enum type
+		template<typename T>
+		struct ArchiveTypeNormalMapping<T, typename std::enable_if<std::is_enum<T>::value, void>::type>
+		{
+			static void Unserialize(T& obj, JsonArchive& archive)
+			{
+				nlohmann::json* currentJson = archive.GetCurrentJson();
+				if (currentJson == nullptr) {
+					return;
+				}
+				obj = static_cast<T>(currentJson->get<int>());
+			}
+
+			static void Serialize(const T& obj, JsonArchive& archive)
+			{
+				nlohmann::json* currentJson = archive.GetCurrentJson();
+				if (currentJson == nullptr) {
+					return;
+				}
+				*currentJson = nlohmann::json((int)obj);
+			}
+		};
 
 		template<>
 		struct ArchiveTypeNormalMapping<bool>
 		{
-			static void Serialize(bool& obj, JsonArchive& archive)
+			static void Unserialize(bool& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -287,7 +311,7 @@ namespace Cjing3D
 				obj = currentJson->get<bool>();
 			}
 
-			static void Unserialize(bool obj, JsonArchive& archive)
+			static void Serialize(bool obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -300,7 +324,7 @@ namespace Cjing3D
 		template<>
 		struct ArchiveTypeNormalMapping<String>
 		{
-			static void Serialize(String& obj, JsonArchive& archive)
+			static void Unserialize(String& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -309,7 +333,7 @@ namespace Cjing3D
 				obj = currentJson->get<std::string>();
 			}
 
-			static void Unserialize(const String& obj, JsonArchive& archive)
+			static void Serialize(const String& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -322,7 +346,7 @@ namespace Cjing3D
 		template<typename T>
 		struct ArchiveTypeNormalMapping<std::vector<T>>
 		{
-			static void Serialize(std::vector<T>& obj, JsonArchive& archive)
+			static void Unserialize(std::vector<T>& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -338,7 +362,7 @@ namespace Cjing3D
 				}
 			}
 
-			static void Unserialize(const std::vector <T>& obj, JsonArchive& archive)
+			static void Serialize(const std::vector <T>& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -354,7 +378,7 @@ namespace Cjing3D
 		template<typename T>
 		struct ArchiveTypeNormalMapping<DynamicArray<T>>
 		{
-			static void Serialize(DynamicArray<T>& obj, JsonArchive& archive)
+			static void Unserialize(DynamicArray<T>& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -371,7 +395,7 @@ namespace Cjing3D
 				}
 			}
 
-			static void Unserialize(const DynamicArray<T>& obj, JsonArchive& archive)
+			static void Serialize(const DynamicArray<T>& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -387,7 +411,7 @@ namespace Cjing3D
 		template<typename T, size_t N>
 		struct ArchiveTypeArrayMapping
 		{
-			static void Serialize(std::array<T, N>& obj, JsonArchive& archive)
+			static void Unserialize(std::array<T, N>& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {
@@ -403,7 +427,7 @@ namespace Cjing3D
 				}
 			}
 
-			static void Unserialize(const std::array<T, N>& obj, JsonArchive& archive)
+			static void Serialize(const std::array<T, N>& obj, JsonArchive& archive)
 			{
 				nlohmann::json* currentJson = archive.GetCurrentJson();
 				if (currentJson == nullptr) {

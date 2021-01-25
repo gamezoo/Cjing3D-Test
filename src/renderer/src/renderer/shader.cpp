@@ -102,9 +102,14 @@ namespace Cjing3D
 			desc.mGS = targetHeader->mIdxGS != -1 ? mRhiShaders[targetHeader->mIdxGS] : GPU::ResHandle::INVALID_HANDLE;
 			desc.mPS = targetHeader->mIdxPS != -1 ? mRhiShaders[targetHeader->mIdxPS] : GPU::ResHandle::INVALID_HANDLE;
 			
-			desc.mRasterizerState = techDesc.mRasterizerState;
-			desc.mDepthStencilState = techDesc.mDepthStencilState;
-			desc.mBlendState = techDesc.mBlendState;
+			if (targetHeader->mIdxRenderState != -1)
+			{
+				auto& renderState = mRenderStates[targetHeader->mIdxRenderState]; 
+				desc.mRasterizerState = &renderState.mRasterizerState;
+				desc.mDepthStencilState = &renderState.mDepthStencilState;
+				desc.mBlendState = &renderState.mBlendState;
+			}
+
 			desc.mInputLayout = techDesc.mInputLayout;
 			desc.mPrimitiveTopology = techDesc.mPrimitiveTopology;
 
@@ -184,6 +189,32 @@ namespace Cjing3D
 				Debug::Warning("Failed to read shader bytecode header");
 				CJING_SAFE_DELETE(shaderImpl);
 				return false;
+			}
+
+			// renderStates
+			shaderImpl->mRenderStateHeaders.resize(generalHeader.mNumRenderStates);
+			if (!file.Read(shaderImpl->mRenderStateHeaders.data(), generalHeader.mNumRenderStates * sizeof(RenderStateHeader)))
+			{
+				Debug::Warning("Failed to read render state header");
+				CJING_SAFE_DELETE(shaderImpl);
+				return false;
+			}
+
+			RenderStateSerializer serializer;
+			String renderStateBuffer;
+			for (const auto& header : shaderImpl->mRenderStateHeaders)
+			{
+				renderStateBuffer.resize(header.mBytes);
+				if (!file.Read(renderStateBuffer.data(), header.mBytes))
+				{
+					Debug::Warning("Failed to read render state bytecode");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+
+				GPU::RenderStateDesc& desc = shaderImpl->mRenderStates.emplace();
+				JsonArchive archive(ArchiveMode::ArchiveMode_Read, renderStateBuffer.c_str(), renderStateBuffer.size());
+				serializer.UnserializeRenderState(desc, archive);
 			}
 
 			// read shader bytecode

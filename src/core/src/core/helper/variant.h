@@ -99,8 +99,8 @@ namespace Cjing3D
 		}
 
 		// json serialize
-		void Serialize(JsonArchive& archive)override;
-		void Unserialize(JsonArchive& archive)const override;
+		void Serialize(JsonArchive& archive)const override;
+		void Unserialize(JsonArchive& archive)override;
 
 	private:
 		VariantType mVariant;

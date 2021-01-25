@@ -11,8 +11,8 @@ namespace Cjing3D
 		
 
 	public:
-		virtual void Serialize(JsonArchive& archive);
-		virtual void Unserialize(JsonArchive& archive)const;
+		virtual void Serialize(JsonArchive& archive)const;
+		virtual void Unserialize(JsonArchive& archive);
 	};
 
 	class ShaderResConverter : public IResConverter

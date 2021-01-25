@@ -37,7 +37,7 @@ namespace ShaderAST
 			return true;
 		});
 		mParseFuncs.insert("mRenderTargetWriteMask", [](RenderTargetBlendStateInfo& info, I32 index, ValueNode* node) {
-			info.mDesc.mRenderTargetWriteMask = node->mIntValue;
+			info.mDesc.mRenderTargetWriteMask = (I32)*EnumTraits::NameToEnum<GPU::ColorWriteEnable>(node->mStringValue.c_str());
 			return true;
 		});
 	}

@@ -17,7 +17,7 @@ namespace Cjing3D {
 	class ArchiveBase
 	{
 	public:
-		ArchiveBase(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
+		ArchiveBase(const String& path, ArchiveMode mode, BaseFileSystem* fileSystem);
 		~ArchiveBase();
 
 		bool IsOpen()const;
@@ -32,7 +32,7 @@ namespace Cjing3D {
 	protected:
 		ArchiveMode mMode = ArchiveMode::ArchiveMode_Read;
 		String mFilePath;
-		BaseFileSystem& mFileSystem;
+		BaseFileSystem* mFileSystem;
 
 		char* mDataBuffer = nullptr;
 		U32 mDataSize = 0;

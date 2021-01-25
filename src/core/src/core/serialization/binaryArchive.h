@@ -15,7 +15,7 @@ namespace Cjing3D
 	class BinaryArchive : public ArchiveBase
 	{
 	public:
-		BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem);
+		BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem* fileSystem);
 		~BinaryArchive();
 
 		void OpenBinaryFile(const char* path);
@@ -24,14 +24,14 @@ namespace Cjing3D
 		template<typename T>
 		inline BinaryArchive& operator << (const T& data)
 		{
-			ArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
+			ArchiveImpl::ArchiveType<T>::Serialize(data, *this);
 			return *this;
 		}
 
 		template<typename T>
 		inline BinaryArchive& operator >> (T& data)
 		{
-			ArchiveImpl::ArchiveType<T>::Serialize(data, *this);
+			ArchiveImpl::ArchiveType<T>::Unserialize(data, *this);
 			return *this;
 		}
 
@@ -68,14 +68,14 @@ namespace Cjing3D
 		template<typename T>
 		struct ArchiveTypeClassMapping
 		{
-			static void Serialize(T& obj, BinaryArchive& archive)
-			{
-				obj.Serialize(archive);
-			}
-
-			static void Unserialize(const T& obj, BinaryArchive& archive)
+			static void Unserialize(T& obj, BinaryArchive& archive)
 			{
 				obj.Unserialize(archive);
+			}
+
+			static void Serialize(const T& obj, BinaryArchive& archive)
+			{
+				obj.Serialize(archive);
 			}
 		};
 
@@ -110,14 +110,14 @@ namespace Cjing3D
 		template<typename T, typename EXTRA_T = T>
 		struct ArchiveTypeExtraTypeMapping
 		{
-			static void Serialize(T& obj, BinaryArchive& archive)
+			static void Unserialize(T& obj, BinaryArchive& archive)
 			{
 				EXTRA_T temp;
 				archive.Read<EXTRA_T>(temp);
 				obj = static_cast<T>(temp);
 			}
 
-			static void Unserialize(const T& obj, BinaryArchive& archive)
+			static void Serialize(const T& obj, BinaryArchive& archive)
 			{
 				archive.Write<EXTRA_T>(static_cast<EXTRA_T>(obj));
 			}
@@ -157,14 +157,14 @@ namespace Cjing3D
 		template<>
 		struct ArchiveTypeNormalMapping<bool>
 		{
-			static void Serialize(bool& obj, BinaryArchive& archive)
+			static void Unserialize(bool& obj, BinaryArchive& archive)
 			{
 				U32 temp;
 				archive.Read<U32>(temp);
 				obj = (temp == 1);
 			}
 
-			static void Unserialize(const bool& obj, BinaryArchive& archive)
+			static void Serialize(const bool& obj, BinaryArchive& archive)
 			{
 				archive.Write<U32>(obj ? 1 : 0);
 			}
@@ -173,7 +173,7 @@ namespace Cjing3D
 		template<>
 		struct ArchiveTypeNormalMapping<String>
 		{
-			static void Serialize(String& obj, BinaryArchive& archive)
+			static void Unserialize(String& obj, BinaryArchive& archive)
 			{
 				U32 length = 0;
 				archive >> length;
@@ -189,7 +189,7 @@ namespace Cjing3D
 				}
 			}
 
-			static void Unserialize(const String& obj, BinaryArchive& archive)
+			static void Serialize(const String& obj, BinaryArchive& archive)
 			{
 				U32 length = obj.length() + 1; //  +1 for '\0'
 				archive << length;
@@ -200,7 +200,7 @@ namespace Cjing3D
 		template<typename T>
 		struct ArchiveTypeNormalMapping<std::vector<T>>
 		{
-			static void Serialize(std::vector<T>& obj, BinaryArchive& archive)
+			static void Unserialize(std::vector<T>& obj, BinaryArchive& archive)
 			{
 				U32 length = 0;
 				archive >> length;
@@ -211,7 +211,7 @@ namespace Cjing3D
 				}
 			}
 
-			static void Unserialize(const std::vector<T>& obj, BinaryArchive& archive)
+			static void Serialize(const std::vector<T>& obj, BinaryArchive& archive)
 			{
 				archive << obj.size();
 				for (auto& item : obj) {

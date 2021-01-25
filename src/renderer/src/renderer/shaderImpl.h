@@ -3,12 +3,19 @@
 #include "gpu\definitions.h"
 #include "gpu\resource.h"
 #include "renderer\shader.h"
+#include "core\serialization\jsonArchive.h"
 
 namespace Cjing3D
 {
 	static const I32 SHADER_MAX_NAME_LENGTH = 64;
 
 	struct ShaderTechniqueImpl;
+
+	struct RenderStateHeader
+	{
+		I32 mOffset = 0;
+		I32 mBytes = 0;
+	};
 
 	struct ShaderBytecodeHeader
 	{
@@ -41,6 +48,7 @@ namespace Cjing3D
 
 		I32 mNumShaders = 0;
 		I32 mNumTechniques = 0;
+		I32 mNumRenderStates = 0;
 	};
 
 	struct ShaderImpl
@@ -50,9 +58,13 @@ namespace Cjing3D
 		ShaderGeneralHeader mGeneralHeader;
 		DynamicArray<ShaderBytecodeHeader> mBytecodeHeaders;
 		DynamicArray<ShaderTechniqueHeader> mTechniqueHeaders;
+		DynamicArray<RenderStateHeader> mRenderStateHeaders;
 		DynamicArray<char> mBytecodes;
 		DynamicArray<GPU::ResHandle> mRhiShaders;
 		Concurrency::RWLock mRWLoclk;
+
+		// renderStates
+		DynamicArray<GPU::RenderStateDesc> mRenderStates;
 
 		// technique
 		DynamicArray<U64> mTechniquesHashes;
@@ -79,5 +91,17 @@ namespace Cjing3D
 
 		GPU::ResHandle GetPipelineState()const;
 		bool IsValid()const;
+	};
+
+	struct RenderStateSerializer
+	{
+		void SerializeRenderTargetBlend(const GPU::RenderTargetBlendStateDesc& desc, JsonArchive& archive);
+		void UnserializeRenderTargetBlend(GPU::RenderTargetBlendStateDesc& desc, JsonArchive& archive);
+
+		void SerializeDepthStencilOp(const GPU::DepthStencilOpDesc& desc, JsonArchive& archive);
+		void UnserializeDepthStencilOpe(GPU::DepthStencilOpDesc& desc, JsonArchive& archive);
+
+		void SerializeRenderState(const GPU::RenderStateDesc& desc, JsonArchive& archive);
+		void UnserializeRenderState(GPU::RenderStateDesc& desc, JsonArchive& archive);
 	};
 }

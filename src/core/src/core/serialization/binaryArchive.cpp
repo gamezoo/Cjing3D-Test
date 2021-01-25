@@ -5,7 +5,7 @@ namespace Cjing3D
 {
 	const U32 BinaryArchive::currentArchiveVersion = 2;
 
-	BinaryArchive::BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem& fileSystem) :
+	BinaryArchive::BinaryArchive(const String& path, ArchiveMode mode, BaseFileSystem* fileSystem) :
 		ArchiveBase(path, mode, fileSystem)
 	{
 		OpenBinaryFile(path);

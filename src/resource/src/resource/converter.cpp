@@ -9,13 +9,13 @@ namespace Cjing3D
 	ResConverterContext::ResConverterContext(BaseFileSystem& filesystem) :
 		mFileSystem(filesystem)
 	{
-		mDeserializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Write, filesystem);
+		mSerializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Write, &filesystem);
 	}
 
 	ResConverterContext::~ResConverterContext()
 	{
-		CJING_SAFE_DELETE(mDeserializer);
 		CJING_SAFE_DELETE(mSerializer);
+		CJING_SAFE_DELETE(mDeserializer);
 	}
 
 	void ResConverterContext::AddSource(const char* path)
@@ -58,36 +58,36 @@ namespace Cjing3D
 				JobSystem::YieldCPU();
 			}
 
-			mDeserializer->Write("sources", mSources);
-			mDeserializer->Write("outputs", mOutputs);
-			mDeserializer->Save(mMetaFilePath.c_str());
+			mSerializer->Write("sources", mSources);
+			mSerializer->Write("outputs", mOutputs);
+			mSerializer->Save(mMetaFilePath.c_str());
 		}
 		return ret;
 	}
 
 	void ResConverterContext::SetMetaDataImpl(const SerializedObject& obj)
 	{
-		if (mDeserializer->GetMode() == ArchiveMode::ArchiveMode_Read)
+		if (mSerializer->GetMode() == ArchiveMode::ArchiveMode_Read)
 		{
-			CJING_SAFE_DELETE(mDeserializer);
-			mDeserializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Write, mFileSystem);
+			CJING_SAFE_DELETE(mSerializer);
+			mSerializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Write, &mFileSystem);
 		}
 
-		obj.Unserialize(*mDeserializer);
+		obj.Serialize(*mSerializer);
 	}
 
 	void ResConverterContext::GetMetaDataImpl(SerializedObject& obj)
 	{
-		if (mSerializer && mSerializer->GetMode() == ArchiveMode::ArchiveMode_Read) {
-			obj.Serialize(*mSerializer);
+		if (mDeserializer && mDeserializer->GetMode() == ArchiveMode::ArchiveMode_Read) {
+			obj.Serialize(*mDeserializer);
 		}
 
 		if (!mFileSystem.IsFileExists(mMetaFilePath)) {
 			return;
 		}
 
-		CJING_SAFE_DELETE(mSerializer);
-		mSerializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Read, mFileSystem);
-		obj.Serialize(*mSerializer);
+		CJING_SAFE_DELETE(mDeserializer);
+		mDeserializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Read, &mFileSystem);
+		obj.Unserialize(*mDeserializer);
 	}
 }

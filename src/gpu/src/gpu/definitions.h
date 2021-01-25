@@ -223,7 +223,6 @@ namespace GPU {
 		COLOR_WRITE_ENABLE_BLUE = 4,
 		COLOR_WRITE_ENABLE_ALPHA = 8,
 		COLOR_WRITE_ENABLE_ALL = (((COLOR_WRITE_ENABLE_RED | COLOR_WRITE_ENABLE_GREEN) | COLOR_WRITE_ENABLE_BLUE) | COLOR_WRITE_ENABLE_ALPHA)
-
 	};
 
 	enum BlendOp
@@ -486,14 +485,14 @@ namespace GPU {
 
 	struct RenderTargetBlendStateDesc
 	{
-		bool mBlendEnable;
-		Blend mSrcBlend;
-		Blend mDstBlend;
-		BlendOp mBlendOp;
-		Blend mSrcBlendAlpha;
-		Blend mDstBlendAlpha;
-		BlendOp mBlendOpAlpha;
-		U32 mRenderTargetWriteMask;
+		bool mBlendEnable = false;
+		Blend mSrcBlend = BLEND_SRC_ALPHA;
+		Blend mDstBlend = BLEND_INV_SRC_ALPHA;
+		BlendOp mBlendOp = BLEND_OP_ADD;
+		Blend mSrcBlendAlpha = BLEND_ONE;
+		Blend mDstBlendAlpha = BLEND_ONE;
+		BlendOp mBlendOpAlpha = BLEND_OP_ADD;
+		U32 mRenderTargetWriteMask= COLOR_WRITE_ENABLE_ALL;
 	};
 
 	struct BlendStateDesc
