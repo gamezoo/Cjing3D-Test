@@ -33,6 +33,7 @@ namespace Cjing3D
 
 		decltype(D3DCompile)* mD3DCompileFunc = nullptr;
 		decltype(D3DStripShader)* mD3DStripShaderFunc = nullptr;
+		decltype(D3DReflect)* mD3DReflectFunc = nullptr;
 
 	public:
 		ShaderCompilerHLSLImpl()
@@ -44,6 +45,7 @@ namespace Cjing3D
 				mLibHandle = lib;
 				mD3DCompileFunc = (decltype(D3DCompile)*)(Platform::LibrarySymbol(lib, "D3DCompile"));
 				mD3DStripShaderFunc = (decltype(D3DStripShader)*)(Platform::LibrarySymbol(lib, "D3DStripShader"));
+				mD3DReflectFunc = (decltype(D3DReflect)*)(Platform::LibrarySymbol(lib, "D3DReflect"));
 			}
 		}
 
@@ -62,9 +64,11 @@ namespace Cjing3D
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
 	/// shader generator
-	ShaderGeneratorHLSL::ShaderGeneratorHLSL()
+	ShaderGeneratorHLSL::ShaderGeneratorHLSL(I32 majorVer, I32 minorVer, bool isAutoRegister) :
+		mSMMajorVer(majorVer),
+		mSMMinorVer(minorVer),
+		mIsAutoRegister(isAutoRegister)
 	{
-	
 	}
 
 	ShaderGeneratorHLSL::~ShaderGeneratorHLSL()
@@ -183,6 +187,20 @@ namespace Cjing3D
 		if (!node->mRegister.empty()) {
 			WriteCode(" : register(%s)", node->mRegister.c_str());
 		}
+		else if (mIsAutoRegister)
+		{
+			const auto& meta = node->mType->mBaseType->mMeta;
+			if (meta == "CBV") {
+				WriteCode(" : register(b%i)", mRegCBV++);
+			}
+			else if (meta == "SRV") {
+				WriteCode(" : register(t%i)", mRegSRV++);
+			}
+			else if (meta == "SRV") {
+				WriteCode(" : register(u%i)", mRegUAV++);
+			}
+		}
+
 		// value
 		if (node->mValue != nullptr && node->mValue->mType == ShaderAST::NodeType::VALUE) 
 		{
@@ -268,6 +286,90 @@ namespace Cjing3D
 		}
 	}
 
+	void ShaderGeneratorHLSL::WriteBindingSet(ShaderAST::StructNode* node)
+	{
+		WriteCode("// -BindingSet: %s", node->mName.c_str());
+		WriteNextLine();
+
+		bool isWrite = true; //false;
+		for (auto* member : node->mBaseType->mMembers) {
+			// check bindingSet is enable
+		}
+
+		if (isWrite)
+		{
+			for (auto* member : node->mBaseType->mMembers) 
+			{
+				if (mSMMajorVer <= 5 && mSMMinorVer <= 0)
+				{
+					if (member->mType->mBaseType->mName == "ConstantBuffer") {
+						WriteConstantBuffer(member);
+					}
+					else {
+						WriteVariableCode(member);
+					}
+				}
+				else {
+					WriteVariableCode(member);
+				}
+			}
+		}
+		WriteNextLine();
+	}
+
+	void ShaderGeneratorHLSL::WriteConstantBuffer(ShaderAST::DeclarationNode* node)
+	{
+		if (IsInternalNode(node, nullptr)) {
+			return;
+		}
+
+		if (node->mType->mTemplateBaseType == nullptr) {
+			return;
+		}
+
+		// name
+		WriteCode("cbuffer %s", node->mName.c_str());
+
+		// register
+		if (auto attribute = node->FindAttribute("register"))
+		{
+			if (attribute->GetParamCount() > 0) {
+				node->mRegister = attribute->GetParam(0);
+			}
+		}
+		if (!node->mRegister.empty()) {
+			WriteCode(" : register(%s)", node->mRegister.c_str());
+		}
+		else if (mIsAutoRegister)
+		{
+			const auto& meta = node->mType->mBaseType->mMeta;
+			if (meta == "CBV") {
+				WriteCode(" : register(b%i)", mRegCBV++);
+			}
+		}
+
+		// template type struct
+		WriteNextLine();
+		WriteCode("{");
+		WriteNextLine();
+
+		// write member decl
+		PushScope();
+		{
+			for (auto memberDecl : node->mType->mTemplateBaseType->mMembers)
+			{
+				WriteParamCode(memberDecl);
+				WriteCode(";");
+				WriteNextLine();
+			}
+		}
+		PopScope();
+
+		WriteCode("};");
+		WriteNextLine();
+		WriteNextLine();
+	}
+
 	bool ShaderGeneratorHLSL::VisitBegin(ShaderAST::FileNode* node)
 	{
 		// first collect all type's infos
@@ -278,6 +380,7 @@ namespace Cjing3D
 			node->Visit(this);
 		}
 
+		// wriet generated shader source
 		WriteCode("////////////////////////////////////////////////////////////");
 		WriteNextLine();
 		WriteCode("// Auto generated shader: %s", node->mName.c_str());
@@ -313,6 +416,19 @@ namespace Cjing3D
 			WriteNextLine();
 		}
 
+		// bindingSets
+		if (mBindingSets.size() > 0)
+		{
+			WriteCode("////////////////////////////////////////////////////////////");
+			WriteNextLine();
+			WriteCode("// BindingSets");
+			WriteNextLine();
+			for (auto bindingSet : mBindingSets) {
+				WriteBindingSet(bindingSet);
+			}
+			WriteNextLine();
+		}
+
 		// functions
 		if (node->mFunctions.size() > 0)
 		{
@@ -334,6 +450,10 @@ namespace Cjing3D
 		// 只有当structNode类型为struct,且不是internal节点时添加
 		if (node->mTypeName == "struct" && !IsInternalNode(node, nullptr)) {
 			mStructs.push(node);
+		}
+		// 当structNode类型为BindingSet,则视为BindingSet
+		else if (node->mTypeName == "BindingSet") {
+			mBindingSets.push(node);
 		}
 		return false;
 	}
@@ -446,11 +566,13 @@ namespace Cjing3D
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
 	/// shader compiler
-	ShaderCompilerHLSL::ShaderCompilerHLSL(const char* srcPath, const char* parentPath, ResConverterContext& context) :
+	ShaderCompilerHLSL::ShaderCompilerHLSL(const char* srcPath, const char* parentPath, ResConverterContext& context, I32 majorVer, I32 minorVer) :
 		ShaderCompiler(srcPath),
 		mSrcPath(srcPath),
 		mParentPath(parentPath),
-		mContext(context)
+		mContext(context),
+		mSMMajorVer(majorVer),
+		mSMMinorVer(minorVer)
 	{
 		mImpl = CJING_NEW(ShaderCompilerHLSLImpl);
 	}
@@ -465,7 +587,7 @@ namespace Cjing3D
 		DynamicArray<CompileInfo> compileInfos;
 
 		// 1. generate full shader source code from shade AST
-		ShaderGeneratorHLSL generator;
+		ShaderGeneratorHLSL generator(mSMMajorVer, mSMMinorVer);
 		fileNode->Visit(&generator);
 
 		//////////////////////////////////////////////
@@ -474,9 +596,7 @@ namespace Cjing3D
 		Logger::Log("\n%s", outputCode.c_str());
 		/////////////////////////////////////////////
 
-		// 2. compile shader source
-		I32 majorVer = 5;
-		I32 minorVer = 0;
+		// 2. compile shader source 
 #ifdef CJING_HLSL_SHADER_MAJOR_VER
 		majorVer = CJING_HLSL_SHADER_MAJOR_VER;
 #endif
@@ -492,8 +612,8 @@ namespace Cjing3D
 				info.mCode = generator.GetOutputCode();
 				info.mEntryPoint = shaderFuncName;
 				info.mStage = stage;				
-				info.mMajorVer = majorVer;
-				info.mMinorVer = minorVer;
+				info.mMajorVer = mSMMajorVer;
+				info.mMinorVer = mSMMinorVer;
 			}
 		}
 
@@ -585,6 +705,43 @@ namespace Cjing3D
 		UINT stripFlag = D3DCOMPILER_STRIP_REFLECTION_DATA | D3DCOMPILER_STRIP_DEBUG_INFO;
 		mImpl->mD3DStripShaderFunc(output.mByteCode, output.mByteCodeSize, stripFlag, NULL);
 
+		// reflect shader info to get used resources
+		ComPtr<ID3D11ShaderReflection> reflection;
+		hr = mImpl->mD3DReflectFunc(output.mByteCode, output.mByteCodeSize, IID_ID3D11ShaderReflection, (void**)&reflection);
+		if (SUCCEEDED(hr))
+		{
+			D3D11_SHADER_DESC desc;
+			reflection->GetDesc(&desc);
+
+			for (I32 i = 0; i < (I32)desc.BoundResources; i++)
+			{
+				D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+				reflection->GetResourceBindingDesc(i, &bindDesc);
+				switch (bindDesc.Type)
+				{
+				case D3D_SIT_CBUFFER:
+					output.mCbuffers.emplace(bindDesc.BindPoint, bindDesc.Name);
+					break;
+				case D3D_SIT_SAMPLER:
+					break;
+				case D3D_SIT_TBUFFER:
+				case D3D_SIT_TEXTURE:
+				case D3D_SIT_STRUCTURED:
+				case D3D_SIT_BYTEADDRESS:
+					output.mSRVs.emplace(bindDesc.BindPoint, bindDesc.Name);
+					break;
+				case D3D_SIT_UAV_RWTYPED:
+				case D3D_SIT_UAV_RWSTRUCTURED:
+				case D3D_SIT_UAV_RWBYTEADDRESS:
+				case D3D_SIT_UAV_APPEND_STRUCTURED:
+				case D3D_SIT_UAV_CONSUME_STRUCTURED:
+				case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+					output.mUAVs.emplace(bindDesc.BindPoint, bindDesc.Name);
+					break;
+				}
+			}
+		}
+
 		return output;
 #else
 		return ShaderCompileOutput();
@@ -669,6 +826,48 @@ namespace Cjing3D
 		output.mEntryPoint = entryPoint;
 
 		fileSystem.DeleteFile(csoPath.c_str());
+
+		// strip shader compiled code(temoves unwanted blobs)
+		UINT stripFlag = D3DCOMPILER_STRIP_REFLECTION_DATA | D3DCOMPILER_STRIP_DEBUG_INFO;
+		mImpl->mD3DStripShaderFunc(output.mByteCode, output.mByteCodeSize, stripFlag, NULL);
+
+		// reflect shader info to get used resources
+		ComPtr<ID3D11ShaderReflection> reflection;
+		HRESULT hr = mImpl->mD3DReflectFunc(output.mByteCode, output.mByteCodeSize, IID_ID3D11ShaderReflection, (void**)&reflection);
+		if (SUCCEEDED(hr))
+		{
+			D3D11_SHADER_DESC desc;
+			reflection->GetDesc(&desc);
+
+			for (I32 i = 0; i < (I32)desc.BoundResources; i++)
+			{
+				D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+				reflection->GetResourceBindingDesc(i, &bindDesc);
+				switch (bindDesc.Type)
+				{
+				case D3D_SIT_CBUFFER:
+					output.mCbuffers.emplace(bindDesc.BindPoint, bindDesc.Name);
+					break;
+				case D3D_SIT_SAMPLER:
+					break;
+				case D3D_SIT_TBUFFER:
+				case D3D_SIT_TEXTURE:
+				case D3D_SIT_STRUCTURED:
+				case D3D_SIT_BYTEADDRESS:
+					output.mSRVs.emplace(bindDesc.BindPoint, bindDesc.Name);
+					break;
+				case D3D_SIT_UAV_RWTYPED:
+				case D3D_SIT_UAV_RWSTRUCTURED:
+				case D3D_SIT_UAV_RWBYTEADDRESS:
+				case D3D_SIT_UAV_APPEND_STRUCTURED:
+				case D3D_SIT_UAV_CONSUME_STRUCTURED:
+				case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+					output.mUAVs.emplace(bindDesc.BindPoint, bindDesc.Name);
+					break;
+				}
+			}
+		}
+
 		return output;
 	}
 }

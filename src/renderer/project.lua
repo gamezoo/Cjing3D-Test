@@ -40,12 +40,11 @@ project (PROJECT_RENDERER_NAME)
     includedirs {
         -- local
         SOURCE_DIR,
-        
         -- 3rdParty
         "../../3rdparty", 
+        -- shaderInterop
+        "../../assets/shaders", 
     }
-    
-    -- libdirs
 
     -- Debug config
     filter {"configurations:Debug"}

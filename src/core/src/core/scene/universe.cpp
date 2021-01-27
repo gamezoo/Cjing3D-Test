@@ -18,5 +18,6 @@ namespace Cjing3D
 
 	void Universe::AddScene(UniquePtr<ECS::IScene>&& scene)
 	{
+		mScenes.push(std::move(scene));
 	}
 }

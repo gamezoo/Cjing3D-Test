@@ -9,14 +9,12 @@ namespace Cjing3D
 {
 #define SHADER_STRUCT_INTERNAL "internal"
 
-	using ShaderMap = StaticArray<Set<String>, GPU::SHADERSTAGES::SHADERSTAGES_COUNT>;
-
 	class ResConverterContext;
 
 	class ShaderGeneratorHLSL : public ShaderAST::NodeVisitor
 	{
 	public:
-		ShaderGeneratorHLSL();
+		ShaderGeneratorHLSL(I32 majorVer, I32 minorVer, bool isAutoRegister = false);
 		virtual ~ShaderGeneratorHLSL();
 
 		const String& GetOutputCode()const { return mGeneratedCode; }
@@ -40,21 +38,31 @@ namespace Cjing3D
 		void WriteVariableCode(ShaderAST::DeclarationNode* node);
 		void WriteFunctionCode(ShaderAST::DeclarationNode* node);
 		void WriteParamCode(ShaderAST::DeclarationNode* node);
+		void WriteBindingSet(ShaderAST::StructNode* node);
+		void WriteConstantBuffer(ShaderAST::DeclarationNode* node);
 
+		I32 mSMMajorVer = 5;
+		I32 mSMMinorVer = 0;
 		bool mIsNewLine = false;
 		String mGeneratedCode;
 		StaticString<4096> mTempGeneratedCode;
 		I32 mCodeIndent = 0;
+		
+		bool mIsAutoRegister = false;
+		I32 mRegCBV = 0;
+		I32 mRegSRV = 0;
+		I32 mRegUAV = 0;
 
 		Set<String> mAvailableAttributes;
 		DynamicArray<ShaderAST::StructNode*> mStructs;
+		DynamicArray<ShaderAST::StructNode*> mBindingSets;
 		DynamicArray<ShaderAST::DeclarationNode*> mVariables;
 	};
 
 	class ShaderCompilerHLSL : public ShaderCompiler
 	{
 	public:
-		ShaderCompilerHLSL(const char* srcPath, const char* parentPath, ResConverterContext& context);
+		ShaderCompilerHLSL(const char* srcPath, const char* parentPath, ResConverterContext& context, I32 majorVer, I32 mMinorVer);
 		virtual ~ShaderCompilerHLSL();
 
 		bool GenerateAndCompile(ShaderAST::FileNode* fileNode, DynamicArray<String>& techFunctions, ShaderMap& shaderMap, DynamicArray<ShaderCompileOutput>& outputs)override;
@@ -68,6 +76,8 @@ namespace Cjing3D
 		const char* mSrcPath;
 		const char* mParentPath;
 		ResConverterContext& mContext;
+		I32 mSMMajorVer = 5;
+		I32 mSMMinorVer = 0;
 	};
 }
 

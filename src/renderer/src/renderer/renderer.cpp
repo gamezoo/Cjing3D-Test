@@ -24,6 +24,7 @@ namespace Renderer
 
 	public:
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
+		RenderScene* mRenderScene = nullptr;
 	};
 
 	RendererImpl::RendererImpl()
@@ -35,6 +36,7 @@ namespace Renderer
 		for (int i = 0; i < SHADERTYPE_COUNT; i++) {
 			mShaders[i].Reset();
 		}
+		mRenderScene = nullptr;
 	}
 
 	void RendererImpl::PreLoadShaders()
@@ -42,6 +44,7 @@ namespace Renderer
 		// clear current resource jobs
 		ResourceManager::WaitAll();
 
+		mShaders[SHADERTYPE::SHADERTYPE_MAIN]  = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/main_pipeline.jsf"));
 		mShaders[SHADERTYPE::SHADERTYPE_IMAGE] = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/render_image.jsf"));
 
 		// wait for all shaders
@@ -100,6 +103,11 @@ namespace Renderer
 		UniquePtr<RenderScene> renderScene = CJING_MAKE_UNIQUE<RenderScene>(engine, universe);
 		renderScene->Initialize();
 		universe.AddScene(std::move(renderScene));
+		mImpl->mRenderScene = renderScene.Get();
+	}
+
+	void Update(CullResult& visibility, F32 deltaTime)
+	{
 	}
 
 	void PresentBegin(GPU::CommandList& cmd)
@@ -129,6 +137,11 @@ namespace Renderer
 			ResourceManager::WaitForResource(shader);
 		}
 		return shader;
+	}
+
+	void UpdateVisibility(CullResult& visibility, Viewport& viewport, I32 cullingFlag)
+	{
+
 	}
 
 }

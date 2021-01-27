@@ -5,7 +5,7 @@
 namespace Cjing3D
 {
 namespace ECS
-{
+{	
 	class IScene
 	{
 	public:

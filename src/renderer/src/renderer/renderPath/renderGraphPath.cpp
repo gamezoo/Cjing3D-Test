@@ -1,6 +1,5 @@
 #include "renderGraphPath.h"
 #include "gpu\gpu.h"
-#include "renderer\renderer.h"
 #include "renderer\renderImage.h"
 
 namespace Cjing3D
@@ -21,6 +20,10 @@ namespace Cjing3D
 	{
 		auto resolution = GPU::GetResolution();
 
+		// update viewport 
+		mViewport.CreatePerspective((F32)resolution.x(), (F32)resolution.y(), mViewport.mNear, mViewport.mFar);
+
+		// create renderTargets
 		GPU::TextureDesc desc;
 		desc.mWidth = resolution[0];
 		desc.mHeight = resolution[1];
@@ -59,6 +62,21 @@ namespace Cjing3D
 
 	void RenderGraphPath::Update(F32 dt)
 	{
+		RenderPath::Update(dt);
+
+		// update visisbility
+		I32 cullingFlag = CULLING_FLAG_ALL;
+		Renderer::UpdateVisibility(mVisibility, mViewport, cullingFlag);
+
+		// renderer update
+		Renderer::Update(mVisibility, dt);
+
+		// update viewport
+		mViewport.Update();
+	}
+
+	void RenderGraphPath::Render()
+	{
 		mMainGraph.Clear();
 
 		// setup resources	
@@ -67,14 +85,7 @@ namespace Cjing3D
 
 		//setup pipelines
 		mMainPipeline.Setup(mMainGraph);
-	}
 
-	void RenderGraphPath::FixedUpdate()
-	{
-	}
-
-	void RenderGraphPath::Render()
-	{
 		if (!mMainGraph.Execute(mMainPipeline.GetResource("rtMain"))) {
 			Debug::Warning("Render graph failed to executed");
 		}

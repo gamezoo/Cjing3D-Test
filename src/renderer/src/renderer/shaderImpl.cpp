@@ -2,7 +2,7 @@
 
 namespace Cjing3D
 {
-	void RenderStateSerializer::SerializeRenderTargetBlend(const GPU::RenderTargetBlendStateDesc& desc, JsonArchive& archive)
+	void ShaderSerializer::SerializeRenderTargetBlend(const GPU::RenderTargetBlendStateDesc& desc, JsonArchive& archive)
 	{
 		archive.Write("mBlendEnable", desc.mBlendEnable);
 		archive.Write("mSrcBlend", desc.mSrcBlend);
@@ -14,7 +14,7 @@ namespace Cjing3D
 		archive.Write("mRenderTargetWriteMask", desc.mRenderTargetWriteMask);
 	}
 
-	void RenderStateSerializer::UnserializeRenderTargetBlend(GPU::RenderTargetBlendStateDesc& desc, JsonArchive& archive)
+	void ShaderSerializer::UnserializeRenderTargetBlend(GPU::RenderTargetBlendStateDesc& desc, JsonArchive& archive)
 	{
 		archive.Read("mBlendEnable", desc.mBlendEnable);
 		archive.Read("mSrcBlend", desc.mSrcBlend);
@@ -26,7 +26,7 @@ namespace Cjing3D
 		archive.Read("mRenderTargetWriteMask", desc.mRenderTargetWriteMask);
 	}
 
-	void RenderStateSerializer::SerializeDepthStencilOp(const GPU::DepthStencilOpDesc& desc, JsonArchive& archive)
+	void ShaderSerializer::SerializeDepthStencilOp(const GPU::DepthStencilOpDesc& desc, JsonArchive& archive)
 	{
 		archive.Write("mStencilFailOp", desc.mStencilFailOp);
 		archive.Write("mStencilDepthFailOp", desc.mStencilDepthFailOp);
@@ -34,7 +34,7 @@ namespace Cjing3D
 		archive.Write("mStencilFunc", desc.mStencilFunc);
 	}
 
-	void RenderStateSerializer::UnserializeDepthStencilOpe(GPU::DepthStencilOpDesc& desc, JsonArchive& archive)
+	void ShaderSerializer::UnserializeDepthStencilOpe(GPU::DepthStencilOpDesc& desc, JsonArchive& archive)
 	{
 		archive.Read("mStencilFailOp", desc.mStencilFailOp);
 		archive.Read("mStencilDepthFailOp", desc.mStencilDepthFailOp);
@@ -42,7 +42,7 @@ namespace Cjing3D
 		archive.Read("mStencilFunc", desc.mStencilFunc);
 	}
 
-	void RenderStateSerializer::SerializeRenderState(const GPU::RenderStateDesc& desc, JsonArchive& archive)
+	void ShaderSerializer::SerializeRenderState(const GPU::RenderStateDesc& desc, JsonArchive& archive)
 	{
 		// blendStateDesc
 		auto& blendStateDesc = desc.mBlendState;
@@ -96,7 +96,7 @@ namespace Cjing3D
 		});
 	}
 
-	void RenderStateSerializer::UnserializeRenderState(GPU::RenderStateDesc& desc, JsonArchive& archive)
+	void ShaderSerializer::UnserializeRenderState(GPU::RenderStateDesc& desc, JsonArchive& archive)
 	{
 		// blendStateDesc
 		auto& blendStateDesc = desc.mBlendState;

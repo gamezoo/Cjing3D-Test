@@ -33,6 +33,32 @@ namespace Cjing3D
 		struct ShaderTechniqueImpl* mImpl = nullptr;
 	};
 
+	class ShaderBindingSet
+	{
+	public:
+		ShaderBindingSet();
+		ShaderBindingSet(ShaderBindingSet&& rhs);
+		ShaderBindingSet& operator=(ShaderBindingSet&& rhs);
+		~ShaderBindingSet();
+
+		void Set(const char* name, const GPU::BindingBuffer& buffer);
+		void Set(const char* name, const GPU::BindingSRV& srv);
+		void Set(const char* name, const GPU::BindingUAV& uav);
+
+		explicit operator bool()const;
+
+	private:
+		friend class Shader;
+
+		ShaderBindingSet(const ShaderBindingSet&rhs) = delete;
+		ShaderBindingSet& operator=(const ShaderBindingSet& rhs) = delete;
+
+		I32 GetHandleByName(const char* name, I32& slot)const;
+
+		String mName;
+		struct ShaderBindingSetImpl* mImpl = nullptr;
+	};
+
 	class Shader : public Resource
 	{
 	public:
@@ -40,6 +66,7 @@ namespace Cjing3D
 		~Shader();
 
 		ShaderTechnique CreateTechnique(const char* name, const ShaderTechniqueDesc& desc);
+		ShaderBindingSet CreateBindingSet(const char* name);
 
 	private:
 		friend class ShaderFactory;

@@ -1,0 +1,34 @@
+#include "common/common.jsh"
+#include "common_bindings.jsh"
+
+/////////////////////////////////////////////////////////////////////////////
+// FULLSCREEN FUNCTION
+struct VS_OBJECT_OUTPUT
+{
+    float4 pos : SV_POSITION;
+    float2 uv  : TEXCOORD0;
+};
+
+VS_OBJECT_OUTPUT vs_object(uint id : SV_VertexID)
+{
+    VS_OBJECT_OUTPUT output;
+    float2 screenSize = gFrameScreenSize;
+	FullScreenTriangle(id, output.pos, output.uv);
+    output.uv = screenSize;
+    return output;
+}
+
+float4 ps_object(VS_OBJECT_OUTPUT input) : SV_TARGET
+{
+    float2 screenSize = gFrameScreenSize;
+    return float4(screenSize.x, screenSize.y, 1.0f, 1.0f);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// OBJECT TECH
+
+Technique TECH_OBJECT = 
+{
+    .mVertexShader = vs_object,
+    .mPixelShader = ps_object,
+};

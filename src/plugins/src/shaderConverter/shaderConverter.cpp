@@ -187,6 +187,7 @@ namespace Cjing3D
 		}
 		context.AddSource(src);
 
+		//////////////////////////////////////////////////////////////////////////////////
 		// 1. preprocess source, acquire all dependencies
 		MaxPathString parentPath;
 		if (!Path(src).SplitPath(parentPath.data(), parentPath.size()))
@@ -215,6 +216,7 @@ namespace Cjing3D
 			context.AddSource(dep);
 		}
 
+		//////////////////////////////////////////////////////////////////////////////////
 		// 2. parse shader source into an shader ast
 		ShaderParser parser;
 		auto shaderFileNode = parser.Parse(src, preprocessor.GetOutput());
@@ -224,7 +226,8 @@ namespace Cjing3D
 			return false;
 		}
 
-		// parse shader ast to create shader metadata
+		//////////////////////////////////////////////////////////////////////////////////
+		// 3. parse shader ast to create shader metadata
 		ShaderAST::ShaderMetadata shaderMetadata;
 		shaderFileNode->Visit(&shaderMetadata);
 		
@@ -247,21 +250,91 @@ namespace Cjing3D
 			}
 		}
 
-		// 3. compile shader source
+		//////////////////////////////////////////////////////////////////////////////////
+		// 4. compile shader source
 #ifdef CJING3D_RENDERER_DX11
-		ShaderCompilerHLSL shaderCompiler(src, fullRootPath.c_str(), context);
+		// ShaderModel version (dx11 only support sm5.0)
+		I32 majorVer = 5;
+		I32 minorVer = 0;
+		ShaderCompilerHLSL shaderCompiler(src, fullRootPath.c_str(), context, majorVer, minorVer);
 #endif
 		DynamicArray<ShaderCompileOutput> compileOutput;
 		if (!shaderCompiler.GenerateAndCompile(shaderFileNode, techFunctions, shaderMap, compileOutput))
 		{
 			Debug::Warning("[ShaderConverter] failed to generate and compile shader source.");
 			return false;
-		}		
+		}	
 
-		// 4. process binding set
+		//////////////////////////////////////////////////////////////////////////////////
+		// 5. process binding set
+		// record binding infos
+		auto AddBindings = [](const DynamicArray<ShaderBinding>& bindings, HashMap<String, I32>& outBindings) {
+			for (const auto& binding : bindings)
+			{
+				if (outBindings.find(binding.mName) == nullptr) {
+					outBindings.insert(binding.mName, binding.mSlot);
+				}
+			}
+		};
+		HashMap<String, I32> allBindings;
+		for (const auto& compile : compileOutput)
+		{
+			AddBindings(compile.mCbuffers, allBindings);
+			AddBindings(compile.mSRVs, allBindings);
+			AddBindings(compile.mUAVs, allBindings);
+		}
+		
+		// bindingSetHeaders
+		DynamicArray<ShaderBindingHeader> bindingHeaders;
+		auto PopulateBindings = [&bindingHeaders, &allBindings](const DynamicArray<String>& resources, ShaderBindingFlags flags) {
+			bool isUsed = false;
+			I32 index = 0;
+			for (const auto& resource : resources)
+			{
+				ShaderBindingHeader bindingHeader;
+				CopyString(bindingHeader.mName, resource.c_str());
 
-		// 5. prepare shader headers for writing
-		// bytecode headers
+				auto it = allBindings.find(resource);
+				if (it != nullptr) 
+				{
+					isUsed = true;
+					bindingHeader.mSlot = *it;
+				}
+
+				bindingHeader.mHandle = (I32)flags | (index++ & (I32)ShaderBindingFlags::INDEX_MASK);
+				bindingHeaders.push(bindingHeader);
+			}
+			return isUsed;
+		};
+		auto& bindingSets = shaderMetadata.GetBindingSets();
+		DynamicArray<ShaderBindingSetHeader> bindingSetHeaders;
+		DynamicArray<I32> bindingSetHeaderIndexs;
+		bindingSetHeaders.reserve(bindingSets.size());
+		bindingSetHeaderIndexs.reserve(bindingSets.size());
+
+		for (int i = 0; i < bindingSets.size(); i++)
+		{
+			const auto& bindingSet = bindingSets[i];
+			// check is used
+			bool isUsed = false;
+			isUsed |= PopulateBindings(bindingSet.mCBVs, ShaderBindingFlags::CBV);
+			isUsed |= PopulateBindings(bindingSet.mSRVs, ShaderBindingFlags::SRV);
+			isUsed |= PopulateBindings(bindingSet.mUAVs, ShaderBindingFlags::UAV);
+			if (isUsed)
+			{
+				ShaderBindingSetHeader bindingSetHeader;
+				bindingSetHeader.mIsShared = bindingSet.mIsShared;
+				bindingSetHeader.mNumCBVs = bindingSet.mCBVs.size();
+				bindingSetHeader.mNumSRVs = bindingSet.mSRVs.size();
+				bindingSetHeader.mNumUAVs = bindingSet.mUAVs.size();
+
+				bindingSetHeaders.push(bindingSetHeader);
+				bindingSetHeaderIndexs.push(i);
+			}
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////
+		// 6. prepare shader headers for writing
 		DynamicArray<ShaderBytecodeHeader> bytecodeHeaders;
 		I32 offset = 0;
 		for (const auto& compileInfo : compileOutput)
@@ -313,32 +386,94 @@ namespace Cjing3D
 				}
 			}
 			header.mIdxRenderState = idxRenderState;
+
+			// process used bindingSets
+			HashMap<String, I32> techBindings;
+			auto AddTechBindings = [&](I32 shaderIndex)
+			{
+				if (shaderIndex != -1)
+				{
+					auto& compile = compileOutput[shaderIndex];
+					AddBindings(compile.mCbuffers, techBindings);
+					AddBindings(compile.mSRVs, techBindings);
+					AddBindings(compile.mUAVs, techBindings);
+				}
+			};
+			AddTechBindings(header.mIdxVS);
+			AddTechBindings(header.mIdxGS);
+			AddTechBindings(header.mIdxDS);
+			AddTechBindings(header.mIdxHS);
+			AddTechBindings(header.mIdxPS);
+			AddTechBindings(header.mIdxCS);
+
+			// record used bindingSet index
+			auto CheckBindingSetUsed = [&techBindings](const DynamicArray<String>& resources)->bool {
+				for (const auto& resource : resources)
+				{
+					if (techBindings.find(resource) != nullptr) {
+						return true;
+					}
+				}
+				return false;
+			};
+			I32 numUsedBindingSlot = 0;
+			for (I32 index = 0; index < bindingSetHeaders.size(); index++)
+			{
+				const auto& bindingSet = bindingSets[bindingSetHeaderIndexs[index]];		
+				bool isUsed = CheckBindingSetUsed(bindingSet.mCBVs);
+				isUsed = isUsed | CheckBindingSetUsed(bindingSet.mSRVs);
+				isUsed = isUsed | CheckBindingSetUsed(bindingSet.mUAVs);
+				if (isUsed) {
+					header.mBindingSetIndexs[numUsedBindingSlot++] = index;
+				}
+			}
+			header.mNumBindingSet = numUsedBindingSlot;
 		}
 
-		// general header
-		ShaderGeneralHeader generalHeader;
-		generalHeader.mNumShaders = compileOutput.size();
-		generalHeader.mNumTechniques = techniques.size();
-		generalHeader.mNumRenderStates = renderStates.size();
+		//////////////////////////////////////////////////////////////////////////////////
+		// 7. write shader
 
-		// 6. write shader
+		// Converted file format:
+		// | GeneralHeader 
+		// | BindingSetHeaders 
+		// | BindingHeaders 
+		// | BytecodeHeaders 
+		// | TechniqueHeaders 
+		// | RenderStateHeaders
+		// | RenderStateJson
+		// | bytecodes
+
+		ShaderSerializer serializer;
 		File* file = CJING_NEW(File);
 		if (!fileSystem.OpenFile(dest, *file, FileFlags::DEFAULT_WRITE)) 
 		{
 			CJING_SAFE_DELETE(file);
 			return false;
 		}
-		file->Write(&generalHeader, sizeof(generalHeader));
 
+		// general header
+		ShaderGeneralHeader generalHeader;
+		generalHeader.mNumBindingSets = bindingSetHeaders.size();
+		generalHeader.mNumShaders = compileOutput.size();
+		generalHeader.mNumTechniques = techniques.size();
+		generalHeader.mNumRenderStates = renderStates.size();
+
+		file->Write(&generalHeader, sizeof(generalHeader));
+		if (!bindingSetHeaders.empty()) {
+			file->Write(bindingSetHeaders.data(), bindingSetHeaders.size() * sizeof(ShaderBindingSetHeader));
+		}
+		if (!bindingHeaders.empty()) {
+			file->Write(bindingHeaders.data(), bindingHeaders.size() * sizeof(ShaderBindingHeader));
+		}
 		if (!bytecodeHeaders.empty()) {
 			file->Write(bytecodeHeaders.data(), bytecodeHeaders.size() * sizeof(ShaderBytecodeHeader));
 		}
 		if (!techniqueHeaders.empty()) {
 			file->Write(techniqueHeaders.data(), techniqueHeaders.size() * sizeof(ShaderTechniqueHeader));
 		}
-		// write renderStates as json
-		if (renderStates.size() > 0)
+		if (!renderStates.empty())
 		{
+			// write renderStates as json
 			DynamicArray<RenderStateHeader> renderStateHeaders;
 			I32 offset = 0;
 
@@ -346,7 +481,6 @@ namespace Cjing3D
 			for (const auto& renderState : renderStates)
 			{
 				JsonArchive archive(ArchiveMode::ArchiveMode_Write);
-				RenderStateSerializer serializer;
 				serializer.SerializeRenderState(renderState.mDesc, archive);
 
 				const auto& output = archive.DumpJsonString();
@@ -358,7 +492,6 @@ namespace Cjing3D
 				auto& renderStateHeader = renderStateHeaders.emplace();
 				renderStateHeader.mOffset = offset;
 				renderStateHeader.mBytes = mOutputRenderStates.size() - offset;
-				Logger::Info(output);
 				offset = mOutputRenderStates.size();
 			}
 

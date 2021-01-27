@@ -155,10 +155,14 @@ namespace Cjing3D::Win32
 
 	void EngineWin32::Update(F32 dt)
 	{
+		// update universe
+		
+
 		// update all plugins
 		for (ModulerPlugin* plugin : mModulerPlugins) {
 			plugin->Update(dt);
 		}
+		// update input system
 		mImpl->mInputSystem->Update(dt);
 	}
 

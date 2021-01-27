@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderPath.h"
+#include "renderer\renderer.h"
 #include "renderer\renderGraph.h"
 #include "renderer\texture.h"
 #include "core\event\eventSystem.h"
@@ -17,7 +18,6 @@ namespace Cjing3D
 		void Start()override;
 		void Stop()override;
 		void Update(F32 dt)override;
-		void FixedUpdate()override;
 		void Render()override;
 		void Compose(GPU::CommandList& cmd)override;
 
@@ -30,5 +30,8 @@ namespace Cjing3D
 		ScopedConnection mResolutionChangedHandle;
 
 		Texture mRTMain;
+
+		Viewport mViewport;
+		CullResult mVisibility;
 	};
 }

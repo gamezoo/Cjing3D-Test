@@ -12,6 +12,15 @@ namespace ShaderAST
 
 	class ShaderMetadata;
 
+	struct ShaderBindingSetInfo
+	{
+		String mName;
+		bool mIsShared = false;
+		DynamicArray<String> mCBVs;
+		DynamicArray<String> mSRVs;
+		DynamicArray<String> mUAVs;
+	};
+
 	template<typename InfoT>
 	class StructVisitor : public NodeVisitor
 	{
@@ -166,6 +175,8 @@ namespace ShaderAST
 		const DynamicArray<ShaderTechniqueInfo>& GetTechniques()const { return mTechs; }
 		DynamicArray<ShaderRenderStateInfo>& GetRenderStates() { return mRenderStates; }
 		const DynamicArray<ShaderRenderStateInfo>& GetRenderStates()const { return mRenderStates; }
+		DynamicArray<ShaderBindingSetInfo>& GetBindingSets() { return mBindingSets; }
+		const DynamicArray<ShaderBindingSetInfo>& GetBindingSets()const { return mBindingSets; }
 
 	public:
 		FileNode* mFileNode = nullptr;
@@ -175,6 +186,7 @@ namespace ShaderAST
 		DynamicArray<ShaderRasterizerStateInfo> mShaderRasterizerStates;
 		DynamicArray<ShaderRenderStateInfo> mRenderStates;
 		DynamicArray<ShaderTechniqueInfo> mTechs;
+		DynamicArray<ShaderBindingSetInfo> mBindingSets;
 	};
 }
 }

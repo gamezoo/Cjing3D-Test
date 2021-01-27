@@ -400,6 +400,25 @@ namespace ShaderAST
 
 	bool ShaderMetadata::VisitBegin(StructNode* node)
 	{
+		// check is BindingSet
+		if (node->mTypeName == "BindingSet")
+		{
+			auto& bindingSetInfo = mBindingSets.emplace();
+
+			// check metaData
+			for (const auto& memberDecl : node->mBaseType->mMembers)
+			{
+				if (memberDecl->mType->mBaseType->mMeta == "CBV") {
+					bindingSetInfo.mCBVs.push(memberDecl->mName);
+				}
+				else if (memberDecl->mType->mBaseType->mMeta == "SRV") {
+					bindingSetInfo.mSRVs.push(memberDecl->mName);
+				}
+				else if (memberDecl->mType->mBaseType->mMeta == "UAV") {
+					bindingSetInfo.mUAVs.push(memberDecl->mName);
+				}
+			}
+		}
 		return false;
 	}
 

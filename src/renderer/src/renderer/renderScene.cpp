@@ -30,4 +30,9 @@ namespace Cjing3D
     void RenderScene::Clear()
     {
     }
+
+    CullResult RenderScene::GetCullResult()
+    {
+        return CullResult();
+    }
 }

@@ -5,6 +5,294 @@
 
 namespace Cjing3D
 {
+	namespace
+	{
+		bool operator==(const ShaderBindingSetHeader& a, const ShaderBindingSetHeader& b){
+			return memcmp(&a, &b, sizeof(a)) == 0;
+		}
+
+		bool operator!=(const GPU::BindingBuffer& a, const  GPU::BindingBuffer& b) {
+			return memcmp(&a, &b, sizeof(a)) != 0; 
+		}
+
+		bool operator!=(const  GPU::BindingSRV& a, const  GPU::BindingSRV& b) {
+			return memcmp(&a, &b, sizeof(a)) != 0;
+		}
+
+		bool operator!=(const  GPU::BindingUAV& a, const  GPU::BindingUAV& b) {
+			return memcmp(&a, &b, sizeof(a)) != 0; 
+		}
+	}
+
+	/// ////////////////////////////////////////////////////////////////////////////////
+	/// ShaderFactory
+	class ShaderFactory : public ResourceFactory
+	{
+	public:
+		Concurrency::RWLock mLock;
+		DynamicArray<ShaderBindingSetHeader> mBindingSetHeaders;
+		DynamicArray<DynamicArray<ShaderBindingHeader>> mBindingSetHandles;
+
+	public:
+		I32 GetBindingSetIndexByName(const char* name)
+		{
+			for (int i = 0; i < mBindingSetHeaders.size(); i++)
+			{
+				if (EqualString(mBindingSetHeaders[i].mName, name)) {
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		I32 GetBindingSetIndexByHeader(const ShaderBindingSetHeader& header)
+		{
+			for (int i = 0; i < mBindingSetHeaders.size(); i++)
+			{
+				if (header == mBindingSetHeaders[i]) {
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		virtual Resource* CreateResource()
+		{
+			Shader* shader = CJING_NEW(Shader);
+			return shader;
+		}
+
+		virtual bool LoadResource(Resource* resource, const char* name, File& file)
+		{
+			Shader* shader = reinterpret_cast<Shader*>(resource);
+			if (!shader || !file) {
+				return false;
+			}
+
+			if (!GPU::IsInitialized()) {
+				return false;
+			}
+
+			// Converted file format:
+			// | GeneralHeader 
+			// | BindingSetHeaders 
+			// | BindingHeaders 
+			// | BytecodeHeaders 
+			// | TechniqueHeaders 
+			// | RenderStateHeaders
+			// | RenderStateJson
+			// | bytecodes
+
+			// read shader general header
+			ShaderGeneralHeader generalHeader;
+			if (!file.Read(&generalHeader, sizeof(generalHeader)))
+			{
+				Debug::Warning("Failed to read shader general header");
+				return false;
+			}
+
+			// check magic and version
+			if (generalHeader.mMagic != ShaderGeneralHeader::MAGIC ||
+				generalHeader.mMajor != ShaderGeneralHeader::MAJOR ||
+				generalHeader.mMinor != ShaderGeneralHeader::MINOR) 
+			{
+				Debug::Warning("Shader version mismatch.");
+				return false;
+			}
+
+			ShaderImpl* shaderImpl = CJING_NEW(ShaderImpl);
+			shaderImpl->mName = name;
+			shaderImpl->mGeneralHeader = generalHeader;
+
+			// read bindingset headers
+			if (generalHeader.mNumBindingSets > 0)
+			{
+				shaderImpl->mBindingSetHeaders.resize(generalHeader.mNumBindingSets);
+				if (!file.Read(shaderImpl->mBindingSetHeaders.data(), generalHeader.mNumBindingSets * sizeof(ShaderBindingSetHeader)))
+				{
+					Debug::Warning("Failed to read bindingSet headers");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+			}
+			I32 totalNumBinding = 0;
+			for (const auto& bindingSetHeader : shaderImpl->mBindingSetHeaders)
+			{
+				totalNumBinding += bindingSetHeader.mNumCBVs;
+				totalNumBinding += bindingSetHeader.mNumSRVs;
+				totalNumBinding += bindingSetHeader.mNumUAVs;
+			}
+
+			// read binding headers
+			if (totalNumBinding > 0)
+			{
+				shaderImpl->mBindingHeaders.resize(totalNumBinding);
+				if (!file.Read(shaderImpl->mBindingHeaders.data(), totalNumBinding * sizeof(ShaderBindingHeader)))
+				{
+					Debug::Warning("Failed to read binding headesr");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+			}
+
+			// bytecode headers
+			if (generalHeader.mNumShaders > 0)
+			{
+				shaderImpl->mBytecodeHeaders.resize(generalHeader.mNumShaders);
+				if (!file.Read(shaderImpl->mBytecodeHeaders.data(), generalHeader.mNumShaders * sizeof(ShaderBytecodeHeader)))
+				{
+					Debug::Warning("Failed to read shader bytecode header");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+			}
+
+			// technique headers
+			if (generalHeader.mNumTechniques > 0)
+			{
+				shaderImpl->mTechniqueHeaders.resize(generalHeader.mNumTechniques);
+				if (!file.Read(shaderImpl->mTechniqueHeaders.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
+				{
+					Debug::Warning("Failed to read shader bytecode header");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+			}
+
+			// renderStates headers | RenderStateJson
+			if (generalHeader.mNumRenderStates > 0)
+			{
+				shaderImpl->mRenderStateHeaders.resize(generalHeader.mNumRenderStates);
+				if (!file.Read(shaderImpl->mRenderStateHeaders.data(), generalHeader.mNumRenderStates * sizeof(RenderStateHeader)))
+				{
+					Debug::Warning("Failed to read render state header");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+
+				ShaderSerializer serializer;
+				String renderStateBuffer;
+				for (const auto& header : shaderImpl->mRenderStateHeaders)
+				{
+					renderStateBuffer.resize(header.mBytes);
+					if (!file.Read(renderStateBuffer.data(), header.mBytes))
+					{
+						Debug::Warning("Failed to read render state bytecode");
+						CJING_SAFE_DELETE(shaderImpl);
+						return false;
+					}
+
+					GPU::RenderStateDesc& desc = shaderImpl->mRenderStates.emplace();
+					JsonArchive archive(ArchiveMode::ArchiveMode_Read, renderStateBuffer.c_str(), renderStateBuffer.size());
+					serializer.UnserializeRenderState(desc, archive);
+				}
+			}
+		
+			// shader bytecode
+			U32 totalSize = 0;
+			for (const auto& header : shaderImpl->mBytecodeHeaders) {
+				totalSize = std::max(totalSize, (U32)(header.mOffset + header.mBytes));
+			}
+			shaderImpl->mBytecodes.resize(totalSize);
+			if (!file.Read(shaderImpl->mBytecodes.data(), totalSize))
+			{
+				Debug::Warning("Failed to read shader bytecode header");
+				CJING_SAFE_DELETE(shaderImpl);
+				return false;
+			}
+
+			// create gpu::shader
+			shaderImpl->mRhiShaders.resize(generalHeader.mNumShaders);
+			for (int i = 0; i < generalHeader.mNumShaders; i++)
+			{
+				const auto& info = shaderImpl->mBytecodeHeaders[i];
+				const char* bytecode = shaderImpl->mBytecodes.data() + info.mOffset;
+				
+				GPU::ResHandle handle = GPU::CreateShader(info.mStage, bytecode, info.mBytes);
+				if (handle == GPU::ResHandle::INVALID_HANDLE)
+				{
+					Debug::Warning("Failed to create shader");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+				shaderImpl->mRhiShaders[i] = handle;
+			}
+			shaderImpl->mBytecodes.clear();
+
+			// factory records binding set
+			{
+				Concurrency::ScopedWriteLock lock(mLock);
+
+				// factory(global obj) saves all bindingSets
+				I32 bindingHeaderOffset = 0;
+				for (const auto& bindingSetHeader : shaderImpl->mBindingSetHeaders)
+				{
+					I32 totalBindingHeaders = bindingSetHeader.mNumCBVs + bindingSetHeader.mNumSRVs + bindingSetHeader.mNumUAVs;
+
+					auto it = std::find_if(mBindingSetHeaders.begin(), mBindingSetHeaders.end(), 
+						[&bindingSetHeader](const ShaderBindingSetHeader& rhs) {
+							return bindingSetHeader == rhs;
+						});
+					if (it == mBindingSetHeaders.end())
+					{
+						mBindingSetHeaders.push(bindingSetHeader);
+
+						// 记录每个bindingSet所对应的binding
+						DynamicArray<ShaderBindingHeader> handles;
+						for (int i = bindingHeaderOffset; i < bindingHeaderOffset + totalBindingHeaders; i++){
+							handles.push(shaderImpl->mBindingHeaders[i]);
+						}
+						mBindingSetHandles.emplace(std::move(handles));
+					}
+
+					bindingHeaderOffset += totalBindingHeaders;
+				}
+
+				// 重新定位technique的bindingSetIndex
+				for (auto& header : shaderImpl->mTechniqueHeaders)
+				{
+					for (int i = 0; i < header.mNumBindingSet; i++)
+					{
+						auto index = header.mBindingSetIndexs[i];
+						if (index < 0) {
+							continue;
+						}
+
+						const auto& bindingSetHeader = shaderImpl->mBindingSetHeaders[index];
+						I32 newIndex = GetBindingSetIndexByHeader(bindingSetHeader);
+						Debug::CheckAssertion(newIndex >= 0);
+						header.mBindingSetIndexs[i] = newIndex;
+					}
+				}
+			}
+
+			// shader loaded
+			shader->mImpl = shaderImpl;
+			Logger::Info("[Resource] Shader loaded successful:%s.", name);
+			return true;
+		}
+
+		virtual bool DestroyResource(Resource* resource)
+		{
+			if (resource == nullptr) {
+				return false;
+			}
+
+			Shader* shader = reinterpret_cast<Shader*>(resource);
+			CJING_DELETE(shader);
+			return true;
+		}
+
+		virtual bool IsNeedConvert()const
+		{
+			return true;
+		}
+	};
+	DEFINE_RESOURCE(Shader, "Shader");
+
+
+	/// ////////////////////////////////////////////////////////////////////////////////
+	/// ShaderImpl
 	const U32 ShaderGeneralHeader::MAGIC = 0x159A1439;
 
 	ShaderImpl::ShaderImpl()
@@ -61,7 +349,7 @@ namespace Cjing3D
 		impl->mShaderImpl = this;
 		impl->mIndex = findIndex;
 
-		if (!SetupTechnique(impl)) 
+		if (!SetupTechnique(impl))
 		{
 			CJING_SAFE_DELETE(impl);
 			return nullptr;
@@ -77,7 +365,7 @@ namespace Cjing3D
 		const ShaderTechniqueHeader* targetHeader = nullptr;
 		for (const auto& header : mTechniqueHeaders)
 		{
-			if (technique->mName == header.mName) 
+			if (technique->mName == header.mName)
 			{
 				targetHeader = &header;
 				break;
@@ -101,10 +389,10 @@ namespace Cjing3D
 			desc.mDS = targetHeader->mIdxDS != -1 ? mRhiShaders[targetHeader->mIdxDS] : GPU::ResHandle::INVALID_HANDLE;
 			desc.mGS = targetHeader->mIdxGS != -1 ? mRhiShaders[targetHeader->mIdxGS] : GPU::ResHandle::INVALID_HANDLE;
 			desc.mPS = targetHeader->mIdxPS != -1 ? mRhiShaders[targetHeader->mIdxPS] : GPU::ResHandle::INVALID_HANDLE;
-			
+
 			if (targetHeader->mIdxRenderState != -1)
 			{
-				auto& renderState = mRenderStates[targetHeader->mIdxRenderState]; 
+				auto& renderState = mRenderStates[targetHeader->mIdxRenderState];
 				desc.mRasterizerState = &renderState.mRasterizerState;
 				desc.mDepthStencilState = &renderState.mDepthStencilState;
 				desc.mBlendState = &renderState.mBlendState;
@@ -126,151 +414,6 @@ namespace Cjing3D
 		technique->mHeader = *targetHeader;
 		return true;
 	}
-
-	/// ////////////////////////////////////////////////////////////////////////////////
-	/// ShaderFactory
-	class ShaderFactory : public ResourceFactory
-	{
-	public:
-		virtual Resource* CreateResource()
-		{
-			Shader* shader = CJING_NEW(Shader);
-			return shader;
-		}
-
-		virtual bool LoadResource(Resource* resource, const char* name, File& file)
-		{
-			Shader* shader = reinterpret_cast<Shader*>(resource);
-			if (!shader || !file) {
-				return false;
-			}
-
-			if (!GPU::IsInitialized()) {
-				return false;
-			}
-
-			/////////////////////////////////////////////////////////////////////////
-			// read shader headers
-			ShaderGeneralHeader generalHeader;
-			if (!file.Read(&generalHeader, sizeof(generalHeader)))
-			{
-				Debug::Warning("Failed to read shader general header");
-				return false;
-			}
-
-			// check magic and version
-			if (generalHeader.mMagic != ShaderGeneralHeader::MAGIC ||
-				generalHeader.mMajor != ShaderGeneralHeader::MAJOR ||
-				generalHeader.mMinor != ShaderGeneralHeader::MINOR) 
-			{
-				Debug::Warning("Shader version mismatch.");
-				return false;
-			}
-
-			ShaderImpl* shaderImpl = CJING_NEW(ShaderImpl);
-			shaderImpl->mName = name;
-			shaderImpl->mGeneralHeader = generalHeader;
-
-			// read bindingset header
-
-			// bytecode headers
-			shaderImpl->mBytecodeHeaders.resize(generalHeader.mNumShaders);
-			if (!file.Read(shaderImpl->mBytecodeHeaders.data(), generalHeader.mNumShaders * sizeof(ShaderBytecodeHeader)))
-			{
-				Debug::Warning("Failed to read shader bytecode header");
-				CJING_SAFE_DELETE(shaderImpl);
-				return false;
-			}
-
-			// technique headers
-			shaderImpl->mTechniqueHeaders.resize(generalHeader.mNumTechniques);
-			if (!file.Read(shaderImpl->mTechniqueHeaders.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
-			{
-				Debug::Warning("Failed to read shader bytecode header");
-				CJING_SAFE_DELETE(shaderImpl);
-				return false;
-			}
-
-			// renderStates
-			shaderImpl->mRenderStateHeaders.resize(generalHeader.mNumRenderStates);
-			if (!file.Read(shaderImpl->mRenderStateHeaders.data(), generalHeader.mNumRenderStates * sizeof(RenderStateHeader)))
-			{
-				Debug::Warning("Failed to read render state header");
-				CJING_SAFE_DELETE(shaderImpl);
-				return false;
-			}
-
-			RenderStateSerializer serializer;
-			String renderStateBuffer;
-			for (const auto& header : shaderImpl->mRenderStateHeaders)
-			{
-				renderStateBuffer.resize(header.mBytes);
-				if (!file.Read(renderStateBuffer.data(), header.mBytes))
-				{
-					Debug::Warning("Failed to read render state bytecode");
-					CJING_SAFE_DELETE(shaderImpl);
-					return false;
-				}
-
-				GPU::RenderStateDesc& desc = shaderImpl->mRenderStates.emplace();
-				JsonArchive archive(ArchiveMode::ArchiveMode_Read, renderStateBuffer.c_str(), renderStateBuffer.size());
-				serializer.UnserializeRenderState(desc, archive);
-			}
-
-			// read shader bytecode
-			U32 totalSize = 0;
-			for (const auto& header : shaderImpl->mBytecodeHeaders) {
-				totalSize = std::max(totalSize, (U32)(header.mOffset + header.mBytes));
-			}
-			shaderImpl->mBytecodes.resize(totalSize);
-			if (!file.Read(shaderImpl->mBytecodes.data(), totalSize))
-			{
-				Debug::Warning("Failed to read shader bytecode header");
-				CJING_SAFE_DELETE(shaderImpl);
-				return false;
-			}
-
-			/////////////////////////////////////////////////////////////////////////
-			// create gpu::shader
-			shaderImpl->mRhiShaders.resize(generalHeader.mNumShaders);
-			for (int i = 0; i < generalHeader.mNumShaders; i++)
-			{
-				const auto& info = shaderImpl->mBytecodeHeaders[i];
-				const char* bytecode = shaderImpl->mBytecodes.data() + info.mOffset;
-				
-				GPU::ResHandle handle = GPU::CreateShader(info.mStage, bytecode, info.mBytes);
-				if (handle == GPU::ResHandle::INVALID_HANDLE)
-				{
-					Debug::Warning("Failed to create shader");
-					return false;
-				}
-				shaderImpl->mRhiShaders[i] = handle;
-			}
-			shaderImpl->mBytecodes.clear();
-
-			shader->mImpl = shaderImpl;
-
-			Logger::Info("[Resource] Shader loaded successful:%s.", name);
-			return true;
-		}
-
-		virtual bool DestroyResource(Resource* resource)
-		{
-			if (resource == nullptr) {
-				return false;
-			}
-
-			Shader* shader = reinterpret_cast<Shader*>(resource);
-			CJING_DELETE(shader);
-			return true;
-		}
-
-		virtual bool IsNeedConvert()const
-		{
-			return true;
-		}
-	};
-	DEFINE_RESOURCE(Shader, "Shader");
 
 	/// ////////////////////////////////////////////////////////////////////////////////
 	/// ShaderTechnique
@@ -308,6 +451,158 @@ namespace Cjing3D
 	}
 
 	/// ////////////////////////////////////////////////////////////////////////////////
+	/// ShaderBindingSet
+
+	bool ShaderBindingSetImpl::Initialize()
+	{
+		if (!GPU::IsInitialized()) {
+			return false;
+		}
+
+		GPU::PipelineBindingSetDesc desc = {};
+		desc.mNumCBVs = mHeader.mNumCBVs;
+		desc.mNumSRVs = mHeader.mNumSRVs;
+		desc.mNumUAVs = mHeader.mNumUAVs;
+
+		auto handle = GPU::CreatePipelineBindingSet(&desc);
+		if (!handle) {
+			return false;
+		}
+
+		mBindingSetHandle = handle;
+		mCBVs.resize(mHeader.mNumCBVs);
+		mSRVs.resize(mHeader.mNumSRVs);
+		mUAVs.resize(mHeader.mNumUAVs);
+
+		return true;
+	}
+
+	ShaderBindingSet::ShaderBindingSet()
+	{
+	}
+
+	ShaderBindingSet::ShaderBindingSet(ShaderBindingSet&& rhs)
+	{
+		std::swap(mName, rhs.mName);
+		std::swap(mImpl, rhs.mImpl);
+	}
+
+	ShaderBindingSet& ShaderBindingSet::operator=(ShaderBindingSet&& rhs)
+	{
+		std::swap(mName, rhs.mName);
+		std::swap(mImpl, rhs.mImpl);
+		return *this;
+	}
+
+	ShaderBindingSet::~ShaderBindingSet()
+	{
+		if (mImpl != nullptr)
+		{
+			if (GPU::IsInitialized() && mImpl->mBindingSetHandle) {
+				GPU::DestroyResource(mImpl->mBindingSetHandle);
+			}
+		}
+		CJING_SAFE_DELETE(mImpl);
+	}
+
+	void ShaderBindingSet::Set(const char* name, const GPU::BindingBuffer& buffer)
+	{
+		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
+		
+		I32 slot = 0;
+		I32 handle = GetHandleByName(name, slot);
+		if (!handle) {
+			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			return;
+		}
+		if (!(handle & (I32)ShaderBindingFlags::CBV)) 
+		{
+			Debug::Warning("The binding \"%s\" must is CBV", name);
+			return;
+		}
+
+		I32 index = handle & (I32)ShaderBindingFlags::INDEX_MASK;
+		if (mImpl->mCBVs[index] != buffer && GPU::IsInitialized())
+		{
+			GPU::UpdatePipelineBindings(mImpl->mBindingSetHandle, index, slot, Span(&buffer, 1));
+			mImpl->mCBVs[index] = buffer;
+		}
+	}
+
+	void ShaderBindingSet::Set(const char* name, const GPU::BindingSRV& srv)
+	{
+		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
+
+		I32 slot = 0;
+		I32 handle = GetHandleByName(name, slot);
+		if (!handle) {
+			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			return;
+		}
+		if (!(handle & (I32)ShaderBindingFlags::SRV))
+		{
+			Debug::Warning("The binding \"%s\" must is SRV", name);
+			return;
+		}
+
+		I32 index = handle & (I32)ShaderBindingFlags::INDEX_MASK;
+		if (mImpl->mSRVs[index] != srv && GPU::IsInitialized())
+		{
+			GPU::UpdatePipelineBindings(mImpl->mBindingSetHandle, index, slot, Span(&srv, 1));
+			mImpl->mSRVs[index] = srv;
+		}
+	}
+
+	void ShaderBindingSet::Set(const char* name, const GPU::BindingUAV& uav)
+	{
+		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
+
+		I32 slot = 0;
+		I32 handle = GetHandleByName(name, slot);
+		if (!handle) {
+			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			return;
+		}
+		if (!(handle & (I32)ShaderBindingFlags::CBV))
+		{
+			Debug::Warning("The binding \"%s\" must is UAV", name);
+			return;
+		}
+
+		I32 index = handle & (I32)ShaderBindingFlags::INDEX_MASK;
+		if (mImpl->mUAVs[index] != uav && GPU::IsInitialized())
+		{
+			GPU::UpdatePipelineBindings(mImpl->mBindingSetHandle, index, slot, Span(&uav, 1));
+			mImpl->mUAVs[index] = uav;
+		}
+	}
+
+	ShaderBindingSet::operator bool() const
+	{
+		return mImpl != nullptr;
+	}
+
+	I32 ShaderBindingSet::GetHandleByName(const char* name, I32& slot) const
+	{
+		Debug::CheckAssertion(mImpl != nullptr);
+		auto* factory = Shader::GetFactory();
+		{
+			Concurrency::ScopedReadLock lock(factory->mLock);
+			const auto& handles = factory->mBindingSetHandles[mImpl->mIndex];
+			auto it = std::find_if(handles.begin(), handles.end(),
+				[name](const ShaderBindingHeader& header) {
+					return header.mName == name;
+				});
+			if (it != handles.end()) 
+			{
+				slot = it->mSlot;
+				return it->mHandle;
+			}
+		}
+		return I32(ShaderBindingFlags::INVALID);
+	}
+
+	/// ////////////////////////////////////////////////////////////////////////////////
 	/// Shader
 	Shader::Shader()
 	{
@@ -323,6 +618,31 @@ namespace Cjing3D
 		ShaderTechnique tech;
 		tech.mImpl = mImpl->CreateTechnique(name, desc);
 		return std::move(tech);
+	}
+
+	ShaderBindingSet Shader::CreateBindingSet(const char* name)
+	{
+		ShaderBindingSet ret;
+		auto* factory = Shader::GetFactory();
+		{
+			Concurrency::ScopedWriteLock lock(factory->mLock);
+			auto index = factory->GetBindingSetIndexByName(name);
+			if (index < 0) {
+				return ret;
+			}
+
+			const auto& bindingSetHeader = factory->mBindingSetHeaders[index];
+			ShaderBindingSetImpl* impl = CJING_NEW(ShaderBindingSetImpl);
+			impl->mHeader = bindingSetHeader;
+			impl->mIndex = index;
+			if (!impl->Initialize()) 
+			{
+				CJING_DELETE(impl);
+				impl = nullptr;
+			}
+			ret.mImpl = impl;
+		}
+		return ret;
 	}
 
 	ShaderContext::ShaderContext(GPU::CommandList& cmd)

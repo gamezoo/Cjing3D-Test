@@ -145,6 +145,7 @@ namespace Cjing3D
 	void MainComponent::Update(F32 deltaTime)
 	{
 		PROFILER_CPU_BLOCK("Update");
+		mEngine->UpdateUniverse(*mUniverse, deltaTime);
 		mEngine->Update(deltaTime);
 
 		if (mRenderPath != nullptr) {

@@ -12,6 +12,14 @@ namespace Cjing3D
 
 	using ShaderMap = StaticArray<Set<String>, GPU::SHADERSTAGES::SHADERSTAGES_COUNT>;
 
+	struct ShaderBinding
+	{
+		ShaderBinding(I32 slot, const String& name) : mSlot(slot), mName(name) {}
+
+		I32 mSlot;
+		String mName;
+	};
+
 	struct ShaderCompileOutput
 	{
 		const U8* mByteCode = nullptr;
@@ -19,6 +27,11 @@ namespace Cjing3D
 		String mErrMsg;
 		String mEntryPoint;
 		GPU::SHADERSTAGES mStage;
+
+		// binding
+		DynamicArray<ShaderBinding> mCbuffers;
+		DynamicArray<ShaderBinding> mSRVs;
+		DynamicArray<ShaderBinding> mUAVs;
 
 		explicit operator bool()const { return mByteCodeSize > 0; }
 	};

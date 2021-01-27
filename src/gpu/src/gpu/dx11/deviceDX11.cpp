@@ -1360,13 +1360,13 @@ namespace GPU
 	bool GraphicsDeviceDx11::CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
-		bindingSet->mSRVs.resize(desc->numSRVs);
-		bindingSet->mCBVs.resize(desc->numCBVs);
-		bindingSet->mUAVs.resize(desc->numUAVs);
+		bindingSet->mSRVs.resize(desc->mNumSRVs);
+		bindingSet->mCBVs.resize(desc->mNumCBVs);
+		bindingSet->mUAVs.resize(desc->mNumUAVs);
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSRV> srvs)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
 		I32 bindingIndex = index;
@@ -1391,13 +1391,13 @@ namespace GPU
 			Debug::CheckAssertion(bindingIndex < bindingSet->mSRVs.size());
 			BindingSRVDX11& desc = bindingSet->mSRVs[bindingIndex];
 			desc.mSRV = srv;
-			desc.mSlot = srvs[i].mSlot;
+			desc.mSlot = slot++;
 			desc.mStage = srvs[i].mStage;
 		}
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingUAV> uavs)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
 		I32 bindingIndex = index;
@@ -1424,13 +1424,13 @@ namespace GPU
 			Debug::CheckAssertion(bindingIndex < bindingSet->mUAVs.size());
 			BindingUAVDX11& desc = bindingSet->mUAVs[bindingIndex];
 			desc.mUAV = uav;
-			desc.mSlot = uavs[i].mSlot;
+			desc.mSlot = slot++;
 			desc.mStage = uavs[i].mStage;
 		}
 		return true;
 	}
 	
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingBuffer> cbvs)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
 		I32 bindingIndex = index;
@@ -1444,13 +1444,13 @@ namespace GPU
 			Debug::CheckAssertion(bindingIndex < bindingSet->mCBVs.size());
 			BindingCBVDX11& desc = bindingSet->mCBVs[bindingIndex];
 			desc.mBuffer = cbv;
-			desc.mSlot = cbvs[i].mSlot;
+			desc.mSlot = slot++;
 			desc.mStage = cbvs[i].mStage;
 		}
 		return true;
 	}
 
-	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSAM> sams)
+	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSAM> sams)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
 		I32 bindingIndex = index;
@@ -1464,7 +1464,7 @@ namespace GPU
 			Debug::CheckAssertion(bindingIndex < bindingSet->mSAMs.size());
 			BindingSamplerDX11& desc = bindingSet->mSAMs[bindingIndex];
 			desc.mSampler = sam;
-			desc.mSlot = sams[i].mSlot;
+			desc.mSlot = slot++;
 			desc.mStage = sams[i].mStage;
 		}
 		return true;

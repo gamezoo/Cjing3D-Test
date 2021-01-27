@@ -213,7 +213,6 @@ namespace GPU
 		TEXTURE_VIEW_DIMENSION mDimension = TEXTURE_VIEW_DIMENSION::TEXTURE_VIEW_INVALID;
 		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
 		I32 mSubresourceIndex = -1;
-		I32 mSlot = 0;
 	};
 
 	struct BindingSRV : BindingView {};
@@ -226,7 +225,6 @@ namespace GPU
 		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
 		I32 mOffset = 0;
 		I32 mStride = 0;
-		I32 mSlot = 0;
 	};
 
 	struct BindingFrameAttachment
@@ -263,9 +261,9 @@ namespace GPU
 
 	struct PipelineBindingSetDesc
 	{
-		I32 numSRVs = 0;
-		I32 numCBVs = 0;
-		I32 numUAVs = 0;
+		I32 mNumSRVs = 0;
+		I32 mNumCBVs = 0;
+		I32 mNumUAVs = 0;
 	};
 
 	struct PipelineStateDesc

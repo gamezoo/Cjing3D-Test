@@ -50,9 +50,10 @@ function create_example_app(project_name, source_directory, root_directory, app_
         includedirs { 
             -- local
             project_dir,
-
             -- 3rdParty
-            env_dir .. "3rdparty/",
+            env_dir .. "3rdparty/",       
+            -- shaderInterop
+            env_dir .. "assets/shaders", 
         }
 
         -- 3rd library

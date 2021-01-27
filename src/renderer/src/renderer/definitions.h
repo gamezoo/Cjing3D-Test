@@ -2,6 +2,11 @@
 
 #include "gpu\definitions.h"
 #include "gpu\resource.h"
+#include "math\viewport.h"
+
+#define CJING_SHADER_INTEROP
+#include "shaderInterop\shaderInterop.h"
+#include "shaderInterop\shaderInteropRender.h"
 
 namespace Cjing3D
 {
@@ -16,6 +21,7 @@ namespace Cjing3D
 
 	enum SHADERTYPE
 	{
+		SHADERTYPE_MAIN,
 		SHADERTYPE_IMAGE,
 		SHADERTYPE_COUNT
 	};
@@ -47,4 +53,4 @@ namespace Cjing3D
 			return attachment;
 		}
 	};
-}
+} 

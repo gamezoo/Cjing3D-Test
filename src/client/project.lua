@@ -41,9 +41,10 @@ project (PROJECT_CLIENT_NAME)
     includedirs {
         -- local
         SOURCE_DIR,
-        
         -- 3rdParty
         "../../3rdparty", 
+        -- shaderInterop
+        "../../assets/shaders", 
     }
     
     -- libdirs

@@ -29,10 +29,10 @@ namespace GPU
 		virtual bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc) = 0;
 		virtual bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc) = 0;
 		virtual bool CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc) = 0;
-		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingSRV> srvs) = 0;
-		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingUAV> uavs) = 0;
-		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs) = 0;
-		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, Span<BindingSAM> sams) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs) = 0;
+		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSAM> sams) = 0;
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
 

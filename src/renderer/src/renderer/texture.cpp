@@ -43,7 +43,6 @@ namespace Cjing3D
 			return true;
 		}
 	};
-
 	DEFINE_RESOURCE(Texture, "Texture");
 
 	Texture::Texture()

@@ -430,22 +430,22 @@ namespace GPU
 		}
 	}
 
-	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingSRV> srvs)
+	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs)
 	{
 		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
-		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, srvs));
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, srvs));
 	}
 
-	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingUAV> uavs)
+	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs)
 	{
 		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
-		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, uavs));
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, uavs));
 	}
 
-	bool UpdatePipelineBindings(ResHandle handle, I32 slot, Span<BindingBuffer> cbvs)
+	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs)
 	{
 		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
-		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, slot, cbvs));
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, cbvs));
 	}
 
 	U32 GetFormatStride(FORMAT value)

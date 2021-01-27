@@ -272,6 +272,17 @@ namespace Cjing3D
 			mSize = size;
 		}
 
+		void push(T&& value)
+		{
+			U32 size = mSize;
+			if (size == mCapacity) {
+				Grow();
+			}
+			new((char*)(mData + size)) T(static_cast<T&&>(value));
+			++size;
+			mSize = size;
+		}
+
 		template <typename _Ty> struct remove_reference { typedef _Ty type; };
 		template <typename _Ty> struct remove_reference<_Ty&> { typedef _Ty type; };
 		template <typename _Ty> struct remove_reference<_Ty&&> { typedef _Ty type; };

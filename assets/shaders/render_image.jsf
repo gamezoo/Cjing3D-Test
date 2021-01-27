@@ -1,0 +1,107 @@
+#include "common/common.jsh"
+
+/////////////////////////////////////////////////////////////////////////////
+// BlendState
+RenderTargetBlendState RTBS_ALPHA = 
+{
+    .mBlendEnable = 1,
+    .mSrcBlend = BLEND_SRC_ALPHA,
+    .mDstBlend = BLEND_INV_SRC_ALPHA,
+    .mBlendOp = BLEND_OP_ADD,
+    .mSrcBlendAlpha = BLEND_ONE,
+    .mDstBlendAlpha = BLEND_ONE,
+    .mBlendOpAlpha = BLEND_OP_ADD,
+    .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
+};
+
+RenderTargetBlendState RTBS_PREMULTIPLIED = 
+{
+	.mBlendEnable = 1,
+    .mSrcBlend = BLEND_ONE,
+    .mDstBlend = BLEND_INV_SRC_ALPHA,
+    .mBlendOp = BLEND_OP_ADD,
+    .mSrcBlendAlpha = BLEND_ONE,
+    .mDstBlendAlpha = BLEND_ONE,
+    .mBlendOpAlpha = BLEND_OP_ADD,
+    .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
+};
+
+RenderTargetBlendState RTBS_BLENDMODE_OPAQUE = 
+{
+	.mBlendEnable = 0,
+    .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
+};
+
+RenderTargetBlendState RTBS_BLENDMODE_ADDITIVE = 
+{
+	.mBlendEnable = 1,
+    .mSrcBlend = BLEND_SRC_ALPHA,
+    .mDstBlend = BLEND_ONE,
+    .mBlendOp = BLEND_OP_ADD,
+    .mSrcBlendAlpha = BLEND_ZERO,
+    .mDstBlendAlpha = BLEND_ONE,
+    .mBlendOpAlpha = BLEND_OP_ADD,
+    .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// RasterizerState
+RasterizerState RAS_FULLSCREEN = 
+{
+    .mFillMode = FILL_SOLID,
+    .mCullMode = CULL_NONE,
+    .mFrontCounterClockwise = 0,
+    .mDepthBias = 0,
+    .mDepthBiasClamp = 0,
+    .mSlopeScaleDepthBias = 0,
+    .mDepthClipEnable = 1,
+    .mMultisampleEnable = 0,
+    .mAntialiaseLineEnable = 0,
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// DepthStencilState
+DepthStencilState DSS_FULLSCREEN = 
+{
+    .mDepthEnable = 0,
+    .mStencilEnable = 0,
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// FULLSCREEN FUNCTION
+struct VS_FULLSCREEN_OUTPUT
+{
+    float4 pos : SV_POSITION;
+    float2 uv  : TEXCOORD0;
+};
+
+VS_FULLSCREEN_OUTPUT vs_fullscreen(uint id : SV_VertexID)
+{
+    VS_FULLSCREEN_OUTPUT output;
+	FullScreenTriangle(id, output.pos, output.uv);
+    return output;
+}
+
+float4 ps_fullscreen(VS_FULLSCREEN_OUTPUT input) : SV_TARGET
+{
+    return float4(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// FULLSCREEN TECH
+
+RenderState RS_FULLSCREEN = 
+{
+    .mBlendState = {
+        .mRenderTarget[0] = RTBS_BLENDMODE_OPAQUE,
+    },
+    .mDepthStencilState = DSS_FULLSCREEN,
+    .mRasterizerState = RAS_FULLSCREEN,
+};
+
+Technique TECH_FULLSCREEN = 
+{
+    .mVertexShader = vs_fullscreen,
+    .mPixelShader = ps_fullscreen,
+    .mRenderState = RS_FULLSCREEN
+};

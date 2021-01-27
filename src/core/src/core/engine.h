@@ -45,7 +45,7 @@ namespace Cjing3D
 
 		void StartUniverse(Universe& universe);
 		void StopUniverse(Universe& universe);
-		void UpdateUniverse(Universe& universe);
+		void UpdateUniverse(Universe& universe, F32 deltaTime);
 
 	protected:
 		SharedPtr<GameWindow> mGameWindow = nullptr;
