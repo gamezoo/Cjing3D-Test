@@ -57,7 +57,7 @@ namespace Cjing3D
 						SerializeRenderTargetBlend(blendStateDesc.mRenderTarget[i], archive);
 						});
 				}
-				});
+			});
 		});
 
 		// RasterizerStateDesc

@@ -449,6 +449,12 @@ namespace GPU
 		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, cbvs));
 	}
 
+	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSAM> sams)
+	{
+		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
+		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, sams));
+	}
+
 	void AddStaticSampler(const StaticSampler& sampler)
 	{
 		mImpl->mDevice->AddStaticSampler(sampler);

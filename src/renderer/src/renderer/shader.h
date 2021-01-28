@@ -44,6 +44,7 @@ namespace Cjing3D
 		void Set(const char* name, const GPU::BindingBuffer& buffer);
 		void Set(const char* name, const GPU::BindingSRV& srv);
 		void Set(const char* name, const GPU::BindingUAV& uav);
+		void Set(const char* name, const GPU::BindingSAM& sam);
 
 		explicit operator bool()const;
 

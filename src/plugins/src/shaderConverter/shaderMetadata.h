@@ -19,6 +19,7 @@ namespace ShaderAST
 		DynamicArray<String> mCBVs;
 		DynamicArray<String> mSRVs;
 		DynamicArray<String> mUAVs;
+		DynamicArray<String> mSamplers;
 	};
 
 	template<typename InfoT>

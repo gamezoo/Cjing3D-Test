@@ -928,6 +928,7 @@ namespace Cjing3D
 					output.mCbuffers.emplace(bindDesc.BindPoint, bindDesc.Name);
 					break;
 				case D3D_SIT_SAMPLER:
+					output.mSamplers.emplace(bindDesc.BindPoint, bindDesc.Name);
 					break;
 				case D3D_SIT_TBUFFER:
 				case D3D_SIT_TEXTURE:

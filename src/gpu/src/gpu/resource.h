@@ -217,7 +217,13 @@ namespace GPU
 
 	struct BindingSRV : BindingView {};
 	struct BindingUAV : BindingView {};
-	struct BindingSAM : BindingView {};
+
+	struct BindingSAM 
+	{
+		ResHandle mResource;
+		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
+		GPU::SamplerDesc mDesc;
+	};
 
 	struct BindingBuffer
 	{
@@ -270,6 +276,7 @@ namespace GPU
 		I32 mNumSRVs = 0;
 		I32 mNumCBVs = 0;
 		I32 mNumUAVs = 0;
+		I32 mNumSamplers = 0;
 	};
 
 	struct PipelineStateDesc

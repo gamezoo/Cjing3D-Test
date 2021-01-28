@@ -28,6 +28,10 @@ namespace Cjing3D
 		bool operator!=(const  GPU::BindingUAV& a, const  GPU::BindingUAV& b) {
 			return memcmp(&a, &b, sizeof(a)) != 0; 
 		}
+
+		bool operator!=(const  GPU::BindingSAM& a, const  GPU::BindingSAM& b) {
+			return memcmp(&a, &b, sizeof(a)) != 0;
+		}
 	}
 
 	/// ////////////////////////////////////////////////////////////////////////////////
@@ -129,6 +133,7 @@ namespace Cjing3D
 				totalNumBinding += bindingSetHeader.mNumCBVs;
 				totalNumBinding += bindingSetHeader.mNumSRVs;
 				totalNumBinding += bindingSetHeader.mNumUAVs;
+				totalNumBinding += bindingSetHeader.mNumSamplers;
 			}
 
 			// read binding headers
@@ -247,7 +252,7 @@ namespace Cjing3D
 				I32 bindingHeaderOffset = 0;
 				for (const auto& bindingSetHeader : shaderImpl->mBindingSetHeaders)
 				{
-					I32 totalBindingHeaders = bindingSetHeader.mNumCBVs + bindingSetHeader.mNumSRVs + bindingSetHeader.mNumUAVs;
+					I32 totalBindingHeaders = bindingSetHeader.mNumCBVs + bindingSetHeader.mNumSRVs + bindingSetHeader.mNumUAVs + bindingSetHeader.mNumSamplers;
 
 					auto it = std::find_if(mBindingSetHeaders.begin(), mBindingSetHeaders.end(), 
 						[&bindingSetHeader](const ShaderBindingSetHeader& rhs) {
@@ -503,6 +508,7 @@ namespace Cjing3D
 		desc.mNumCBVs = mHeader.mNumCBVs;
 		desc.mNumSRVs = mHeader.mNumSRVs;
 		desc.mNumUAVs = mHeader.mNumUAVs;
+		desc.mNumSamplers = mHeader.mNumSamplers;
 
 		auto handle = GPU::CreatePipelineBindingSet(&desc);
 		if (!handle) {
@@ -513,6 +519,7 @@ namespace Cjing3D
 		mCBVs.resize(mHeader.mNumCBVs);
 		mSRVs.resize(mHeader.mNumSRVs);
 		mUAVs.resize(mHeader.mNumUAVs);
+		mSamplers.resize(mHeader.mNumSamplers);
 
 		return true;
 	}
@@ -614,6 +621,30 @@ namespace Cjing3D
 		{
 			GPU::UpdatePipelineBindings(mImpl->mBindingSetHandle, index, slot, Span(&uav, 1));
 			mImpl->mUAVs[index] = uav;
+		}
+	}
+
+	void ShaderBindingSet::Set(const char* name, const GPU::BindingSAM& sam)
+	{
+		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
+
+		I32 slot = 0;
+		I32 handle = GetHandleByName(name, slot);
+		if (!handle) {
+			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			return;
+		}
+		if (!(handle & (I32)ShaderBindingFlags::SAMPLER))
+		{
+			Debug::Warning("The binding \"%s\" must is Sampler", name);
+			return;
+		}
+
+		I32 index = handle & (I32)ShaderBindingFlags::INDEX_MASK;
+		if (mImpl->mSamplers[index] != sam && GPU::IsInitialized())
+		{
+			GPU::UpdatePipelineBindings(mImpl->mBindingSetHandle, index, slot, Span(&sam, 1));
+			mImpl->mSamplers[index] = sam;
 		}
 	}
 

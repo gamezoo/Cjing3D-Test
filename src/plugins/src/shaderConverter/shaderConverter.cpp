@@ -282,6 +282,7 @@ namespace Cjing3D
 			AddBindings(compile.mCbuffers, allBindings);
 			AddBindings(compile.mSRVs, allBindings);
 			AddBindings(compile.mUAVs, allBindings);
+			AddBindings(compile.mSamplers, allBindings);
 		}
 		
 		// bindingSetHeaders
@@ -320,6 +321,7 @@ namespace Cjing3D
 			isUsed |= PopulateBindings(bindingSet.mCBVs, ShaderBindingFlags::CBV);
 			isUsed |= PopulateBindings(bindingSet.mSRVs, ShaderBindingFlags::SRV);
 			isUsed |= PopulateBindings(bindingSet.mUAVs, ShaderBindingFlags::UAV);
+			isUsed |= PopulateBindings(bindingSet.mSamplers, ShaderBindingFlags::SAMPLER);
 			if (isUsed)
 			{
 				ShaderBindingSetHeader bindingSetHeader;
@@ -327,6 +329,7 @@ namespace Cjing3D
 				bindingSetHeader.mNumCBVs = bindingSet.mCBVs.size();
 				bindingSetHeader.mNumSRVs = bindingSet.mSRVs.size();
 				bindingSetHeader.mNumUAVs = bindingSet.mUAVs.size();
+				bindingSetHeader.mNumSamplers = bindingSet.mSamplers.size();
 
 				bindingSetHeaders.push(bindingSetHeader);
 				bindingSetHeaderIndexs.push(i);
@@ -409,6 +412,7 @@ namespace Cjing3D
 					AddBindings(compile.mCbuffers, techBindings);
 					AddBindings(compile.mSRVs, techBindings);
 					AddBindings(compile.mUAVs, techBindings);
+					AddBindings(compile.mSamplers, techBindings);
 				}
 			};
 			AddTechBindings(header.mIdxVS);
@@ -435,6 +439,7 @@ namespace Cjing3D
 				bool isUsed = CheckBindingSetUsed(bindingSet.mCBVs);
 				isUsed = isUsed | CheckBindingSetUsed(bindingSet.mSRVs);
 				isUsed = isUsed | CheckBindingSetUsed(bindingSet.mUAVs);
+				isUsed = isUsed | CheckBindingSetUsed(bindingSet.mSamplers);
 				if (isUsed) {
 					header.mBindingSetIndexs[numUsedBindingSlot++] = index;
 				}

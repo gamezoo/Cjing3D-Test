@@ -1363,6 +1363,7 @@ namespace GPU
 		bindingSet->mSRVs.resize(desc->mNumSRVs);
 		bindingSet->mCBVs.resize(desc->mNumCBVs);
 		bindingSet->mUAVs.resize(desc->mNumUAVs);
+		bindingSet->mSAMs.resize(desc->mNumSamplers);
 		return true;
 	}
 

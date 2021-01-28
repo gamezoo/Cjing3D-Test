@@ -41,7 +41,8 @@ namespace Cjing3D
 
 		CBV = 0x1000,
 		SRV = 0x2000,
-		UAV = 0x3000,
+		UAV = 0x4000,
+		SAMPLER = 0x8000,
 
 		TYPE_MASK = 0xf000,
 		INDEX_MASK = 0x0fff,
@@ -61,6 +62,7 @@ namespace Cjing3D
 		I32 mNumCBVs = 0;
 		I32 mNumSRVs = 0;
 		I32 mNumUAVs = 0;
+		I32 mNumSamplers = 0;
 	};
 
 	struct ShaderSamplerStateHeader
@@ -147,6 +149,7 @@ namespace Cjing3D
 		DynamicArray<GPU::BindingBuffer> mCBVs;
 		DynamicArray<GPU::BindingSRV> mSRVs;
 		DynamicArray<GPU::BindingUAV> mUAVs;
+		DynamicArray<GPU::BindingSAM> mSamplers;
 
 		bool Initialize();
 	};

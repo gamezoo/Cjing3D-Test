@@ -446,9 +446,13 @@ namespace ShaderAST
 		{
 			auto& bindingSetInfo = mBindingSets.emplace();
 
-			// check metaData
+			if (auto attr = node->FindAttribute("shared")) {
+				bindingSetInfo.mIsShared = true;
+			}
+
 			for (const auto& memberDecl : node->mBaseType->mMembers)
 			{
+				// check metaData
 				if (memberDecl->mType->mBaseType->mMeta == "CBV") {
 					bindingSetInfo.mCBVs.push(memberDecl->mName);
 				}
@@ -457,6 +461,10 @@ namespace ShaderAST
 				}
 				else if (memberDecl->mType->mBaseType->mMeta == "UAV") {
 					bindingSetInfo.mUAVs.push(memberDecl->mName);
+				}
+
+				if (IsDeclTargetInternalType(memberDecl, "SamplerState")) {
+					bindingSetInfo.mSamplers.push(memberDecl->mName);
 				}
 			}
 		}

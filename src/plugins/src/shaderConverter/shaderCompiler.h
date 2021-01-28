@@ -32,6 +32,7 @@ namespace Cjing3D
 		DynamicArray<ShaderBinding> mCbuffers;
 		DynamicArray<ShaderBinding> mSRVs;
 		DynamicArray<ShaderBinding> mUAVs;
+		DynamicArray<ShaderBinding> mSamplers;
 
 		explicit operator bool()const { return mByteCodeSize > 0; }
 	};
