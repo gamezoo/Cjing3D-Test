@@ -1,13 +1,19 @@
 #include "shader.h"
 #include "shaderImpl.h"
+#include "renderer.h"
 #include "resource\resourceManager.h"
 #include "gpu\gpu.h"
+#include "core\container\hashMap.h"
 
 namespace Cjing3D
 {
 	namespace
 	{
 		bool operator==(const ShaderBindingSetHeader& a, const ShaderBindingSetHeader& b){
+			return memcmp(&a, &b, sizeof(a)) == 0;
+		}
+
+		bool operator==(const ShaderSamplerStateHeader& a, const ShaderSamplerStateHeader& b) {
 			return memcmp(&a, &b, sizeof(a)) == 0;
 		}
 
@@ -32,6 +38,7 @@ namespace Cjing3D
 		Concurrency::RWLock mLock;
 		DynamicArray<ShaderBindingSetHeader> mBindingSetHeaders;
 		DynamicArray<DynamicArray<ShaderBindingHeader>> mBindingSetHandles;
+		HashMap<String, ShaderSamplerStateHeader> mStaticSamplerSlotMap;
 
 	public:
 		I32 GetBindingSetIndexByName(const char* name)
@@ -77,6 +84,7 @@ namespace Cjing3D
 			// | GeneralHeader 
 			// | BindingSetHeaders 
 			// | BindingHeaders 
+			// | SamplerStateHeaders
 			// | BytecodeHeaders 
 			// | TechniqueHeaders 
 			// | RenderStateHeaders
@@ -129,7 +137,19 @@ namespace Cjing3D
 				shaderImpl->mBindingHeaders.resize(totalNumBinding);
 				if (!file.Read(shaderImpl->mBindingHeaders.data(), totalNumBinding * sizeof(ShaderBindingHeader)))
 				{
-					Debug::Warning("Failed to read binding headesr");
+					Debug::Warning("Failed to read binding headers");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+			}
+
+			// samperState headers
+			if (generalHeader.mNumSamplerStates > 0)
+			{
+				shaderImpl->mSamplerStateHeaders.resize(generalHeader.mNumSamplerStates);
+				if (!file.Read(shaderImpl->mSamplerStateHeaders.data(), generalHeader.mNumSamplerStates * sizeof(ShaderSamplerStateHeader)))
+				{
+					Debug::Warning("Failed to read samlper state headers");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -219,7 +239,7 @@ namespace Cjing3D
 			}
 			shaderImpl->mBytecodes.clear();
 
-			// factory records binding set
+			// factory processes
 			{
 				Concurrency::ScopedWriteLock lock(mLock);
 
@@ -263,6 +283,26 @@ namespace Cjing3D
 						Debug::CheckAssertion(newIndex >= 0);
 						header.mBindingSetIndexs[i] = newIndex;
 					}
+				}
+
+				// create static samplers
+				for (const auto& header : shaderImpl->mSamplerStateHeaders)
+				{
+					auto it = mStaticSamplerSlotMap.find(header.mName);
+					if (it != nullptr && *it == header) {
+						continue;
+					}
+
+					GPU::ResHandle handle = GPU::CreateSampler(&header.mSamplerState, header.mName);
+					if (handle == GPU::ResHandle::INVALID_HANDLE)
+					{
+						Debug::Warning("Failed to create static sampler \"%s\"", header.mName);
+						CJING_SAFE_DELETE(shaderImpl);
+						return false;
+					}
+					
+					Renderer::AddStaticSampler(handle, header.mSlot);
+					mStaticSamplerSlotMap.insert(header.mName, header);
 				}
 			}
 

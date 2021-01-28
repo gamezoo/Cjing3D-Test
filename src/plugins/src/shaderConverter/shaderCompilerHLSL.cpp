@@ -62,6 +62,11 @@ namespace Cjing3D
 #endif
 	};
 
+	bool CheckSupportConstantBuffer(I32 major, I32 minor)
+	{
+		return major >= 5 && minor >= 1;
+	}
+
 	/// /////////////////////////////////////////////////////////////////////////////////////////
 	/// shader generator
 	ShaderGeneratorHLSL::ShaderGeneratorHLSL(I32 majorVer, I32 minorVer, bool isAutoRegister) :
@@ -184,8 +189,21 @@ namespace Cjing3D
 				node->mRegister = attribute->GetParam(0);
 			}
 		}
-		if (!node->mRegister.empty()) {
-			WriteCode(" : register(%s)", node->mRegister.c_str());
+		if (!node->mRegister.empty()) 
+		{
+			const auto& meta = node->mType->mBaseType->mMeta;
+			if (meta == "CBV") {
+				WriteCode(" : register(b%s)", node->mRegister.c_str());
+			}
+			else if (meta == "SRV") {
+				WriteCode(" : register(t%s)", node->mRegister.c_str());
+			}
+			else if (meta == "UAV") {
+				WriteCode(" : register(u%s)", node->mRegister.c_str());
+			}
+			else {
+				WriteCode(" : register(%s)", node->mRegister.c_str());
+			}
 		}
 		else if (mIsAutoRegister)
 		{
@@ -196,7 +214,7 @@ namespace Cjing3D
 			else if (meta == "SRV") {
 				WriteCode(" : register(t%i)", mRegSRV++);
 			}
-			else if (meta == "SRV") {
+			else if (meta == "UAV") {
 				WriteCode(" : register(u%i)", mRegUAV++);
 			}
 		}
@@ -208,6 +226,34 @@ namespace Cjing3D
 			WriteCode(node->mValue->mStringValue.c_str());
 		}
 		
+		WriteCode(";");
+		WriteNextLine();
+	}
+
+	void ShaderGeneratorHLSL::WriteSamplerStateCode(ShaderAST::DeclarationNode* node)
+	{
+		for (auto storageClass : node->mTypeStorages) {
+			WriteCode("%s ", storageClass->mName.c_str());
+		}
+
+		// type
+		node->mType->Visit(this);
+		// name
+		WriteCode(" %s", node->mName.c_str());
+		// register
+		if (auto attribute = node->FindAttribute("register"))
+		{
+			if (attribute->GetParamCount() > 0) {
+				node->mRegister = attribute->GetParam(0);
+			}
+		}
+		if (!node->mRegister.empty()) {
+			WriteCode(" : register(s%s)", node->mRegister.c_str());
+		}
+		else if (mIsAutoRegister) {
+			WriteCode(" : register(s%i)", mRegSampler++);
+		}
+
 		WriteCode(";");
 		WriteNextLine();
 	}
@@ -300,17 +346,19 @@ namespace Cjing3D
 		{
 			for (auto* member : node->mBaseType->mMembers) 
 			{
-				if (mSMMajorVer <= 5 && mSMMinorVer <= 0)
+				if (CheckSupportConstantBuffer(mSMMajorVer, mSMMinorVer))
 				{
+					WriteVariableCode(member);
+				}
+				else 
+				{
+					// 不支持ConsantBuffer则改为cbuffer的结构
 					if (member->mType->mBaseType->mName == "ConstantBuffer") {
 						WriteConstantBuffer(member);
 					}
 					else {
 						WriteVariableCode(member);
 					}
-				}
-				else {
-					WriteVariableCode(member);
 				}
 			}
 		}
@@ -338,7 +386,7 @@ namespace Cjing3D
 			}
 		}
 		if (!node->mRegister.empty()) {
-			WriteCode(" : register(%s)", node->mRegister.c_str());
+			WriteCode(" : register(b%s)", node->mRegister.c_str());
 		}
 		else if (mIsAutoRegister)
 		{
@@ -416,6 +464,19 @@ namespace Cjing3D
 			WriteNextLine();
 		}
 
+		// samplerStates
+		if (mSamplerStates.size() > 0)
+		{
+			WriteCode("////////////////////////////////////////////////////////////");
+			WriteNextLine();
+			WriteCode("// SamplerStates");
+			WriteNextLine();
+			for (auto samplerState : mSamplerStates) {
+				WriteSamplerStateCode(samplerState);
+			}
+			WriteNextLine();
+		}
+
 		// bindingSets
 		if (mBindingSets.size() > 0)
 		{
@@ -460,6 +521,24 @@ namespace Cjing3D
 
 	bool ShaderGeneratorHLSL::VisitBegin(ShaderAST::DeclarationNode* node)
 	{
+		if (!node->mIsFunction)
+		{
+			bool isSampler = false;
+			if (auto structNode = node->mType->mBaseType->mStruct) 
+			{
+				auto attrib = structNode->FindAttribute("internal");
+				if (attrib && attrib->GetParamCount() > 0) {
+					isSampler = attrib->GetParam(0) == "SamplerState";
+				}
+			}
+
+			if (isSampler) {
+				mSamplerStates.push(node);
+			}
+			else {
+				mVariables.push(node);
+			}
+		}
 		return false;
 	}
 

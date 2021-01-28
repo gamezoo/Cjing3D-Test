@@ -1,4 +1,5 @@
 #include "common/common.jsh"
+#include "common/samplers.jsh"
 #include "common_bindings.jsh"
 
 /////////////////////////////////////////////////////////////////////////////

@@ -120,6 +120,43 @@ namespace GPU
 		rect.right  = INT32_MAX;
 		rect.bottom = INT32_MAX;
 		mDeviceContext->RSSetScissorRects(1, &rect);
+
+		// bind static samplers
+		for (I32 shaderStage = 0; shaderStage < SHADERSTAGES_COUNT; shaderStage++)
+		{
+			for (const auto& sampler : mDevice.mStaticSamplers)
+			{
+				ID3D11SamplerState* samplerState = sampler.mSampler != ResHandle::INVALID_HANDLE ?
+					mDevice.mSamplers.Read(sampler.mSampler)->mHandle.Get() : nullptr;
+				if (samplerState != nullptr)
+				{
+					SHADERSTAGES stage = SHADERSTAGES(shaderStage);
+					switch (stage)
+					{
+					case SHADERSTAGES_VS:
+						mDeviceContext->VSSetSamplers(sampler.mSlot, 1, &samplerState);
+						break;
+					case SHADERSTAGES_GS:
+						mDeviceContext->GSSetSamplers(sampler.mSlot, 1, &samplerState);
+						break;
+					case SHADERSTAGES_HS:
+						mDeviceContext->HSSetSamplers(sampler.mSlot, 1, &samplerState);
+						break;
+					case SHADERSTAGES_DS:
+						mDeviceContext->DSSetSamplers(sampler.mSlot, 1, &samplerState);
+						break;
+					case SHADERSTAGES_PS:
+						mDeviceContext->PSSetSamplers(sampler.mSlot, 1, &samplerState);
+						break;
+					case SHADERSTAGES_CS:
+						mDeviceContext->CSSetSamplers(sampler.mSlot, 1, &samplerState);
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	void CommandListDX11::RefreshPipelineState()

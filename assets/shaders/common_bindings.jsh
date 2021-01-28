@@ -5,10 +5,10 @@
 
 BindingSet FrameBindings
 {
-    [register(b0)]
+    [register(0)]
     ConstantBuffer<FrameCB> gFrameCB;
 
-    [register(t0)]
+    [register(0)]
     Texture2D<unorm float4> gTexture;
 };
 

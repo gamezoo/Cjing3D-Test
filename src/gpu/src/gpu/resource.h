@@ -227,6 +227,12 @@ namespace GPU
 		I32 mStride = 0;
 	};
 
+	struct StaticSampler
+	{
+		ResHandle mSampler;
+		I32 mSlot = 0;
+	};
+
 	struct BindingFrameAttachment
 	{
 		enum TYPE

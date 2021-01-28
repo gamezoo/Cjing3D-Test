@@ -48,6 +48,8 @@ namespace GPU
 		void SetResourceName(ResHandle resource, const char* name)override;
 		void SetResolution(const U32x2 size)override;
 
+		void AddStaticSampler(const StaticSampler& sampler)override;
+
 		ID3D11Device& GetDevice() { return *mDevice.Get(); }
 		ID3D11DeviceContext& GetDeviceContext() { return *mImmediateContext.Get(); }
 
@@ -71,6 +73,8 @@ namespace GPU
 		ResourcePool<PipelineBindingSetDX11> mPipelineBindingSets;
 		ResourcePool<CommandListDX11*> mCommandLists;
 		ResourcePool<FrameBindingSetDX11> mFrameBindingSets;
+
+		DynamicArray<StaticSampler> mStaticSamplers;
 	};
 }
 }

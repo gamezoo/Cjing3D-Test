@@ -70,7 +70,14 @@ namespace ShaderAST
 	};
 
 	/////////////////////////////////////////////////////////////////////////////
-	// shader technique
+	// shader infos
+	struct ShaderSamplerStateInfo
+	{
+		String mName;
+		I32 mSlot = 0;
+		GPU::SamplerDesc mDesc;
+	};
+	
 	struct RenderTargetBlendStateInfo
 	{
 		String mName;
@@ -113,6 +120,16 @@ namespace ShaderAST
 		ShaderRenderStateInfo mRenderState;
 	};
 
+	/////////////////////////////////////////////////////////////////////////////
+	// Visistors
+	
+	// samplerState
+	class SamplerStateVisitor : public StructVisitor<ShaderSamplerStateInfo>
+	{
+	public:
+		SamplerStateVisitor(ShaderSamplerStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
+	};
+	
 	// blend rendr target
 	class RenderTargetBlendStateInfoVisitor : public StructVisitor<RenderTargetBlendStateInfo>
 	{
@@ -171,15 +188,15 @@ namespace ShaderAST
 		bool IsDeclTechnique(DeclarationNode* node)const;
 		bool IsDeclTargetInternalType(DeclarationNode* node, const char* name)const;
 
-		DynamicArray<ShaderTechniqueInfo>& GetTechniques() { return mTechs; }
 		const DynamicArray<ShaderTechniqueInfo>& GetTechniques()const { return mTechs; }
-		DynamicArray<ShaderRenderStateInfo>& GetRenderStates() { return mRenderStates; }
 		const DynamicArray<ShaderRenderStateInfo>& GetRenderStates()const { return mRenderStates; }
-		DynamicArray<ShaderBindingSetInfo>& GetBindingSets() { return mBindingSets; }
 		const DynamicArray<ShaderBindingSetInfo>& GetBindingSets()const { return mBindingSets; }
-
+		const DynamicArray<ShaderSamplerStateInfo>& GetSamplerStates()const { return mSamplerStates; }
+	
 	public:
 		FileNode* mFileNode = nullptr;
+
+		DynamicArray<ShaderSamplerStateInfo> mSamplerStates;
 		DynamicArray<RenderTargetBlendStateInfo> mRenderTargetBlendStates;
 		DynamicArray<ShaderBlendStateInfo> mShaderBlendStates;
 		DynamicArray<ShaderDepthStencilStateInfo> mShaderDepthStencilStates;

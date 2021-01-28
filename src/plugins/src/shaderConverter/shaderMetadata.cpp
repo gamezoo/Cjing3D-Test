@@ -5,6 +5,47 @@ namespace Cjing3D
 {
 namespace ShaderAST
 {
+	SamplerStateVisitor::SamplerStateVisitor(ShaderSamplerStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata) :
+		StructVisitor(info, fileNode, metadata)
+	{
+		mParseFuncs.insert("mBlendEnable", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mFilter = *EnumTraits::NameToEnum<GPU::FILTER>(node->mStringValue.c_str());
+			return true;
+		});
+		mParseFuncs.insert("mAddressU", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mAddressU = *EnumTraits::NameToEnum<GPU::TEXTURE_ADDRESS_MODE>(node->mStringValue.c_str());
+			return true;
+		});
+		mParseFuncs.insert("mAddressV", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mAddressV = *EnumTraits::NameToEnum<GPU::TEXTURE_ADDRESS_MODE>(node->mStringValue.c_str());
+			return true;
+		});
+		mParseFuncs.insert("mAddressW", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mAddressW = *EnumTraits::NameToEnum<GPU::TEXTURE_ADDRESS_MODE>(node->mStringValue.c_str());
+			return true;
+		});
+		mParseFuncs.insert("mMipLODBias", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mMipLODBias = node->mFloatValue;
+			return true;
+		});
+		mParseFuncs.insert("mMaxAnisotropy", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mMaxAnisotropy = node->mIntValue;
+			return true;
+		});
+		mParseFuncs.insert("mDepthmComparisonFuncFunc", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mComparisonFunc = *EnumTraits::NameToEnum<GPU::ComparisonFunc>(node->mStringValue.c_str());
+			return true;
+		});
+		mParseFuncs.insert("mMinLOD", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mMinLOD = node->mFloatValue;
+			return true;
+		});
+		mParseFuncs.insert("mMaxLOD", [](ShaderSamplerStateInfo& info, I32 index, ValueNode* node) {
+			info.mDesc.mMaxLOD = node->mFloatValue;
+			return true;
+		});
+	}
+
 	RenderTargetBlendStateInfoVisitor::RenderTargetBlendStateInfoVisitor(RenderTargetBlendStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata) :
 		StructVisitor(info, fileNode, metadata)
 	{
@@ -477,6 +518,27 @@ namespace ShaderAST
 			ShaderRasterizerStateVisitor visitor(info, mFileNode, *this);
 			node->mValue->Visit(&visitor);
 			mShaderRasterizerStates.push(info);
+		}
+		else if (IsDeclTargetInternalType(node, "SamplerState"))
+		{
+			// only push static samplerStates
+			auto attrib = node->FindAttribute("static");
+			if (!attrib) {
+				return false;
+			}
+
+			auto reg = node->FindAttribute("register");
+			if (!reg || reg->GetParamCount() <= 0) {
+				return false;
+			}
+
+			ShaderSamplerStateInfo info;
+			info.mName = node->mName;
+		    info.mSlot = atoi(reg->GetParam(0));
+
+			SamplerStateVisitor visitor(info, mFileNode, *this);
+			node->mValue->Visit(&visitor);
+			mSamplerStates.push(info);
 		}
 
 		return false;

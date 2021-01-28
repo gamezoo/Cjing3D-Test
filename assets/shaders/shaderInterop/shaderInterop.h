@@ -1,6 +1,8 @@
 #ifndef SHADER_INTEROP_H
 #define SHADER_INTEROP_H
 
+#include "samplerMapping.h"
+
 #ifdef CJING_SHADER_INTEROP
 
 #include "math\maths.h"

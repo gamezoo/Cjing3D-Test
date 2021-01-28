@@ -23,8 +23,12 @@ namespace Renderer
 		void PreLoadShaders();
 
 	public:
+		Concurrency::RWLock mLock;
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
 		RenderScene* mRenderScene = nullptr;
+
+		// samplerState
+		DynamicArray<GPU::ResHandle> mSamplerStates;
 	};
 
 	RendererImpl::RendererImpl()
@@ -36,6 +40,15 @@ namespace Renderer
 		for (int i = 0; i < SHADERTYPE_COUNT; i++) {
 			mShaders[i].Reset();
 		}
+
+		// release sampler states
+		for (auto samplerState : mSamplerStates) 
+		{
+			if (samplerState != GPU::ResHandle::INVALID_HANDLE) {
+				GPU::DestroyResource(samplerState);
+			}
+		}
+
 		mRenderScene = nullptr;
 	}
 
@@ -137,6 +150,20 @@ namespace Renderer
 			ResourceManager::WaitForResource(shader);
 		}
 		return shader;
+	}
+
+	void AddStaticSampler(const GPU::ResHandle& handle, I32 slot)
+	{
+		Concurrency::ScopedReadLock lock(mImpl->mLock);
+		if (!handle) {
+			return;
+		}
+		mImpl->mSamplerStates.push(handle);
+		
+		GPU::StaticSampler sam;
+		sam.mSampler = handle;
+		sam.mSlot = slot;
+		GPU::AddStaticSampler(sam);
 	}
 
 	void UpdateVisibility(CullResult& visibility, Viewport& viewport, I32 cullingFlag)

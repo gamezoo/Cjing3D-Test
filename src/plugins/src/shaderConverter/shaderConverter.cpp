@@ -334,7 +334,19 @@ namespace Cjing3D
 		}
 
 		//////////////////////////////////////////////////////////////////////////////////
-		// 6. prepare shader headers for writing
+		// 6. Static samplerStates
+		DynamicArray<ShaderSamplerStateHeader> samplerStateHeaders;
+		const auto& samplerStates = shaderMetadata.GetSamplerStates();
+		for (const auto& samplerState : samplerStates)
+		{
+			auto& header = samplerStateHeaders.emplace();
+			CopyString(header.mName, samplerState.mName.c_str());
+			header.mSamplerState = samplerState.mDesc;
+			header.mSlot = samplerState.mSlot;
+		}
+
+		//////////////////////////////////////////////////////////////////////////////////
+		// 7. prepare shader headers for writing
 		DynamicArray<ShaderBytecodeHeader> bytecodeHeaders;
 		I32 offset = 0;
 		for (const auto& compileInfo : compileOutput)
@@ -431,12 +443,13 @@ namespace Cjing3D
 		}
 
 		//////////////////////////////////////////////////////////////////////////////////
-		// 7. write shader
+		// 8. write shader
 
 		// Converted file format:
 		// | GeneralHeader 
 		// | BindingSetHeaders 
 		// | BindingHeaders 
+		// | SamplerStateHeaders
 		// | BytecodeHeaders 
 		// | TechniqueHeaders 
 		// | RenderStateHeaders
@@ -454,6 +467,7 @@ namespace Cjing3D
 		// general header
 		ShaderGeneralHeader generalHeader;
 		generalHeader.mNumBindingSets = bindingSetHeaders.size();
+		generalHeader.mNumSamplerStates = samplerStateHeaders.size();
 		generalHeader.mNumShaders = compileOutput.size();
 		generalHeader.mNumTechniques = techniques.size();
 		generalHeader.mNumRenderStates = renderStates.size();
@@ -464,6 +478,9 @@ namespace Cjing3D
 		}
 		if (!bindingHeaders.empty()) {
 			file->Write(bindingHeaders.data(), bindingHeaders.size() * sizeof(ShaderBindingHeader));
+		}
+		if (!samplerStateHeaders.empty()) {
+			file->Write(samplerStateHeaders.data(), samplerStateHeaders.size() * sizeof(ShaderSamplerStateHeader));
 		}
 		if (!bytecodeHeaders.empty()) {
 			file->Write(bytecodeHeaders.data(), bytecodeHeaders.size() * sizeof(ShaderBytecodeHeader));

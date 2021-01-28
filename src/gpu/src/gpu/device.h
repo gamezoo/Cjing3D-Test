@@ -35,6 +35,7 @@ namespace GPU
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSAM> sams) = 0;
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
+		virtual void AddStaticSampler(const StaticSampler& sampler) = 0;
 
 		U32x2 GetResolution()const { return mResolution; }
 		U32 GetResolutionWidth()const { return mResolution.x(); }

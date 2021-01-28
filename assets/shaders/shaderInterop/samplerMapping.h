@@ -1,0 +1,8 @@
+#ifndef SHADER_SAMPLER_MAPPING_H
+#define SHADER_SAMPLER_MAPPING_H
+
+// Static samplers
+#define SLOT_SS_LINEAR_CLAMP 0
+#define SLOT_SS_LINEAR_WARP  1
+
+#endif

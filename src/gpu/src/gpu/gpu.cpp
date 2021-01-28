@@ -402,10 +402,11 @@ namespace GPU
 		return handle;
 	}
 
-	ResHandle CreateSampler(const SamplerDesc* desc)
+	ResHandle CreateSampler(const SamplerDesc* desc, const char* name)
 	{
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_SAMPLER_STATE);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateSamplerState(handle, desc));
+		SET_DEBUG_NAME(name);
 		return handle;
 	}
 
@@ -446,6 +447,11 @@ namespace GPU
 	{
 		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
 		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, cbvs));
+	}
+
+	void AddStaticSampler(const StaticSampler& sampler)
+	{
+		mImpl->mDevice->AddStaticSampler(sampler);
 	}
 
 	U32 GetFormatStride(FORMAT value)

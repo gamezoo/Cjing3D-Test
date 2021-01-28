@@ -64,6 +64,20 @@ struct RasterizerState
     uint mForcedSampleCount;
 };
 
+[internal("SamplerState")]
+struct SamplerState
+{
+    FILTER mFilter;
+    TEXTURE_ADDRESS_MODE mAddressU;
+    TEXTURE_ADDRESS_MODE mAddressV;
+    TEXTURE_ADDRESS_MODE mAddressW;
+    float mMipLODBias;
+    uint mMaxAnisotropy;
+    ComparisonFunc mComparisonFunc;
+    float mMinLOD;
+    float mMaxLOD;
+};
+
 [internal("RenderState")]
 struct RenderState
 {

@@ -1560,6 +1560,11 @@ namespace GPU
 		}
 	}
 
+	void GraphicsDeviceDx11::AddStaticSampler(const StaticSampler& sampler)
+	{
+		mStaticSamplers.push(sampler);
+	}
+
 	int GraphicsDeviceDx11::CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount)
 	{
 		auto& texDesc = texture.mDesc;

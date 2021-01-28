@@ -36,6 +36,7 @@ namespace Cjing3D
 		void WriteFuncRaw(const char* raw);
 		void WriteStructCode(ShaderAST::StructNode* node);
 		void WriteVariableCode(ShaderAST::DeclarationNode* node);
+		void WriteSamplerStateCode(ShaderAST::DeclarationNode* node);
 		void WriteFunctionCode(ShaderAST::DeclarationNode* node);
 		void WriteParamCode(ShaderAST::DeclarationNode* node);
 		void WriteBindingSet(ShaderAST::StructNode* node);
@@ -52,10 +53,12 @@ namespace Cjing3D
 		I32 mRegCBV = 0;
 		I32 mRegSRV = 0;
 		I32 mRegUAV = 0;
+		I32 mRegSampler = 0;
 
 		Set<String> mAvailableAttributes;
 		DynamicArray<ShaderAST::StructNode*> mStructs;
 		DynamicArray<ShaderAST::StructNode*> mBindingSets;
+		DynamicArray<ShaderAST::DeclarationNode*> mSamplerStates;
 		DynamicArray<ShaderAST::DeclarationNode*> mVariables;
 	};
 

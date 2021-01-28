@@ -25,6 +25,7 @@ namespace Cjing3D
 		ShaderRef GetShader(SHADERTYPE type);
 		ShaderRef LoadShader(const char* path, bool waitFor = false);
 
+		void AddStaticSampler(const GPU::ResHandle& handle, I32 slot);
 		void UpdateVisibility(CullResult& visibility, Viewport& viewport, I32 cullingFlag);
 	}
 }

@@ -23,6 +23,7 @@ namespace Cjing3D
 		I32 mMinor = MINOR;
 
 		I32 mNumBindingSets = 0;
+		I32 mNumSamplerStates = 0;
 		I32 mNumShaders = 0;
 		I32 mNumTechniques = 0;
 		I32 mNumRenderStates = 0;
@@ -62,6 +63,13 @@ namespace Cjing3D
 		I32 mNumUAVs = 0;
 	};
 
+	struct ShaderSamplerStateHeader
+	{
+		char mName[SHADER_MAX_NAME_LENGTH] = { '\0' };
+		I32  mSlot = 0;
+		GPU::SamplerDesc mSamplerState;
+	};
+
 	struct ShaderBytecodeHeader
 	{
 		GPU::SHADERSTAGES mStage = GPU::SHADERSTAGES_COUNT;
@@ -87,9 +95,12 @@ namespace Cjing3D
 	{
 	public:
 		String mName;
+
+		// headers
 		ShaderGeneralHeader mGeneralHeader;
 		DynamicArray<ShaderBindingSetHeader> mBindingSetHeaders;
 		DynamicArray<ShaderBindingHeader> mBindingHeaders;
+		DynamicArray<ShaderSamplerStateHeader> mSamplerStateHeaders;
 		DynamicArray<ShaderBytecodeHeader> mBytecodeHeaders;
 		DynamicArray<ShaderTechniqueHeader> mTechniqueHeaders;
 		DynamicArray<RenderStateHeader> mRenderStateHeaders;

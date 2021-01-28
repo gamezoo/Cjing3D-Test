@@ -108,6 +108,8 @@ namespace Cjing3D
 		{"CullMode", GPU::CullMode::CULL_COUNT },
 		{"DepthWriteMask", GPU::DepthWriteMask::DEPTH_WRITE_MASK_COUNT },
 		{"ColorWriteEnable", GPU::ColorWriteEnable::COLOR_WRITE_ENABLE_ALL},
+		{"FILTER", GPU::FILTER::FILTER_COUNT},
+		{"TEXTURE_ADDRESS_MODE", GPU::TEXTURE_ADDRESS_MODE::TEXTURE_ADDRESS_COUNT},
 	};
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +263,7 @@ namespace Cjing3D
 
 	ShaderAST::Token ShaderParser::GetNextToken()
 	{
-		if (stb_c_lexer_get_token(&mLexer))
+		if (stb_c_lexer_get_token(&mLexer) > 0)
 		{
 			ShaderAST::Token ret;
 			if (mLexer.token == CLEX_parse_error) {
@@ -284,12 +286,12 @@ namespace Cjing3D
 				break;
 			case CLEX_intlit:
 				ret.mType = ShaderAST::TokenType::INT;
-				ret.mValue = mLexer.string;
+				ret.mValue = String(mLexer.where_firstchar, mLexer.where_lastchar + 1);
 				ret.mInt = mLexer.int_number;
 				break;
 			case CLEX_floatlit: 
 				ret.mType = ShaderAST::TokenType::FLOAT;
-				ret.mValue = mLexer.string;
+				ret.mValue = String(mLexer.where_firstchar, mLexer.where_lastchar + 1);
 				ret.mFloat = (F32)mLexer.real_number;
 				break;
 			case CLEX_dqstring: 
@@ -632,7 +634,6 @@ namespace Cjing3D
 		ShaderAST::AttributeNode* attributeNode = AddNode<ShaderAST::AttributeNode>(token.mValue);
 
 		NEXT_TOKEN();
-		
 		if (token.mValue == "(")
 		{
 			String stringParam;
