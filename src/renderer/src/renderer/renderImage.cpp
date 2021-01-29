@@ -22,17 +22,26 @@ namespace Cjing3D
 		if (!shader) {
 			return;
 		}
+		cmd.Event("Image");
+
+		// bind resources
+		ShaderBindingContext bindingContext(cmd);
+		ShaderBindingSet bindingSet = shader->CreateBindingSet("ImageBindingSet");
+		bindingSet.Set("gImageTextureBase", GPU::Binding::Texture(tex, GPU::SHADERSTAGES_PS));
 
 		// fullscreen
 		if (param.IsFullScreen())
 		{
 			ShaderTechniqueDesc desc = {};
 			desc.mPrimitiveTopology = GPU::TRIANGLESTRIP;
-
 			auto tech = shader->CreateTechnique("TECH_FULLSCREEN", desc);
-			auto pipelineState = tech.GetPipelineState();
-			cmd.BindPipelineState(pipelineState);
-			cmd.Draw(3, 0);
+
+			if (bindingContext.Bind(tech, bindingSet))
+			{
+				auto pipelineState = tech.GetPipelineState();
+				cmd.BindPipelineState(pipelineState);
+				cmd.Draw(3, 0);
+			}
 		}
 	}
 }

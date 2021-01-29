@@ -279,6 +279,22 @@ namespace GPU
 		I32 mNumSamplers = 0;
 	};
 
+	struct PipelineBinding
+	{
+		GPU::ResHandle mPipelineBindingSet;
+
+		struct Range
+		{
+			I32 mSrcOffset = 0;
+			I32 mDstOffset = 0;
+			I32 mNum = 0;
+		};
+		Range mRangeCBVs;
+		Range mRangeSRVs;
+		Range mRangeUAVs;
+		Range mRangeSamplers;
+	};
+
 	struct PipelineStateDesc
 	{
 		ResHandle mVS;
@@ -295,14 +311,14 @@ namespace GPU
 
 	namespace Binding
 	{
-		BindingBuffer ConstantBuffer(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingBuffer ConstantBuffer(ResHandle handle, SHADERSTAGES stage);
 		BindingBuffer VertexBuffer(ResHandle handle, I32 offset, I32 stride);
 		BindingBuffer IndexBuffer(ResHandle handle, I32 offset);
-		BindingSRV    Texture(ResHandle handle, SHADERSTAGES stage, I32 slot);
-		BindingSRV    Buffer(ResHandle handle, SHADERSTAGES stage, I32 slot);
-		BindingUAV    RWTexture(ResHandle handle, SHADERSTAGES stage, I32 slot);
-		BindingUAV    RWBuffer(ResHandle handle, SHADERSTAGES stage, I32 slot);
-		BindingSAM    Sampler(ResHandle handle, SHADERSTAGES stage, I32 slot);
+		BindingSRV    Texture(ResHandle handle, SHADERSTAGES stage, I32 subresourceIndex = -1);
+		BindingSRV    Buffer(ResHandle handle, SHADERSTAGES stage);
+		BindingUAV    RWTexture(ResHandle handle, SHADERSTAGES stage, I32 subresourceIndex = -1);
+		BindingUAV    RWBuffer(ResHandle handle, SHADERSTAGES stage);
+		BindingSAM    Sampler(ResHandle handle, SHADERSTAGES stage);
 	}
 }
 }

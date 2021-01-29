@@ -95,7 +95,11 @@ namespace Cjing3D
 		U32 targetFrameRate = initConfig.mTargetFrameRate;
 		U32 isLockFrameRate = initConfig.mIsLockFrameRate;
 
-		if (!mGameWindow->IsWindowActive()) {
+		bool isActive = mGameWindow->IsWindowActive();
+#if DEBUG
+		isActive = true;
+#endif
+		if (!isActive) {
 			mDeltaTimeAccumulator = 0;
 		}
 		else {

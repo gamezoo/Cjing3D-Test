@@ -48,6 +48,7 @@ namespace Platform {
 	bool ShellExecuteOpen(const char* path, const char* args);
 	bool ShellExecuteOpenAndWait(const char* path, const char* args);
 	void CallSystem(const char* cmd);
+	I32  GetDPI();
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// window

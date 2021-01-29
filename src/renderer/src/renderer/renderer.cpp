@@ -119,8 +119,11 @@ namespace Renderer
 		mImpl->mRenderScene = renderScene.Get();
 	}
 
-	void Update(CullResult& visibility, F32 deltaTime)
+	void Update(CullResult& visibility, FrameCB& frameCB, F32 deltaTime)
 	{
+		auto screenSize = GPU::GetScreenSize();
+		frameCB.gFrameScreenSize = screenSize;
+		frameCB.gFrameScreenSizeRCP = F32x2(1.0f / screenSize[0], 1.0f / screenSize[1]);
 	}
 
 	void PresentBegin(GPU::CommandList& cmd)

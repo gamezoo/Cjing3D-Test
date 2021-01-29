@@ -69,7 +69,7 @@ namespace Cjing3D
 		Renderer::UpdateVisibility(mVisibility, mViewport, cullingFlag);
 
 		// renderer update
-		Renderer::Update(mVisibility, dt);
+		Renderer::Update(mVisibility, mFrameCB, dt);
 
 		// update viewport
 		mViewport.Update();

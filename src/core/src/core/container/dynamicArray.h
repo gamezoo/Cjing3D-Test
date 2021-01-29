@@ -339,6 +339,18 @@ namespace Cjing3D
 			}
 		}
 
+		void pop(I32 count)
+		{
+			if (mSize > 0 && count > 0)
+			{
+				count = std::min((I32)mSize, count);
+				for (int i = 1; i <= count; i++) {
+					mData[mSize - i].~T();
+				}
+				mSize -= count;
+			}
+		}
+
 		void resize(U32 size)
 		{
 			if (size > mCapacity) {

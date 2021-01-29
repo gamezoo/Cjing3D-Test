@@ -38,11 +38,13 @@ namespace GPU
 		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
 		bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc)override;
 		bool CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)override;
-		
+		bool CreateTempPipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)override;
+
 		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs)override;
 		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs)override;
 		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs)override;
 		bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSAM> sams)override;
+		bool CopyPipelineBindings(const PipelineBinding& dst, const PipelineBinding& src)override;
 
 		void DestroyResource(ResHandle handle)override;
 		void SetResourceName(ResHandle resource, const char* name)override;

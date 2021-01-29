@@ -445,6 +445,7 @@ namespace ShaderAST
 		if (node->mTypeName == "BindingSet")
 		{
 			auto& bindingSetInfo = mBindingSets.emplace();
+			bindingSetInfo.mName = node->mName;
 
 			if (auto attr = node->FindAttribute("shared")) {
 				bindingSetInfo.mIsShared = true;

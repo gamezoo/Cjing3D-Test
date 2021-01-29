@@ -13,6 +13,14 @@ namespace Cjing3D
 		GPU::PRIMITIVE_TOPOLOGY mPrimitiveTopology = GPU::TRIANGLELIST;
 	};
 
+	struct TechniqueBindingSetsInfo
+	{
+		I32 mNumCBVs = 0;
+		I32 mNumSRVs = 0;
+		I32 mNumUAVs = 0;
+		I32 mNumSamplers = 0;
+	};
+
 	class ShaderTechnique
 	{
 	public:
@@ -29,6 +37,7 @@ namespace Cjing3D
 
 	private:
 		friend class Shader;
+		friend class ShaderBindingContext;
 
 		struct ShaderTechniqueImpl* mImpl = nullptr;
 	};
@@ -50,6 +59,7 @@ namespace Cjing3D
 
 	private:
 		friend class Shader;
+		friend class ShaderBindingContext;
 
 		ShaderBindingSet(const ShaderBindingSet&rhs) = delete;
 		ShaderBindingSet& operator=(const ShaderBindingSet& rhs) = delete;
@@ -58,6 +68,27 @@ namespace Cjing3D
 
 		String mName;
 		struct ShaderBindingSetImpl* mImpl = nullptr;
+	};
+
+	class ShaderBindingContext
+	{
+	public:
+		ShaderBindingContext(GPU::CommandList& cmd);
+		~ShaderBindingContext();
+
+		template<typename... Args>
+		bool Bind(const ShaderTechnique& technique, Args&&... args)
+		{
+			(AddImpl(args), ...);
+			return BindImpl(technique);
+		}
+
+	private:
+		void AddImpl(const ShaderBindingSet& bindingSet);
+		bool BindImpl(const ShaderTechnique& technique);
+
+		struct ShaderBindingContextImpl* mImpl = nullptr;
+		GPU::CommandList& mCommandList;
 	};
 
 	class Shader : public Resource
@@ -79,11 +110,4 @@ namespace Cjing3D
 		struct ShaderImpl* mImpl = nullptr;
 	};
 	using ShaderRef = ResRef<Shader>;
-
-	class ShaderContext
-	{
-	public:
-		ShaderContext(GPU::CommandList& cmd);
-		~ShaderContext();
-	};
 }

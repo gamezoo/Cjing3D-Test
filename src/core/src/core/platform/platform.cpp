@@ -225,6 +225,12 @@ namespace Platform {
 		system(cmd);
 	}
 
+	I32 GetDPI()
+	{
+		const HDC hdc = GetDC(NULL);
+		return GetDeviceCaps(hdc, LOGPIXELSX);
+	}
+
 	bool ShellExecuteCmdAndWait(const char* path, const char* args)
 	{
 		return false;

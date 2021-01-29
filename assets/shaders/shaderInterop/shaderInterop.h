@@ -2,6 +2,7 @@
 #define SHADER_INTEROP_H
 
 #include "samplerMapping.h"
+#include "resourceMapping.h"
 
 #ifdef CJING_SHADER_INTEROP
 

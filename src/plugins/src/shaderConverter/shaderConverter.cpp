@@ -325,6 +325,7 @@ namespace Cjing3D
 			if (isUsed)
 			{
 				ShaderBindingSetHeader bindingSetHeader;
+				CopyString(bindingSetHeader.mName, bindingSet.mName);
 				bindingSetHeader.mIsShared = bindingSet.mIsShared;
 				bindingSetHeader.mNumCBVs = bindingSet.mCBVs.size();
 				bindingSetHeader.mNumSRVs = bindingSet.mSRVs.size();
@@ -333,6 +334,13 @@ namespace Cjing3D
 
 				bindingSetHeaders.push(bindingSetHeader);
 				bindingSetHeaderIndexs.push(i);
+			}
+			else
+			{
+				// 需要将未使用的BindingSet信息删除
+				I32 totalNumRes = bindingSet.mCBVs.size() + bindingSet.mSRVs.size() +
+					bindingSet.mUAVs.size() + bindingSet.mSamplers.size();
+				bindingHeaders.pop(totalNumRes);
 			}
 		}
 

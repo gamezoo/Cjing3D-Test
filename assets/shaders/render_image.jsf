@@ -1,8 +1,8 @@
 #include "common/common.jsh"
 #include "common/samplers.jsh"
+#include "shaderInterop/shaderInterop.h"
 
 /////////////////////////////////////////////////////////////////////////////
-// BlendState
 RenderTargetBlendState RTBS_ALPHA = 
 {
     .mBlendEnable = 1,
@@ -45,8 +45,6 @@ RenderTargetBlendState RTBS_BLENDMODE_ADDITIVE =
     .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
 };
 
-/////////////////////////////////////////////////////////////////////////////
-// RasterizerState
 RasterizerState RAS_FULLSCREEN = 
 {
     .mFillMode = FILL_SOLID,
@@ -60,8 +58,6 @@ RasterizerState RAS_FULLSCREEN =
     .mAntialiaseLineEnable = 0,
 };
 
-/////////////////////////////////////////////////////////////////////////////
-// DepthStencilState
 DepthStencilState DSS_FULLSCREEN = 
 {
     .mDepthEnable = 0,
@@ -70,22 +66,29 @@ DepthStencilState DSS_FULLSCREEN =
 
 /////////////////////////////////////////////////////////////////////////////
 // FULLSCREEN FUNCTION
-struct VS_FULLSCREEN_OUTPUT
+
+BindingSet ImageBindingSet
+{
+    [register(SLOT_TEX_IMAGE_BASE)]
+    Texture2D<float4> gImageTextureBase;
+};
+
+struct VS_FullScreenOutput
 {
     float4 pos : SV_POSITION;
     float2 uv  : TEXCOORD0;
 };
 
-VS_FULLSCREEN_OUTPUT vs_fullscreen(uint id : SV_VertexID)
+VS_FullScreenOutput VS_FullScreen(uint id : SV_VertexID)
 {
-    VS_FULLSCREEN_OUTPUT output;
+    VS_FullScreenOutput output;
 	FullScreenTriangle(id, output.pos, output.uv);
     return output;
 }
 
-float4 ps_fullscreen(VS_FULLSCREEN_OUTPUT input) : SV_TARGET
+float4 PS_FullScreen(VS_FullScreenOutput input) : SV_TARGET
 {
-    return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    return gImageTextureBase.SampleLevel(SS_LINEAR_CLAMP, input.uv, 0) * float4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -102,7 +105,7 @@ RenderState RS_FULLSCREEN =
 
 Technique TECH_FULLSCREEN = 
 {
-    .mVertexShader = vs_fullscreen,
-    .mPixelShader = ps_fullscreen,
+    .mVertexShader = VS_FullScreen,
+    .mPixelShader = PS_FullScreen,
     .mRenderState = RS_FULLSCREEN
 };

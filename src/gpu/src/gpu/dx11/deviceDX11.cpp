@@ -1367,6 +1367,16 @@ namespace GPU
 		return true;
 	}
 
+	bool GraphicsDeviceDx11::CreateTempPipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc)
+	{
+		auto bindingSet = mPipelineBindingSets.Write(handle);
+		bindingSet->mSRVs.resize(desc->mNumSRVs);
+		bindingSet->mCBVs.resize(desc->mNumCBVs);
+		bindingSet->mUAVs.resize(desc->mNumUAVs);
+		bindingSet->mSAMs.resize(desc->mNumSamplers);
+		return true;
+	}
+
 	bool GraphicsDeviceDx11::UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs)
 	{
 		auto bindingSet = mPipelineBindingSets.Write(handle);
@@ -1468,6 +1478,43 @@ namespace GPU
 			desc.mSlot = slot++;
 			desc.mStage = sams[i].mStage;
 		}
+		return true;
+	}
+
+	bool GraphicsDeviceDx11::CopyPipelineBindings(const PipelineBinding& dst, const PipelineBinding& src)
+	{
+		if (dst.mPipelineBindingSet == src.mPipelineBindingSet) {
+			return true;
+		}
+
+		auto dstPbs = mPipelineBindingSets.Write(dst.mPipelineBindingSet);
+		auto srcPbs = mPipelineBindingSets.Read(src.mPipelineBindingSet);
+		
+		if (dst.mRangeCBVs.mNum > 0)
+		{
+			for (int i = 0; i < dst.mRangeCBVs.mNum; i++) {
+				dstPbs->mCBVs[dst.mRangeCBVs.mDstOffset + i] = srcPbs->mCBVs[src.mRangeCBVs.mSrcOffset + i];
+			}
+		}
+		if (dst.mRangeSRVs.mNum > 0)
+		{
+			for (int i = 0; i < dst.mRangeSRVs.mNum; i++) {
+				dstPbs->mSRVs[dst.mRangeSRVs.mDstOffset + i] = srcPbs->mSRVs[src.mRangeSRVs.mSrcOffset + i];
+			}
+		}
+		if (dst.mRangeUAVs.mNum > 0)
+		{
+			for (int i = 0; i < dst.mRangeUAVs.mNum; i++) {
+				dstPbs->mUAVs[dst.mRangeUAVs.mDstOffset + i] = srcPbs->mUAVs[src.mRangeUAVs.mSrcOffset + i];
+			}
+		}
+		if (dst.mRangeSamplers.mNum > 0)
+		{
+			for (int i = 0; i < dst.mRangeSamplers.mNum; i++) {
+				dstPbs->mSAMs[dst.mRangeSamplers.mDstOffset + i] = srcPbs->mSAMs[src.mRangeSamplers.mSrcOffset + i];
+			}
+		}
+
 		return true;
 	}
 

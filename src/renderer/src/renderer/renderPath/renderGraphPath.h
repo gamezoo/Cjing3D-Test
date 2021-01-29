@@ -33,5 +33,6 @@ namespace Cjing3D
 
 		Viewport mViewport;
 		CullResult mVisibility;
+		FrameCB mFrameCB;
 	};
 }

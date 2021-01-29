@@ -154,6 +154,11 @@ namespace Cjing3D
 		bool Initialize();
 	};
 
+	struct ShaderBindingContextImpl
+	{
+		DynamicArray<ShaderBindingSetImpl*> mBindingSets;
+	};
+
 	struct ShaderSerializer
 	{
 		// renderTargetBlend

@@ -38,18 +38,21 @@ namespace GPU
 	ResHandle CreateSampler(const SamplerDesc* desc, const char* name = nullptr);
 	ResHandle CreatePipelineState(const PipelineStateDesc* desc);
 	ResHandle CreatePipelineBindingSet(const PipelineBindingSetDesc* desc);
+	ResHandle CreateTempPipelineBindingSet(const PipelineBindingSetDesc* desc);
 	void      DestroyResource(ResHandle handle);
 
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSAM> sams);
+	void CopyPipelineBindings(const PipelineBinding& dst, const PipelineBinding& src);
 
 	void AddStaticSampler(const StaticSampler& sampler);
 
 	U32  GetFormatStride(FORMAT value);
 	bool IsFormatSupportStencil(FORMAT value);
 	U32x2 GetResolution();
+	F32x2 GetScreenSize();
 
 }
 }

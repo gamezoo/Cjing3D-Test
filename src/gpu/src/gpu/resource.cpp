@@ -14,10 +14,11 @@ namespace GPU
 
 	namespace Binding
 	{
-		BindingBuffer ConstantBuffer(ResHandle handle, SHADERSTAGES stage, I32 slot)
+		BindingBuffer ConstantBuffer(ResHandle handle, SHADERSTAGES stage)
 		{
 			BindingBuffer binding;
-
+			binding.mResource = handle;
+			binding.mStage = stage;
 			return binding;
 		}
 
@@ -35,36 +36,45 @@ namespace GPU
 			return binding;
 		}
 
-		BindingSRV Texture(ResHandle handle, SHADERSTAGES stage, I32 slot) 
+		BindingSRV Texture(ResHandle handle, SHADERSTAGES stage, I32 subresourceIndex)
 		{
 			BindingSRV binding;
-
+			binding.mResource = handle;
+			binding.mStage = stage;
+			binding.mSubresourceIndex = subresourceIndex;
 			return binding;
 		}
 
-		BindingSRV Buffer(ResHandle handle, SHADERSTAGES stage, I32 slot)
+		BindingSRV Buffer(ResHandle handle, SHADERSTAGES stage)
 		{
 			BindingSRV binding;
-
+			binding.mResource = handle;
+			binding.mStage = stage;
 			return binding;
 		}
 
-		BindingUAV RWTexture(ResHandle handle, SHADERSTAGES stage, I32 slot)
+		BindingUAV RWTexture(ResHandle handle, SHADERSTAGES stage, I32 subresourceIndex)
 		{
 			BindingUAV binding;
-
+			binding.mResource = handle;
+			binding.mStage = stage;
+			binding.mSubresourceIndex = subresourceIndex;
 			return binding;
 		}
 
-		BindingSAM Sampler(ResHandle handle, SHADERSTAGES stage, I32 slot)
+		BindingSAM Sampler(ResHandle handle, SHADERSTAGES stage)
 		{
+			BindingUAV binding;
+			binding.mResource = handle;
+			binding.mStage = stage;
 			return BindingSAM();
 		}
 
-		BindingUAV RWBuffer(ResHandle handle, SHADERSTAGES stage, I32 slot)
+		BindingUAV RWBuffer(ResHandle handle, SHADERSTAGES stage)
 		{
 			BindingUAV binding;
-
+			binding.mResource = handle;
+			binding.mStage = stage;
 			return binding;
 		}
 	}

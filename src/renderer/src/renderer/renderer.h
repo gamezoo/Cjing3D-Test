@@ -17,7 +17,7 @@ namespace Cjing3D
 		bool IsInitialized();
 		void Uninitialize();
 		void InitRenderScene(Engine& engine, Universe& universe);
-		void Update(CullResult& visibility, F32 deltaTime);
+		void Update(CullResult& visibility, FrameCB& frameCB, F32 deltaTime);
 		void PresentBegin(GPU::CommandList& cmd);
 		void PresentEnd();
 		void EndFrame();

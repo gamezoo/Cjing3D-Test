@@ -258,7 +258,7 @@ namespace Cjing3D
 						[&bindingSetHeader](const ShaderBindingSetHeader& rhs) {
 							return bindingSetHeader == rhs;
 						});
-					if (it == mBindingSetHeaders.end())
+					if (it == nullptr || it == mBindingSetHeaders.end())
 					{
 						mBindingSetHeaders.push(bindingSetHeader);
 
@@ -662,15 +662,142 @@ namespace Cjing3D
 			const auto& handles = factory->mBindingSetHandles[mImpl->mIndex];
 			auto it = std::find_if(handles.begin(), handles.end(),
 				[name](const ShaderBindingHeader& header) {
-					return header.mName == name;
+					return EqualString(header.mName, name);
 				});
-			if (it != handles.end()) 
+			if (it != nullptr && it != handles.end())
 			{
 				slot = it->mSlot;
 				return it->mHandle;
 			}
 		}
 		return I32(ShaderBindingFlags::INVALID);
+	}
+
+
+	/// ////////////////////////////////////////////////////////////////////////////////
+	/// ShaderBindingContext
+	ShaderBindingContext::ShaderBindingContext(GPU::CommandList& cmd) : 
+		mCommandList(cmd)
+	{
+		auto* factory = Shader::GetFactory();
+		{
+			Concurrency::ScopedWriteLock lock(factory->mLock);
+			mImpl = CJING_NEW(ShaderBindingContextImpl);
+			mImpl->mBindingSets.resize(factory->mBindingSetHeaders.size());
+		}
+	}
+
+	ShaderBindingContext::~ShaderBindingContext()
+	{
+		CJING_SAFE_DELETE(mImpl);
+	}
+
+	void ShaderBindingContext::AddImpl(const ShaderBindingSet& bindingSet)
+	{
+		I32 index = bindingSet.mImpl->mIndex;
+		if (index < 0)
+		{
+			Debug::Warning("Failed to bind bindingSet \"%s\"", bindingSet.mName.c_str());
+			return;
+		}
+		mImpl->mBindingSets[index] = bindingSet.mImpl;
+	}
+
+	bool ShaderBindingContext::BindImpl(const ShaderTechnique& technique)
+	{
+		if (technique.mImpl->mHeader.mNumBindingSet == 1)
+		{
+			I32 index = technique.mImpl->mHeader.mBindingSetIndexs[0];
+			if (index <= 0) {
+				return false;
+			}
+
+			const ShaderBindingSetImpl* bindingSet = mImpl->mBindingSets[index];
+			if (bindingSet == nullptr)
+			{
+				const auto* factory = Shader::GetFactory();
+				const auto& bindingSetHeader = factory->mBindingSetHeaders[index];
+				Debug::Warning("Expect binding set \"%s\", but not found.", bindingSetHeader.mName);
+				return false;
+			}
+
+			mCommandList.BindPipelineBindingSet(bindingSet->mBindingSetHandle);
+			return true;
+		}
+
+		// 当存在多个BindingSet时，需要创建temp pipelineBindingSet
+		// 并将所有的用到的BindingSet合并到temp pipelineBindingSet
+		GPU::PipelineBindingSetDesc tempDesc = {};
+		for (const auto& index : technique.mImpl->mHeader.mBindingSetIndexs)
+		{
+			if (index <= 0) {
+				continue;
+			}
+
+			const ShaderBindingSetImpl* bindingSet = mImpl->mBindingSets[index];
+			if (bindingSet == nullptr)
+			{
+				const auto* factory = Shader::GetFactory();
+				const auto& bindingSetHeader = factory->mBindingSetHeaders[index];
+				Debug::Warning("Expect binding set \"%s\", but not found.", bindingSetHeader.mName);
+				return false;
+			}
+
+			tempDesc.mNumCBVs += bindingSet->mCBVs.size();
+			tempDesc.mNumSRVs += bindingSet->mSRVs.size();
+			tempDesc.mNumUAVs += bindingSet->mUAVs.size();
+			tempDesc.mNumSamplers += bindingSet->mSamplers.size();
+		}
+
+		auto pipelineBindingSet = GPU::CreateTempPipelineBindingSet(&tempDesc);
+		I32 offsetCBVs = 0;
+		I32 offsetSRVs = 0;
+		I32 offsetUAVs = 0;
+		I32 offsetSamplers = 0;
+		for (const auto& index : technique.mImpl->mHeader.mBindingSetIndexs)
+		{
+			if (index <= 0) {
+				continue;
+			}
+
+			const ShaderBindingSetImpl* bindingSet = mImpl->mBindingSets[index];
+			if (bindingSet == nullptr) {
+				return false;
+			}
+
+			GPU::PipelineBinding dstPb = {};
+			dstPb.mPipelineBindingSet = pipelineBindingSet;
+			// cbv
+			dstPb.mRangeCBVs.mNum = bindingSet->mCBVs.size();
+			dstPb.mRangeCBVs.mDstOffset = offsetCBVs;
+			offsetCBVs += dstPb.mRangeCBVs.mNum;
+			// srv
+			dstPb.mRangeSRVs.mNum = bindingSet->mSRVs.size();
+			dstPb.mRangeSRVs.mDstOffset = offsetSRVs;
+			offsetSRVs += dstPb.mRangeSRVs.mNum;
+			// uav
+			dstPb.mRangeUAVs.mNum = bindingSet->mUAVs.size();
+			dstPb.mRangeUAVs.mDstOffset = offsetUAVs;
+			offsetUAVs += dstPb.mRangeUAVs.mNum;
+			// sampler
+			dstPb.mRangeSamplers.mNum = bindingSet->mSamplers.size();
+			dstPb.mRangeSamplers.mDstOffset = offsetSamplers;
+			offsetSamplers += dstPb.mRangeSamplers.mNum;
+
+			GPU::PipelineBinding srcPb = dstPb;
+			srcPb.mPipelineBindingSet = bindingSet->mBindingSetHandle;
+			srcPb.mRangeCBVs.mDstOffset = 0;
+			srcPb.mRangeSRVs.mDstOffset = 0;
+			srcPb.mRangeUAVs.mDstOffset = 0;
+			srcPb.mRangeSamplers.mDstOffset = 0;
+
+			GPU::CopyPipelineBindings(dstPb, srcPb);
+		}
+		
+		// bind temp pipelineBindingSet
+		mCommandList.BindPipelineBindingSet(pipelineBindingSet);
+
+		return true;
 	}
 
 	/// ////////////////////////////////////////////////////////////////////////////////
@@ -714,13 +841,5 @@ namespace Cjing3D
 			ret.mImpl = impl;
 		}
 		return ret;
-	}
-
-	ShaderContext::ShaderContext(GPU::CommandList& cmd)
-	{
-	}
-
-	ShaderContext::~ShaderContext()
-	{
 	}
 }

@@ -424,6 +424,15 @@ namespace GPU
 		return handle;
 	}
 
+	ResHandle CreateTempPipelineBindingSet(const PipelineBindingSetDesc* desc)
+	{
+		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_PIPELINE_BINDING_SET);
+		mImpl->CheckHandle(handle, mImpl->mDevice->CreatePipelineBindingSet(handle, desc));
+		// temporary resource, is will be destroyed in the next frame
+		DestroyResource(handle);
+		return handle;
+	}
+
 	void DestroyResource(ResHandle handle)
 	{
 		if (handle && IsHandleValid(handle)) {
@@ -453,6 +462,13 @@ namespace GPU
 	{
 		Debug::CheckAssertion(handle.GetType() == RESOURCETYPE_PIPELINE_BINDING_SET);
 		return mImpl->CheckHandle(handle, mImpl->mDevice->UpdatePipelineBindingSet(handle, index, slot, sams));
+	}
+
+	void CopyPipelineBindings(const PipelineBinding& dst, const PipelineBinding& src)
+	{
+		if (!mImpl->mDevice->CopyPipelineBindings(dst, src)) {
+			Debug::Warning("Failed to copy pipelineBindingSet");
+		}
 	}
 
 	void AddStaticSampler(const StaticSampler& sampler)
@@ -553,6 +569,11 @@ namespace GPU
 	U32x2 GetResolution()
 	{
 		return mImpl->mDevice->GetResolution();
+	}
+
+	F32x2 GetScreenSize()
+	{
+		return mImpl->mDevice->GetScreenSize();
 	}
 }
 }
