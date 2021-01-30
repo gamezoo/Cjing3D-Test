@@ -11,40 +11,34 @@ namespace Cjing3D
 	// Render passes
 	static void AddFullscreenPass(RenderGraph& graph, RenderGraphResource outColor)
 	{
-		struct FullScreenData
-		{
-			ShaderTechniqueDesc mDesc;
-		};
-
-		graph.AddDataRenderPass<FullScreenData>("FullScreenPass",
-			[&](RenderGraphResBuilder& builder, FullScreenData& data) {
-
-				ShaderTechniqueDesc desc = {};
-				data.mDesc = desc;
+		graph.AddCallbackRenderPass("FullScreenPass",
+			[&](RenderGraphResBuilder& builder) {
 
 				builder.AddRTV(outColor, RenderGraphFrameAttachment::RenderTarget(
 						GPU::BindingFrameAttachment::LOAD_CLEAR
 					));
 			},
-			[&](RenderGraphResources& resources, GPU::CommandList& cmd, FullScreenData& data) {
+			[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
 				auto fbs = resources.GetFrameBindingSet();
 				if (fbs == GPU::ResHandle::INVALID_HANDLE) {
 					return;
 				}
 
-				auto shader = Renderer::GetShader(SHADERTYPE_IMAGE);
+				auto shader = Renderer::GetShader(SHADERTYPE_MAIN);
 				if (!shader) {
 					return;
 				}
 
-				//auto tech = shader->CreateTechnique("TEST_PIPELINE", data.mDesc);
-				//cmd.BeginFrameBindingSet(fbs);
-				//{
-				//	auto pipelineState = tech.GetPipelineState();
-				//	cmd.BindPipelineState(pipelineState);
-				//	cmd.Draw(3, 0);
-				//}
-				//cmd.EndFrameBindingSet();
+				ShaderTechniqueDesc desc = {};
+				desc.mPrimitiveTopology = GPU::TRIANGLESTRIP;
+				auto tech = shader->CreateTechnique("TECH_OBJECT", desc);
+				cmd.BeginFrameBindingSet(fbs);
+				{
+					auto pipelineState = tech.GetPipelineState();
+					cmd.BindPipelineState(pipelineState);
+					cmd.Draw(3, 0);
+				}
+				cmd.EndFrameBindingSet();
 			}
 		);
 	}

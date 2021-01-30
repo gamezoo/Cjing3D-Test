@@ -2,6 +2,31 @@
 #include "common/samplers.jsh"
 #include "common_bindings.jsh"
 
+RasterizerState RAS_OBJECT = 
+{
+    .mFillMode = FILL_SOLID,
+    .mCullMode = CULL_NONE,
+    .mFrontCounterClockwise = 0,
+    .mDepthBias = 0,
+    .mDepthBiasClamp = 0,
+    .mSlopeScaleDepthBias = 0,
+    .mDepthClipEnable = 1,
+    .mMultisampleEnable = 0,
+    .mAntialiaseLineEnable = 0,
+};
+
+DepthStencilState DSS_OBJECT = 
+{
+    .mDepthEnable = 0,
+    .mStencilEnable = 0,
+};
+
+RenderTargetBlendState RTBS_OBJECT_BLENDMODE_OPAQUE = 
+{
+	.mBlendEnable = 0,
+    .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
+};
+
 /////////////////////////////////////////////////////////////////////////////
 // FULLSCREEN FUNCTION
 struct VS_OBJECT_OUTPUT
@@ -10,26 +35,33 @@ struct VS_OBJECT_OUTPUT
     float2 uv  : TEXCOORD0;
 };
 
-VS_OBJECT_OUTPUT vs_object(uint id : SV_VertexID)
+VS_OBJECT_OUTPUT VS_Object(uint id : SV_VertexID)
 {
     VS_OBJECT_OUTPUT output;
-    float2 screenSize = gFrameScreenSize;
 	FullScreenTriangle(id, output.pos, output.uv);
-    output.uv = screenSize;
     return output;
 }
 
-float4 ps_object(VS_OBJECT_OUTPUT input) : SV_TARGET
+float4 PS_Object(VS_OBJECT_OUTPUT input) : SV_TARGET
 {
-    float2 screenSize = gFrameScreenSize;
-    return float4(screenSize.x, screenSize.y, 1.0f, 1.0f);
+    return float4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // OBJECT TECH
 
+RenderState RS_OBJECT = 
+{
+    .mBlendState = {
+        .mRenderTarget[0] = RTBS_OBJECT_BLENDMODE_OPAQUE,
+    },
+    .mDepthStencilState = DSS_OBJECT,
+    .mRasterizerState = RAS_OBJECT,
+};
+
 Technique TECH_OBJECT = 
 {
-    .mVertexShader = vs_object,
-    .mPixelShader = ps_object,
+    .mVertexShader = VS_Object,
+    .mPixelShader = PS_Object,
+    .mRenderState = RS_OBJECT
 };

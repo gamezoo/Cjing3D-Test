@@ -418,7 +418,7 @@ namespace Cjing3D
 		}
 		if (targetHeader == nullptr)
 		{
-			Debug::Warning("Invalid technique \'%s\' in shader", technique->mName);
+			Debug::Warning("Invalid technique \'%s\' in shader", technique->mName.c_str());
 			return false;
 		}
 
@@ -708,7 +708,7 @@ namespace Cjing3D
 		if (technique.mImpl->mHeader.mNumBindingSet == 1)
 		{
 			I32 index = technique.mImpl->mHeader.mBindingSetIndexs[0];
-			if (index <= 0) {
+			if (index < 0) {
 				return false;
 			}
 
@@ -730,7 +730,7 @@ namespace Cjing3D
 		GPU::PipelineBindingSetDesc tempDesc = {};
 		for (const auto& index : technique.mImpl->mHeader.mBindingSetIndexs)
 		{
-			if (index <= 0) {
+			if (index < 0) {
 				continue;
 			}
 
