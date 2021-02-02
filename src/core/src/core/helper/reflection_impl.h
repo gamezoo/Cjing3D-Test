@@ -33,7 +33,7 @@ namespace Reflection
 	{
 		return c + (hash << 6) + (hash << 16) - hash;
 	}
-	UID CalculateHash(const char* str)
+	inline UID CalculateUIDHash(const char* str)
 	{
 		if (str == nullptr) {
 			return 0;
@@ -759,21 +759,6 @@ namespace Reflection
 	private:
 		const Impl::TypeInfo* mTypeInfo = nullptr;
 	};
-
-	Type Handle::GetType() const noexcept
-	{
-		return mTypeInfo != nullptr ? mTypeInfo->ToType() : Type();
-	}
-
-	Type BaseType::Parent()const noexcept
-	{
-		return mBaseInfo != nullptr ? mBaseInfo->mParent : Type();
-	}
-
-	Type BaseType::GetType()const noexcept 
-	{
-		return mBaseInfo != nullptr ? mBaseInfo->GetTypeInfo() : Type();
-	}
 
 	///////////////////////////////////////////////////////////////////////////////
 	// Info Factory

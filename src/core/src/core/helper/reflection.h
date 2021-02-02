@@ -363,5 +363,5 @@ namespace Reflection
 	}
 }
 
-#define UID_HASH(str) Reflection::CalculateHash(str)
+#define UID_HASH(str) Reflection::CalculateUIDHash(str)
 }
