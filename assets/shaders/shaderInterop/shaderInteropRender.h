@@ -9,4 +9,22 @@ struct FrameCB
     float2 gFrameScreenSizeRCP;
 };
 
+struct CameraCB
+{
+    float4x4 gCameraVP;
+    float4x4 gCameraView;
+    float4x4 gCameraProj;
+    float4x4 gCameraInvV;
+    float4x4 gCameraInvP;
+    float4x4 gCameraInvVP;
+
+    float3   gCameraPos;
+	float    gCameraPadding;
+
+	float    gCameraNearZ;
+	float    gCameraFarZ;
+	float    gCameraInvNearZ;
+	float    gCameraInvFarZ;
+};
+
 #endif

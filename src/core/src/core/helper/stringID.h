@@ -25,7 +25,7 @@ namespace Cjing3D {
 		StringID& operator= (const StringID& rhs);
 		StringID& operator= (StringID&& rhs);
 
-		inline unsigned int HashValue()const { return mValue; }
+		inline unsigned int GetHash()const { return mValue; }
 		String GetString()const;
 		void SetString(const String& str);
 

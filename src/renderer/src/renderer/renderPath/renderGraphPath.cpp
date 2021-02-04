@@ -84,7 +84,7 @@ namespace Cjing3D
 		mMainPipeline.SetResource("rtMain", resRTMain);
 
 		//setup pipelines
-		mMainPipeline.Setup(mMainGraph);
+		mMainPipeline.Setup(mMainGraph, mViewport, mFrameCB, mVisibility);
 
 		if (!mMainGraph.Execute(mMainPipeline.GetResource("rtMain"))) {
 			Debug::Warning("Render graph failed to executed");

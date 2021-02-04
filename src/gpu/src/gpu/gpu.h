@@ -49,6 +49,9 @@ namespace GPU
 
 	void AddStaticSampler(const StaticSampler& sampler);
 
+	const BufferDesc* GetBufferDesc(ResHandle handle);
+	const TextureDesc* GetTextureDesc(ResHandle handle);
+
 	U32  GetFormatStride(FORMAT value);
 	bool IsFormatSupportStencil(FORMAT value);
 	U32x2 GetResolution();

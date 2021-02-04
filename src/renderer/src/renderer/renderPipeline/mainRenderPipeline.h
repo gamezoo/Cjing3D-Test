@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderPipeline.h"
+#include "renderer\cullingSystem.h"
 
 namespace Cjing3D
 {
@@ -10,6 +11,6 @@ namespace Cjing3D
 		MainRenderPipeline();
 		virtual ~MainRenderPipeline();
 
-		void Setup(RenderGraph& graph)override;
+		void Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullResult& cullResult);
 	};
 }

@@ -1,6 +1,7 @@
 #ifndef SHADER_INTEROP_H
 #define SHADER_INTEROP_H
 
+#include "bufferMapping.h"
 #include "samplerMapping.h"
 #include "resourceMapping.h"
 

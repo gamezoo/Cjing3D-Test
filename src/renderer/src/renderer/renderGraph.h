@@ -101,8 +101,8 @@ namespace Cjing3D
 		RenderGraph();
 		~RenderGraph();
 
-		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc* desc);
-		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc* desc);
+		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc* desc = nullptr);
+		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc* desc = nullptr);
 
 		template<typename RenderPassT, typename... Args>
 		std::enable_if_t<std::is_base_of<RenderPass, RenderPassT>::value, RenderPassT>&

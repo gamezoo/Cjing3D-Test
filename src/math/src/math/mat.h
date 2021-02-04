@@ -60,4 +60,6 @@ namespace Cjing3D
 
 	using F32x3x3 = Matrix<3, 3, F32>;
 	using F32x4x4 = Matrix<4, 4, F32>;
+
+	static const F32x4x4 IDENTITY_MATRIX = F32x4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 }

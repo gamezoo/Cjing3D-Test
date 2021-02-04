@@ -153,10 +153,20 @@ namespace Cjing3D::Win32
 		Logger::Info("Engine uninitialized");
 	}
 
-	void EngineWin32::Update(F32 dt)
+	void EngineWin32::Update(Universe& universe, F32 dt)
 	{
 		// update universe
-		
+		universe.Update(dt);
+
+		// update scenes
+		auto& scenes = universe.GetScenes();
+		for (auto& scene : scenes) {
+			scene->Update(dt);
+		}
+
+		for (auto& scene : scenes) {
+			scene->LateUpdate(dt);
+		}
 
 		// update all plugins
 		for (ModulerPlugin* plugin : mModulerPlugins) {

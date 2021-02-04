@@ -8,8 +8,9 @@
 
 namespace Cjing3D
 {
-	class Universe;
 	class Engine;
+	class RenderScene;
+	class Universe;
 
 	namespace Renderer
 	{
@@ -22,10 +23,13 @@ namespace Cjing3D
 		void PresentEnd();
 		void EndFrame();
 
+		GPU::ResHandle GetConstantBuffer(CBTYPE type);
 		ShaderRef GetShader(SHADERTYPE type);
 		ShaderRef LoadShader(const char* path, bool waitFor = false);
+		RenderScene* GetRenderScene();
 
 		void AddStaticSampler(const GPU::ResHandle& handle, I32 slot);
 		void UpdateVisibility(CullResult& visibility, Viewport& viewport, I32 cullingFlag);
+		void UpdateCameraCB(const Viewport& viewport, CameraCB& cameraCB);
 	}
 }

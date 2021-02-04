@@ -174,6 +174,39 @@ namespace Cjing3D
 			return true;
 		}
 
+
+		void reserve(U32 capacity)
+		{
+			if (capacity > mCapacity)
+			{
+				// record old values
+				auto oldKeys = mKeys;
+				auto oldValues = mValues;
+				auto oldHashTable = mHashTable;
+				auto oldCapacity = mCapacity;
+
+				// allocate
+				mCapacity = capacity;
+				mKeys = nullptr;
+				mValues = nullptr;
+				mHashTable = nullptr;
+				Alloc();
+
+				// 将oldkeys和oldValue重新插入
+				for (U32 i = 0; i < oldCapacity; i++)
+				{
+					U32 hash = oldHashTable[i];
+					if (hash != 0) {
+						InsertImpl(hash, std::move(oldKeys[i]), std::move(oldValues[i]));
+					}
+				}
+
+				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, oldKeys);
+				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, oldValues);
+				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, oldHashTable);
+			}
+		}
+
 		U32 size()const { return mSize; }
 		bool empty() const { return mSize == 0; }
 		void clear()
@@ -191,7 +224,7 @@ namespace Cjing3D
 		{
 			auto ret = find(key);
 			Debug::CheckAssertion(ret, "HashMap: the key doese not exist");
-			return ret;
+			return *ret;
 		}
 
 		ValueT& operator[](const KeyT& key)
@@ -200,7 +233,7 @@ namespace Cjing3D
 			if (ret == nullptr) {
 				ret = insert(key, ValueT());
 			}
-			return ret;
+			return *ret;
 		}
 
 		KeyT& GetKeyByIndex(I32 i)

@@ -32,12 +32,4 @@ namespace Cjing3D
 	void Engine::StopUniverse(Universe& universe)
 	{
 	}
-
-	void Engine::UpdateUniverse(Universe& universe, F32 deltaTime)
-	{
-		auto& scenes = universe.GetScenes();
-		for (auto& scene : scenes) {
-			scene->Update(deltaTime);
-		}
-	}
 }

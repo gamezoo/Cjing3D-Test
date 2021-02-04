@@ -2,6 +2,7 @@
 
 #include "maths_common.h"
 #include "mat.h"
+#include "vec_facade.h"
 
 namespace Cjing3D
 {

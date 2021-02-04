@@ -25,5 +25,12 @@ namespace Cjing3D
 	public:
 		void CreatePerspective(F32 width, F32 height, F32 near, F32 far, F32 fov = XM_PI / 3.0f);
 		void Update();
+
+		MATRIX GetViewMatrix()const { return XMLoad(mView); };
+		MATRIX GetProjectionMatrix()const { return XMLoad(mProjection); };
+		MATRIX GetViewProjectionMatrix()const { return XMLoad(mViewProjection); };
+		MATRIX GetInvViewMatrix()const { return XMLoad(mInvView); }
+		MATRIX GetInvProjectionMatrix()const { return XMLoad(mInvProjection); }
+		MATRIX GetInvViewProjectionMatrix()const { return XMLoad(mInvViewProjection); }
 	};
 }

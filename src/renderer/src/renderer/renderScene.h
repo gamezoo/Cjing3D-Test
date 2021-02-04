@@ -21,12 +21,18 @@ namespace Cjing3D
 		RenderScene(Engine& engine, Universe& universe);
 		virtual ~RenderScene();
 
-		void Initialize() ;
-		void Uninitialize();
-		void Update(F32 dt);
-		void FixedUpdate();
-		void Clear();
+		void Initialize()override;
+		void Uninitialize()override;
+		void Update(F32 dt)override;
+		void LateUpdate(F32 dt)override;
+		void Clear()override;
+		Universe& GetUniverse()override;
 
 		CullResult GetCullResult();
+
+		static void RegisterReflect();
+
+	private:
+		class RenderSceneImpl* mImpl = nullptr;
 	};
 }

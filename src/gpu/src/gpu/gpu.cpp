@@ -35,6 +35,9 @@ namespace GPU
 		I32 mAvaiableCmdCount = 0;
 		HashMap<I32, I32> mUsedIndexMap;
 
+		HashMap<I32, BufferDesc> mBufferDescMap;
+		HashMap<I32, TextureDesc> mTextureDescMap;
+
 	public:
 		ResHandle AllocHandle(ResourceType type)
 		{
@@ -48,6 +51,16 @@ namespace GPU
 			auto& releasedHandles = mReleasedHandles[mCurrentFrameCount % MaxGPUFrames];
 			for (ResHandle handle : releasedHandles)
 			{
+				switch (handle.GetType())
+				{
+				case RESOURCETYPE_BUFFER:
+					mBufferDescMap.erase(handle.GetValue());
+					break;
+				case RESOURCETYPE_TEXTURE:
+					mTextureDescMap.erase(handle.GetValue());
+					break;
+				}
+
 				mDevice->DestroyResource(handle);
 				mHandleAllocator.Free(handle);
 			}
@@ -384,6 +397,9 @@ namespace GPU
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_TEXTURE);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTexture(handle, desc, initialData));
 		SET_DEBUG_NAME(name);
+		if (handle != ResHandle::INVALID_HANDLE) {
+			mImpl->mTextureDescMap.insert(handle.GetValue(), *desc);
+		}
 		return handle;
 	}
 
@@ -392,6 +408,9 @@ namespace GPU
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_BUFFER);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateBuffer(handle, desc, initialData));
 		SET_DEBUG_NAME(name);
+		if (handle != ResHandle::INVALID_HANDLE) {
+			mImpl->mBufferDescMap.insert(handle.GetValue(), *desc);
+		}
 		return handle;
 	}
 
@@ -474,6 +493,16 @@ namespace GPU
 	void AddStaticSampler(const StaticSampler& sampler)
 	{
 		mImpl->mDevice->AddStaticSampler(sampler);
+	}
+
+	const BufferDesc* GetBufferDesc(ResHandle handle)
+	{
+		return mImpl->mBufferDescMap.find(handle.GetValue());
+	}
+
+	const TextureDesc* GetTextureDesc(ResHandle handle)
+	{
+		return mImpl->mTextureDescMap.find(handle.GetValue());
 	}
 
 	U32 GetFormatStride(FORMAT value)

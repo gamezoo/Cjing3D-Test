@@ -57,9 +57,12 @@ namespace Cjing3D
 				{
 					CallDestructors(mData, mData + mSize);
 					CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
+					mData = nullptr;
 				}
 
-				mData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, rhs.mCapacity * sizeof(T), alignof(T));
+				if (rhs.mCapacity > 0) {
+					mData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, rhs.mCapacity * sizeof(T), alignof(T));
+				}		
 				mCapacity = rhs.mCapacity;
 				mSize = rhs.mSize;
 

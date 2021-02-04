@@ -26,6 +26,13 @@ namespace Cjing3D
 		SHADERTYPE_COUNT
 	};
 
+	enum CBTYPE
+	{
+		CBTYPE_FRAME,
+		CBTYPE_CAMERA,
+		CBTYPE_COUNT
+	};
+
 	struct RenderGraphFrameAttachment
 	{
 		GPU::BindingFrameAttachment::TYPE mType = GPU::BindingFrameAttachment::RENDERTARGET;

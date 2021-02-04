@@ -5,8 +5,11 @@
 
 BindingSet FrameBindings
 {
-    [register(0)]
+    [register(SLOT_CB_FRAME)]
     ConstantBuffer<FrameCB> gFrameCB;
+
+    [register(SLOT_CB_CAMERA)]
+    ConstantBuffer<CameraCB> gCameraCB;
 };
 
 

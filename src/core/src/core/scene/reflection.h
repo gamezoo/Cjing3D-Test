@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene.h"
+#include "ecs.h"
 #include "core\container\map.h"
 #include "core\helper\stringID.h"
 #include "core\helper\reflection.h"

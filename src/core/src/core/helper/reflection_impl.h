@@ -28,6 +28,13 @@ namespace Reflection
 	///////////////////////////////////////////////////////////////////////////////////////
 	using UID = size_t;
 	static UID DEFAULT_UID = 0;
+	static int INVALID_TYPE_ID = -1;
+
+	inline int GenerateTypeID()
+	{
+		static int staticTypeID = 0;
+		return staticTypeID++;
+	}
 
 	inline unsigned int SDBMHash(unsigned int hash, unsigned char c)
 	{
@@ -108,6 +115,7 @@ namespace Reflection
 		struct TypeInfo
 		{
 			UID mIdentifier;
+			int mTypeID;
 			const bool mIsClass;
 			const bool mIsArray;
 			const size_t mExtent;
@@ -707,6 +715,10 @@ namespace Reflection
 			return mTypeInfo->mIsClass;
 		}
 
+		int GetTypeID()const {
+			return mTypeInfo->mTypeID;
+		}
+
 		BaseType Base()const noexcept
 		{
 			return mTypeInfo->mBase ? mTypeInfo->mBase->ToBaseType() : BaseType();
@@ -770,6 +782,7 @@ namespace Reflection
 		{
 			static TypeInfo typeInfo{
 				DEFAULT_UID,
+				GenerateTypeID(),
 				std::is_class_v<T>,
 				std::is_array_v<T>,
 				std::extent_v<T>,

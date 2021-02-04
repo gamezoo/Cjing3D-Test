@@ -361,6 +361,12 @@ namespace Reflection
 	{
 		return Type();
 	}
+
+	template<typename T>
+	inline I32 TypeID()
+	{
+		return Impl::InfoFactory<T>::Resolve()->ToType().GetTypeID();
+	}
 }
 
 #define UID_HASH(str) Reflection::CalculateUIDHash(str)

@@ -498,7 +498,7 @@ namespace Cjing3D
 		resInst.mName = name;
 		resInst.mIndex = mImpl->mResources.size();
 		resInst.mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
-		resInst.mTexDesc = *desc;
+		resInst.mTexDesc = desc != nullptr ? *desc : *GPU::GetTextureDesc(handle);
 		resInst.mHandle = handle;
 		mImpl->mResources.push(resInst);
 		return RenderGraphResource(resInst.mIndex);
@@ -510,7 +510,7 @@ namespace Cjing3D
 		resInst.mName = name;
 		resInst.mIndex = mImpl->mResources.size();
 		resInst.mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
-		resInst.mBufferDesc = *desc;
+		resInst.mBufferDesc = desc != nullptr ? *desc : *GPU::GetBufferDesc(handle);
 		resInst.mHandle = handle;
 		mImpl->mResources.push(resInst);
 		return RenderGraphResource(resInst.mIndex);
@@ -555,7 +555,7 @@ namespace Cjing3D
 
 		if (finalRes.mVersion < 0) 
 		{
-			Debug::Error("Invalid final resource for render graph to execute");
+			Debug::Warning("Invalid final resource for render graph to execute");
 			return false;
 		}
 

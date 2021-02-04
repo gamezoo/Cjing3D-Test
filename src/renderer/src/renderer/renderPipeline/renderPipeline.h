@@ -15,8 +15,6 @@ namespace Cjing3D
 		RenderGraphResource GetResource(const char* name);
 		void Clear();
 
-		virtual void Setup(RenderGraph& graph) = 0;
-
 	private:
 		HashMap<String, RenderGraphResource> mResources;
 	};

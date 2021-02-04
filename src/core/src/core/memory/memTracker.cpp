@@ -19,6 +19,10 @@ namespace Cjing3D
 	void MemoryTracker::RecordAlloc(void* ptr, size_t size, const char* filename, int line)
 	{
 		Concurrency::ScopedMutex lock(mMutex);
+		if (size <= 0) {
+			return;
+		}
+
 		if (mAllocNodeMap.find(ptr) != mAllocNodeMap.end())
 		{
 			auto kvp = mAllocNodeMap.find(ptr);

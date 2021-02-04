@@ -223,6 +223,11 @@ namespace Cjing3D
 		inline T y()const { return this->at(1); }
 		inline T z()const { return this->at(2); }
 		inline T w()const { return this->at(3); }
+
+		inline Array<3, T, AlignT> xyz()
+		{
+			return Array<3, T, AlignT>((T)this->_Elems[0], (T)this->_Elems[1], (T)this->_Elems[2]);
+		}
 	};
 
 	////////////////////////////////////////////////////////////////////////////

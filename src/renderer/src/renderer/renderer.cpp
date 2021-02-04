@@ -4,7 +4,7 @@
 #include "resource\resourceManager.h"
 #include "core\platform\platform.h"
 #include "core\scene\universe.h"
-
+#include "core\helper\profiler.h"
 #include "core\helper\enumTraits.h"
 
 namespace Cjing3D
@@ -21,13 +21,15 @@ namespace Renderer
 		~RendererImpl();
 
 		void PreLoadShaders();
+		void PreLoadBuffers();
 
 	public:
 		Concurrency::RWLock mLock;
-		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
 		RenderScene* mRenderScene = nullptr;
 
-		// samplerState
+		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
+		StaticArray<GPU::ResHandle, CBTYPE_COUNT> mConstantBuffers;
+
 		DynamicArray<GPU::ResHandle> mSamplerStates;
 	};
 
@@ -41,15 +43,34 @@ namespace Renderer
 			mShaders[i].Reset();
 		}
 
-		// release sampler states
-		for (auto samplerState : mSamplerStates) 
+		// release gpu handles
+		for (const auto& handle : mConstantBuffers)
 		{
-			if (samplerState != GPU::ResHandle::INVALID_HANDLE) {
-				GPU::DestroyResource(samplerState);
+			if (handle != GPU::ResHandle::INVALID_HANDLE) {
+				GPU::DestroyResource(handle);
+			}
+		}
+
+		for (const auto& handle : mSamplerStates)
+		{
+			if (handle != GPU::ResHandle::INVALID_HANDLE) {
+				GPU::DestroyResource(handle);
 			}
 		}
 
 		mRenderScene = nullptr;
+	}
+
+	void RendererImpl::PreLoadBuffers()
+	{
+		GPU::BufferDesc desc = {};
+		desc.mByteWidth = sizeof(FrameCB);
+		desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
+		mConstantBuffers[CBTYPE_FRAME] = GPU::CreateBuffer(&desc, nullptr, "FrameCB");
+
+		desc.mByteWidth = sizeof(CameraCB);
+		desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
+		mConstantBuffers[CBTYPE_CAMERA] = GPU::CreateBuffer(&desc, nullptr, "CameraCB");
 	}
 
 	void RendererImpl::PreLoadShaders()
@@ -57,8 +78,8 @@ namespace Renderer
 		// clear current resource jobs
 		ResourceManager::WaitAll();
 
-		mShaders[SHADERTYPE::SHADERTYPE_MAIN]  = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/main_pipeline.jsf"));
-		mShaders[SHADERTYPE::SHADERTYPE_IMAGE] = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/render_image.jsf"));
+		mShaders[SHADERTYPE_MAIN]  = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/main_pipeline.jsf"));
+		mShaders[SHADERTYPE_IMAGE] = ShaderRef(ResourceManager::LoadResource<Shader>("shaders/render_image.jsf"));
 
 		// wait for all shaders
 		ResourceManager::WaitAll();
@@ -83,6 +104,7 @@ namespace Renderer
 
 		// initialize impl
 		mImpl = CJING_NEW(RendererImpl);
+		mImpl->PreLoadBuffers();
 		mImpl->PreLoadShaders();
 
 		// initialize renderImage
@@ -141,6 +163,11 @@ namespace Renderer
 		GPU::EndFrame();
 	}
 
+	GPU::ResHandle GetConstantBuffer(CBTYPE type)
+	{
+		return mImpl->mConstantBuffers[(U32)type];
+	}
+
 	ShaderRef GetShader(SHADERTYPE type)
 	{
 		return mImpl->mShaders[(U32)type];
@@ -153,6 +180,11 @@ namespace Renderer
 			ResourceManager::WaitForResource(shader);
 		}
 		return shader;
+	}
+
+	RenderScene* GetRenderScene()
+	{
+		return mImpl->mRenderScene;
 	}
 
 	void AddStaticSampler(const GPU::ResHandle& handle, I32 slot)
@@ -171,7 +203,27 @@ namespace Renderer
 
 	void UpdateVisibility(CullResult& visibility, Viewport& viewport, I32 cullingFlag)
 	{
+		Profiler::BeginCPUBlock("Frustum Culling");
 
+
+
+		Profiler::EndCPUBlock();
+	}
+
+	void UpdateCameraCB(const Viewport& viewport, CameraCB& cameraCB)
+	{
+		cameraCB.gCameraVP = XMStore<F32x4x4>(viewport.GetViewProjectionMatrix());
+		cameraCB.gCameraView = XMStore<F32x4x4>(viewport.GetViewMatrix());
+		cameraCB.gCameraProj = XMStore<F32x4x4>(viewport.GetProjectionMatrix());
+		cameraCB.gCameraInvV = XMStore<F32x4x4>(viewport.GetInvViewMatrix());
+		cameraCB.gCameraInvP = XMStore<F32x4x4>(viewport.GetInvProjectionMatrix());
+		cameraCB.gCameraInvVP = XMStore<F32x4x4>(viewport.GetInvViewProjectionMatrix());
+
+		cameraCB.gCameraPos = viewport.mAt;
+		cameraCB.gCameraNearZ = viewport.mNear;
+		cameraCB.gCameraFarZ = viewport.mFar;
+		cameraCB.gCameraInvNearZ = (1.0f / std::max(0.00001f, cameraCB.gCameraNearZ));
+		cameraCB.gCameraInvFarZ = (1.0f / std::max(0.00001f, cameraCB.gCameraFarZ));
 	}
 
 }
