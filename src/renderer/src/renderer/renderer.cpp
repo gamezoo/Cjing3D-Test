@@ -1,16 +1,90 @@
 #include "renderer.h"
 #include "renderScene.h"
 #include "renderImage.h"
+#include "renderGraph.h"
 #include "resource\resourceManager.h"
 #include "core\platform\platform.h"
 #include "core\scene\universe.h"
 #include "core\helper\profiler.h"
 #include "core\helper\enumTraits.h"
+#include "core\scene\reflection.h"
 
 namespace Cjing3D
 {
 namespace Renderer
 {
+	struct RenderInstance
+	{
+		F32x4 mMat0;
+		F32x4 mMat1;
+		F32x4 mMat2;
+		I32x4 mUserdata;
+
+		void Setup(const F32x4x4& mat, const F32x4 color = F32x4(1.0f, 1.0f, 1.0f, 1.0f))
+		{
+			mMat0 = mat.GetColumn(0);
+			mMat1 = mat.GetColumn(1);
+			mMat2 = mat.GetColumn(2);
+			mUserdata = I32x4(0, 0, 0, 0);
+		}
+	};
+
+	struct ObjectRenderBatch
+	{
+		U64 mHash = 0;
+		U32 mObjectIndex = 0;
+		F32 mDistance = 0.0f;
+
+		void Setup(U32 meshIndex, U32 objectIndex, F32 distance)
+		{
+			mHash = ((U64)distance) << 32 | (U64)meshIndex;
+			mObjectIndex = objectIndex;
+			mDistance = distance;
+		}
+
+		U32 GetMeshIndex()
+		{
+			return (U32)(mHash & 0xFFFFFFFF);
+		}
+	};
+
+	struct ObjectRenderQueue
+	{
+		enum SortMethod
+		{
+			FrontToBack,
+			BackToFront,
+		};
+
+		DynamicArray<ObjectRenderBatch*> mRenderBatches;
+
+		bool IsEmpty()const {
+			return mRenderBatches.empty();
+		}
+		
+		void AddBatch(ObjectRenderBatch* batch) {
+			mRenderBatches.push(batch);
+		}
+
+		void Sort(SortMethod sortMethod)
+		{
+			std::sort(mRenderBatches.begin(), mRenderBatches.end(), 
+				[sortMethod](const ObjectRenderBatch* a, const ObjectRenderBatch* b) {
+					return sortMethod == FrontToBack ? a->mHash < b->mHash : a->mHash > b->mHash;
+				});
+		}
+	};
+
+	struct InstanceHandler
+	{
+	public:
+		using CheckConditionFunc = std::function<bool(U32, U32, RenderScene&)>;
+		using ProcessInstanceFunc = std::function<void(U32, RenderInstance&)>;
+
+		CheckConditionFunc checkCondition_ = nullptr;
+		ProcessInstanceFunc processInstance_ = nullptr;
+	};
+
 	//////////////////////////////////////////////////////////////////////////
 	// Impl
 	//////////////////////////////////////////////////////////////////////////
@@ -22,6 +96,22 @@ namespace Renderer
 
 		void PreLoadShaders();
 		void PreLoadBuffers();
+
+		void BindCommonResources(ShaderBindingContext& context);
+		void BindConstantBuffers(ShaderBindingContext& context, GPU::SHADERSTAGES stage);
+
+		void ProcessRenderQueue(
+			ObjectRenderQueue& queue, 
+			RENDERPASS renderPass, 
+			RENDERTYPE renderType,
+			const CullingResult& cullResult, 
+			RenderGraphResources& resources, 
+			GPU::CommandList& cmd,
+			ShaderBindingContext& shaderContext, 
+			I32 handlerCount = 1, 
+			InstanceHandler* instanceHandler = nullptr);
+
+		ShaderTechnique GetObjectTech(RENDERPASS renderPass, BLENDMODE blendMode);
 
 	public:
 		Concurrency::RWLock mLock;
@@ -73,6 +163,20 @@ namespace Renderer
 		mConstantBuffers[CBTYPE_CAMERA] = GPU::CreateBuffer(&desc, nullptr, "CameraCB");
 	}
 
+	void RendererImpl::BindCommonResources(ShaderBindingContext& context)
+	{
+		for (int i = 0; i < GPU::SHADERSTAGES_COUNT; i++) {
+			BindConstantBuffers(context, (GPU::SHADERSTAGES)i);
+		}
+	}
+
+	void RendererImpl::BindConstantBuffers(ShaderBindingContext& context, GPU::SHADERSTAGES stage)
+	{
+		ShaderBindingSet bindingSet = Shader::CreateGlobalBindingSet("CommonBindings");
+		bindingSet.Set("gFrameCB", GPU::Binding::ConstantBuffer(mConstantBuffers[CBTYPE_FRAME], stage));
+		bindingSet.Set("gCameraCB", GPU::Binding::ConstantBuffer(mConstantBuffers[CBTYPE_CAMERA], stage));
+	}
+
 	void RendererImpl::PreLoadShaders()
 	{
 		// clear current resource jobs
@@ -84,6 +188,174 @@ namespace Renderer
 		// wait for all shaders
 		ResourceManager::WaitAll();
 	}
+
+	void RendererImpl::ProcessRenderQueue(
+		ObjectRenderQueue& queue,
+		RENDERPASS renderPass, 
+		RENDERTYPE renderType, 
+		const CullingResult& cullResult, 
+		RenderGraphResources& resources, 
+		GPU::CommandList& cmd, 
+		ShaderBindingContext& shaderContext,
+		I32 handlerCount, 
+		InstanceHandler* instanceHandler)
+	{
+		if (queue.IsEmpty()) {
+			return;
+		}
+		cmd.EventBegin("ProcessRenderQueue");
+
+		RenderScene& scene = *mImpl->mRenderScene;
+		auto transforms = scene.GetUniverse().GetComponents<Transform>(ECS::SceneReflection::GetComponentType("Transform"));
+
+		// allocate all intances
+		I32 instanceSize = queue.mRenderBatches.size() * sizeof(RenderInstance);
+		GPU::GPUAllocation instanceAllocation = cmd.GPUAlloc(instanceSize);
+
+		// merge same batches into instancedBatches
+		struct InstancedBatch
+		{
+			U32 mMeshIndex = 0;
+			U32 mInstanceCount = 0;
+			U32 mInstanceOffset = 0;
+		};
+		DynamicArray<InstancedBatch*> instancedBatches;
+
+		I32 totalInstanceCount = 0;
+		I32 prevMeshIndex = ~0;
+		for (ObjectRenderBatch* renderBatch : queue.mRenderBatches)
+		{
+			const I32 objectIndex = renderBatch->mObjectIndex;
+			const I32 meshIndex = renderBatch->GetMeshIndex();
+			if (meshIndex != prevMeshIndex)
+			{
+				prevMeshIndex = meshIndex;
+
+				InstancedBatch* instancedBatch = cmd.Alloc<InstancedBatch>();
+				instancedBatch->mMeshIndex = meshIndex;
+				instancedBatch->mInstanceCount = 0;
+				instancedBatch->mInstanceOffset = instanceAllocation.mOffset + totalInstanceCount * sizeof(RenderInstance);
+
+				instancedBatches.push(instancedBatch);
+			}
+
+			InstancedBatch& currentBatch = *instancedBatches.back();
+			const ObjectComponent* object = scene.mObjects->GetComponentByIndex(objectIndex);
+			if (object == nullptr) {
+				continue;
+			}
+
+			F32x4x4 worldMatrix = IDENTITY_MATRIX;
+			Transform* transform = object->mTransformIndex >= 0 ? transforms->GetComponentByIndex(object->mTransformIndex) : nullptr;
+			if (transform != nullptr) {
+				worldMatrix = transform->mWorld;
+			}
+
+			for (U32 handleIndex = 0; handleIndex < handlerCount; handleIndex++)
+			{
+				if ( instanceHandler != nullptr &&
+					 instanceHandler->checkCondition_ != nullptr &&
+					!instanceHandler->checkCondition_(handleIndex, objectIndex, scene)) {
+					continue;
+				}
+
+				RenderInstance& renderInstance = ((RenderInstance*)instanceAllocation.mData)[totalInstanceCount];
+				renderInstance.Setup(worldMatrix, object->mColor);
+
+				if (instanceHandler != nullptr &&
+					instanceHandler->processInstance_ != nullptr) {
+					instanceHandler->processInstance_(handleIndex, renderInstance);
+				}
+
+				currentBatch.mInstanceCount++;
+				totalInstanceCount++;
+			}
+		}
+
+		// process instanced batches
+		for (InstancedBatch* batch : instancedBatches)
+		{
+			const MeshComponent* mesh = scene.mMeshes->GetComponentByIndex(batch->mMeshIndex); 
+			if (!mesh) {
+				continue;
+			}
+
+			cmd.BindIndexBuffer(GPU::Binding::IndexBuffer(mesh->mIndexBuffer, 0), mesh->GetIndexFormat());
+
+			DynamicArray<GPU::BindingBuffer> buffers;
+			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferPos,   0, sizeof(MeshComponent::VertexPos)));
+			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferTex,   0, sizeof(MeshComponent::VertexTex)));
+			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferColor, 0, sizeof(MeshComponent::VertexColor)));
+			buffers.push(GPU::Binding::VertexBuffer(instanceAllocation.mBuffer, batch->mInstanceOffset, sizeof(RenderInstance)));
+			cmd.BindVertexBuffer(buffers, 0);
+
+			for (const auto& subset : mesh->mSubsets)
+			{
+				if (subset.mIndexCount <= 0) {
+					continue;
+				}
+
+				MaterialComponent* material = scene.mMaterials->GetComponent(subset.mMaterialID);
+				if (!material) {
+					continue;
+				}
+
+				// check render enable
+				bool isRenderable = true;
+
+				if (!isRenderable) {
+					continue;
+				}
+
+				// get target shader technique
+				ShaderTechnique tech;
+				if (material->mCustomShaderIndex >= 0)
+				{
+					// custom shader
+				}
+				else
+				{
+					tech = GetObjectTech(renderPass, material->GetBlendMode());
+				}
+
+				if (!tech || tech.GetPipelineState() == GPU::ResHandle::INVALID_HANDLE) {
+					continue;
+				}
+
+				// bind material constant buffer
+				ShaderBindingSet bindingSet = Shader::CreateGlobalBindingSet("MaterialBindings");
+				bindingSet.Set("constBuffer_Material", GPU::Binding::ConstantBuffer(material->mConstantBuffer, GPU::SHADERSTAGES_VS));
+				bindingSet.Set("constBuffer_Material", GPU::Binding::ConstantBuffer(material->mConstantBuffer, GPU::SHADERSTAGES_PS));
+
+				// bind material textures
+				bindingSet.Set("texture_BaseColorMap", GPU::Binding::Texture(material->GetTexture(MaterialComponent::BaseColorMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_NormalMap", GPU::Binding::Texture(material->GetTexture(MaterialComponent::NormalMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_SurfaceMap", GPU::Binding::Texture(material->GetTexture(MaterialComponent::SurfaceMap), GPU::SHADERSTAGES_PS));
+
+				if (shaderContext.Bind(tech, bindingSet))
+				{
+					cmd.BindPipelineState(tech.GetPipelineState());
+					cmd.DrawIndexedInstanced(subset.mIndexCount, batch->mInstanceCount, subset.mIndexOffset, 0, 0);
+				}
+			}
+
+			cmd.Free(instancedBatches.size() * sizeof(InstancedBatch));
+		}
+
+		cmd.EventEnd();
+	}
+
+	ShaderTechnique RendererImpl::GetObjectTech(RENDERPASS renderPass, BLENDMODE blendMode)
+	{
+		auto shader = GetShader(SHADERTYPE_MAIN);
+
+		// todo, auto binding, load shader时自动注册对应的staticRenderState(根据blendMode、dss、bs等等)
+		ShaderTechniqueDesc desc = {};
+		desc.mPrimitiveTopology = GPU::TRIANGLESTRIP;
+
+		return std::move(shader->CreateTechnique("TECH_FULLSCREEN", desc));
+	}
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// Function
@@ -137,11 +409,11 @@ namespace Renderer
 	{
 		UniquePtr<RenderScene> renderScene = CJING_MAKE_UNIQUE<RenderScene>(engine, universe);
 		renderScene->Initialize();
-		universe.AddScene(std::move(renderScene));
 		mImpl->mRenderScene = renderScene.Get();
+		universe.AddScene(std::move(renderScene));
 	}
 
-	void Update(CullResult& visibility, FrameCB& frameCB, F32 deltaTime)
+	void Update(CullingResult& visibility, FrameCB& frameCB, F32 deltaTime)
 	{
 		auto screenSize = GPU::GetScreenSize();
 		frameCB.gFrameScreenSize = screenSize;
@@ -161,6 +433,44 @@ namespace Renderer
 	void EndFrame()
 	{
 		GPU::EndFrame();
+	}
+
+	void DrawScene(RENDERPASS renderPass, RENDERTYPE renderType, const CullingResult& cullResult, RenderGraphResources& resources, GPU::CommandList& cmd)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		if (!mImpl->mRenderScene) {
+			return;
+		}
+
+		auto& scene = *mImpl->mRenderScene;
+		// bind common resources (cbs, samplers)
+		ShaderBindingContext context(cmd);
+		mImpl->BindCommonResources(context);
+
+		// setup render queue
+		ObjectRenderQueue queue;
+		for (int i = 0; i < cullResult.mObjectCount; i++)
+		{
+			I32 index = cullResult.mCulledObjects[i];
+			ObjectComponent* object = scene.mObjects->GetComponentByIndex(index);
+			if (object == nullptr || !object->IsRenderable()) {
+				continue;
+			}
+
+			F32 distance = Distance(cullResult.mViewport->mEye, object->mCenter);
+			ObjectRenderBatch* batch = cmd.Alloc<ObjectRenderBatch>();
+			batch->Setup(scene.mMeshes->GetEntityIndex(object->mMeshID), index, distance);
+		}
+
+		if (!queue.IsEmpty())
+		{
+			// 对于Transparent需要从后往前排序，来实现blending，而对于object则需要从前往后，根据depthCmp来减少over draw
+			queue.Sort(renderType != RENDERTYPE_TRANSPARENT ? ObjectRenderQueue::FrontToBack : ObjectRenderQueue::BackToFront);
+			mImpl->ProcessRenderQueue(queue, renderPass, renderType, cullResult, resources, cmd, context);
+		}
 	}
 
 	GPU::ResHandle GetConstantBuffer(CBTYPE type)
@@ -201,11 +511,16 @@ namespace Renderer
 		GPU::AddStaticSampler(sam);
 	}
 
-	void UpdateVisibility(CullResult& visibility, Viewport& viewport, I32 cullingFlag)
+	void UpdateViewCulling(CullingResult& cullingResult, Viewport& viewport, I32 cullingFlag)
 	{
 		Profiler::BeginCPUBlock("Frustum Culling");
 
+		cullingResult.Clear();
 
+		auto scene = GetRenderScene();
+		if (scene != nullptr) {
+			scene->GetCullingResult(cullingResult, viewport.mFrustum, cullingFlag);
+		}
 
 		Profiler::EndCPUBlock();
 	}
