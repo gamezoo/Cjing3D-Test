@@ -48,6 +48,7 @@ namespace GPU
 	void CopyPipelineBindings(const PipelineBinding& dst, const PipelineBinding& src);
 
 	void AddStaticSampler(const StaticSampler& sampler);
+	GPUAllocation GPUAllcate(CommandList& cmd, size_t size);
 
 	const BufferDesc* GetBufferDesc(ResHandle handle);
 	const TextureDesc* GetTextureDesc(ResHandle handle);

@@ -267,6 +267,7 @@ namespace GPU
     bool CompileContextDX11::CompileCommand(const CommandDraw* cmd)
     {
         mCommandList.RefreshPipelineState();
+        mCommandList.CommitAllactor();
 
         switch (cmd->mDrawType)
         {

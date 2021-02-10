@@ -93,6 +93,7 @@ namespace Cjing3D
 			// | TechniqueHeaders 
 			// | RenderStateHeaders
 			// | RenderStateJson
+			// | TechHashers
 			// | bytecodes
 
 			// read shader general header
@@ -213,6 +214,18 @@ namespace Cjing3D
 				}
 			}
 		
+			// tech hashers
+			if (generalHeader.mNumTechHashers > 0)
+			{
+				shaderImpl->mTechHasherHeaders.resize(generalHeader.mNumTechHashers);
+				if (!file.Read(shaderImpl->mTechHasherHeaders.data(), generalHeader.mNumTechHashers * sizeof(ShaderTechHasherHeader)))
+				{
+					Debug::Warning("Failed to read technique hasher headers");
+					CJING_SAFE_DELETE(shaderImpl);
+					return false;
+				}
+			}
+
 			// shader bytecode
 			U32 totalSize = 0;
 			for (const auto& header : shaderImpl->mBytecodeHeaders) {
@@ -365,6 +378,40 @@ namespace Cjing3D
 	GPU::ResHandle ShaderTechniqueImpl::GetPipelineState() const
 	{
 		return mShaderImpl->mPipelineStates[mIndex];
+	}
+
+	ShaderTechniqueImpl* ShaderImpl::CreateTechnique(const ShaderTechHasher& hasher, const ShaderTechniqueDesc& desc)
+	{
+		Concurrency::ScopedWriteLock lock(mRWLoclk);
+		I32 findIndex = -1;
+		U64 hash = hasher.GetHash();
+		for (I32 index = 0; index < mTechniquesHashes.size(); index++)
+		{
+			if (mTechniquesHashes[index] == hash) {
+				findIndex = index;
+			}
+		}
+		if (findIndex == -1)
+		{
+			findIndex = mTechniquesHashes.size();
+			mTechniquesHashes.push(hash);
+			mTechniqueDescs.push(desc);
+			mPipelineStates.resize(mTechniquesHashes.size());
+		}
+
+		ShaderTechniqueImpl* impl = CJING_NEW(ShaderTechniqueImpl);
+		impl->mName = "RegTech";
+		impl->mShaderImpl = this;
+		impl->mIndex = findIndex;
+
+		if (!SetupTechnique(impl))
+		{
+			CJING_SAFE_DELETE(impl);
+			return nullptr;
+		}
+		mTechniques.push(impl);
+
+		return impl;
 	}
 
 	ShaderTechniqueImpl* ShaderImpl::CreateTechnique(const char* name, const ShaderTechniqueDesc& desc)
@@ -811,6 +858,13 @@ namespace Cjing3D
 		CJING_SAFE_DELETE(mImpl);
 	}
 
+	ShaderTechnique Shader::CreateTechnique(const ShaderTechHasher& hasher, const ShaderTechniqueDesc& desc)
+	{
+		ShaderTechnique tech;
+		tech.mImpl = mImpl->CreateTechnique(hasher, desc);
+		return std::move(tech);
+	}
+
 	ShaderTechnique Shader::CreateTechnique(const char* name, const ShaderTechniqueDesc& desc)
 	{
 		ShaderTechnique tech;
@@ -834,6 +888,31 @@ namespace Cjing3D
 			impl->mHeader = bindingSetHeader;
 			impl->mIndex = index;
 			if (!impl->Initialize()) 
+			{
+				CJING_DELETE(impl);
+				impl = nullptr;
+			}
+			ret.mImpl = impl;
+		}
+		return ret;
+	}
+
+	ShaderBindingSet Shader::CreateGlobalBindingSet(const char* name)
+	{
+		ShaderBindingSet ret;
+		auto* factory = Shader::GetFactory();
+		{
+			Concurrency::ScopedWriteLock lock(factory->mLock);
+			auto index = factory->GetBindingSetIndexByName(name);
+			if (index < 0) {
+				return ret;
+			}
+
+			const auto& bindingSetHeader = factory->mBindingSetHeaders[index];
+			ShaderBindingSetImpl* impl = CJING_NEW(ShaderBindingSetImpl);
+			impl->mHeader = bindingSetHeader;
+			impl->mIndex = index;
+			if (!impl->Initialize())
 			{
 				CJING_DELETE(impl);
 				impl = nullptr;

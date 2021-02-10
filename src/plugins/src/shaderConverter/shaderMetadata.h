@@ -1,17 +1,15 @@
 #pragma once
 
 #include "shaderAST.h"
+#include "renderer\shaderImpl.h"
 #include "core\container\hashMap.h"
+#include "core\container\set.h"
 #include "gpu\definitions.h"
 
 namespace Cjing3D
 {
 namespace ShaderAST
 {
-	// shaderMetadata 用来解析source中特殊的结构体
-
-	class ShaderMetadata;
-
 	struct ShaderBindingSetInfo
 	{
 		String mName;
@@ -20,54 +18,6 @@ namespace ShaderAST
 		DynamicArray<String> mSRVs;
 		DynamicArray<String> mUAVs;
 		DynamicArray<String> mSamplers;
-	};
-
-	template<typename InfoT>
-	class StructVisitor : public NodeVisitor
-	{
-	public:
-		using ParseMemberFunc = bool(*)(InfoT& info, I32 index, ValueNode* node);
-		using VisitMemberFunc = bool(*)(InfoT& info, I32 index, FileNode* fileNode, ShaderMetadata& metadata, ValueNode* node);
-
-		StructVisitor(InfoT& info, FileNode* fileNode, ShaderMetadata& metadata) :
-			mInfo(info),
-			mFileNode(fileNode),
-			mMetadata(metadata)
-		{}
-		virtual ~StructVisitor() {}
-
-		virtual bool VisitBegin(MemberValueNode* node) 
-		{ 
-			if (node->mValue == nullptr) {
-				return false;
-			}
-
-			auto parseFunc = mParseFuncs.find(node->mMemberStr);
-			if (parseFunc != nullptr) {
-				return (*parseFunc)(mInfo, node->mIndex, node->mValue);
-			}
-
-			auto visitFunc = mVisitFuncs.find(node->mMemberStr);
-			if (visitFunc != nullptr) {
-				return (*visitFunc)(mInfo, node->mIndex, mFileNode, mMetadata, node->mValue);
-			}
-
-			return true;
-		}
-
-		void AddParseFunc(const String& name, ParseMemberFunc&& func) {
-			mParseFuncs.insert(name, func);
-		}
-		void AddVisitFunc(const String& name, VisitMemberFunc&& func) {
-			mVisitFuncs.insert(name, func);
-		}
-
-	protected:
-		InfoT& mInfo;
-		FileNode* mFileNode;
-		ShaderMetadata& mMetadata;
-		HashMap<String, ParseMemberFunc> mParseFuncs;
-		HashMap<String, VisitMemberFunc> mVisitFuncs;
 	};
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -121,57 +71,54 @@ namespace ShaderAST
 		ShaderRenderStateInfo mRenderState;
 	};
 
+	struct ShaderTechniqueRegInstInfo
+	{
+		ShaderTechHasher mHasher;
+		ShaderTechniqueInfo mTechInfo;
+	};
+
+	struct ShaderTechniquePassRegisterInfo
+	{
+		RENDERPASS mRenderPass;
+		ShaderTechniqueInfo mTechInfo;
+		DynamicArray<ShaderTechniqueRegInstInfo> mInsts;
+		Set<BLENDMODE> mRegBlendModes;
+	};
+
+	struct ShaderTechniqueRegisterInfo
+	{
+		String mName;
+		DynamicArray<ShaderTechniquePassRegisterInfo> mInfos;
+	};
+
+	struct ShaderTechniqueHasherInfo
+	{
+		String mTech;
+		ShaderTechHasher mHasher;
+	};
+
 	/////////////////////////////////////////////////////////////////////////////
 	// Visistors
 	
 	// samplerState
-	class SamplerStateVisitor : public StructVisitor<ShaderSamplerStateInfo>
-	{
-	public:
-		SamplerStateVisitor(ShaderSamplerStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
-	
+	DECLARE_VISITOR(SamplerStateVisitor, ShaderSamplerStateInfo);
 	// blend rendr target
-	class RenderTargetBlendStateInfoVisitor : public StructVisitor<RenderTargetBlendStateInfo>
-	{
-	public:
-		RenderTargetBlendStateInfoVisitor(RenderTargetBlendStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
-
+	DECLARE_VISITOR(RenderTargetBlendStateInfoVisitor, RenderTargetBlendStateInfo);
 	// blend state
-	class ShaderBlendStateVisitor : public StructVisitor<ShaderBlendStateInfo>
-	{
-	public:
-		ShaderBlendStateVisitor(ShaderBlendStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
-
+	DECLARE_VISITOR(ShaderBlendStateVisitor, ShaderBlendStateInfo);
 	// depthStencilState
-	class ShaderDepthStencilStateVisitor : public StructVisitor<ShaderDepthStencilStateInfo>
-	{
-	public:
-		ShaderDepthStencilStateVisitor(ShaderDepthStencilStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
-
+	DECLARE_VISITOR(ShaderDepthStencilStateVisitor, ShaderDepthStencilStateInfo);
 	// rasterizerState
-	class ShaderRasterizerStateVisitor : public StructVisitor<ShaderRasterizerStateInfo>
-	{
-	public:
-		ShaderRasterizerStateVisitor(ShaderRasterizerStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
-
+	DECLARE_VISITOR(ShaderRasterizerStateVisitor, ShaderRasterizerStateInfo);
 	// renderState ast visitor
-	class ShaderRenderStateVisitor : public StructVisitor<ShaderRenderStateInfo>
-	{
-	public:
-		ShaderRenderStateVisitor(ShaderRenderStateInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
-
+	DECLARE_VISITOR(ShaderRenderStateVisitor, ShaderRenderStateInfo);
 	// technique ast visitor
-	class ShaderTechniqueVisitor : public StructVisitor<ShaderTechniqueInfo>
-	{
-	public:
-		ShaderTechniqueVisitor(ShaderTechniqueInfo& info, FileNode* fileNode, ShaderMetadata& metadata);
-	};
+	DECLARE_VISITOR(ShaderTechniqueVisitor, ShaderTechniqueInfo);
+
+	// registers
+	DECLARE_VISITOR(ShaderTechniqueBlendRegisterVisitor, ShaderTechniqueRegInstInfo);
+	DECLARE_VISITOR(ShaderTechniquePassRegisterVisitor, ShaderTechniquePassRegisterInfo);
+	DECLARE_VISITOR(ShaderTechniqueRegisterVisitor, ShaderTechniqueRegisterInfo);
 
 	/////////////////////////////////////////////////////////////////////////////
 	// shader metadata
@@ -193,7 +140,7 @@ namespace ShaderAST
 		const DynamicArray<ShaderRenderStateInfo>& GetRenderStates()const { return mRenderStates; }
 		const DynamicArray<ShaderBindingSetInfo>& GetBindingSets()const { return mBindingSets; }
 		const DynamicArray<ShaderSamplerStateInfo>& GetSamplerStates()const { return mSamplerStates; }
-	
+		const DynamicArray<ShaderTechniqueHasherInfo>& GetTechHashers()const { return mTechHashers; }
 	public:
 		FileNode* mFileNode = nullptr;
 
@@ -205,6 +152,7 @@ namespace ShaderAST
 		DynamicArray<ShaderRenderStateInfo> mRenderStates;
 		DynamicArray<ShaderTechniqueInfo> mTechs;
 		DynamicArray<ShaderBindingSetInfo> mBindingSets;
+		DynamicArray<ShaderTechniqueHasherInfo> mTechHashers;
 	};
 }
 }

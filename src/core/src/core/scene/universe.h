@@ -67,10 +67,9 @@ namespace Cjing3D
 		void SetEntityName(ECS::Entity entity, const char* name);
 		const char* GetEntityName(ECS::Entity entity)const;
 
-		Signal<void(ECS::Entity entity)> OnEntityDestroyed;
-
-		// system
 		void RegisterSystem(ECS::ISystem* system);
+
+		Signal<void(ECS::Entity entity)> OnEntityDestroyed;
 
 		template<typename ComponentT>
 		ECS::ComponentManager<ComponentT>* RegisterComponents(const ECS::ComponentType& type)

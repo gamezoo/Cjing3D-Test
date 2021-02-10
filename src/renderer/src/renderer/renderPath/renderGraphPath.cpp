@@ -23,14 +23,27 @@ namespace Cjing3D
 		// update viewport 
 		mViewport.CreatePerspective((F32)resolution.x(), (F32)resolution.y(), mViewport.mNear, mViewport.mFar);
 
-		// create renderTargets
-		GPU::TextureDesc desc;
-		desc.mWidth = resolution[0];
-		desc.mHeight = resolution[1];
-		desc.mFormat = GPU::FORMAT_R8G8B8A8_UNORM;
-		desc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;
-		GPU::ResHandle rtMain = GPU::CreateTexture(&desc, nullptr, "rtMain");
-		mRTMain.SetTexture(rtMain, desc);
+		// renderTargets
+		{
+			GPU::TextureDesc desc;
+			desc.mWidth = resolution[0];
+			desc.mHeight = resolution[1];
+			desc.mFormat = GPU::FORMAT_R8G8B8A8_UNORM;
+			desc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;
+			GPU::ResHandle rtMain = GPU::CreateTexture(&desc, nullptr, "renderTarget_Main");
+			mRenderTargetMain.SetTexture(rtMain, desc);
+		}
+		// depthBuffers
+		{
+			GPU::TextureDesc desc;
+			desc.mWidth = resolution[0];
+			desc.mHeight = resolution[1];
+			desc.mFormat = GPU::FORMAT_R32G8X24_TYPELESS;
+			desc.mBindFlags = GPU::BIND_DEPTH_STENCIL | GPU::BIND_SHADER_RESOURCE;
+			GPU::ResHandle dsMain = GPU::CreateTexture(&desc, nullptr, "depthBuffer_Main");
+			mDepthBufferMain.SetTexture(dsMain, desc);
+		}
+
 	}
 
 	void RenderGraphPath::Start()
@@ -57,7 +70,8 @@ namespace Cjing3D
 		mMainPipeline.Clear();
 
 		// clear rtvs
-		mRTMain.Clear();
+		mRenderTargetMain.Clear();
+		mDepthBufferMain.Clear();
 	}
 
 	void RenderGraphPath::Update(F32 dt)
@@ -66,7 +80,8 @@ namespace Cjing3D
 
 		// update visisbility
 		I32 cullingFlag = CULLING_FLAG_ALL;
-		Renderer::UpdateVisibility(mVisibility, mViewport, cullingFlag);
+		mVisibility.mViewport = &mViewport;
+		Renderer::UpdateViewCulling(mVisibility, mViewport, cullingFlag);
 
 		// renderer update
 		Renderer::Update(mVisibility, mFrameCB, dt);
@@ -80,26 +95,30 @@ namespace Cjing3D
 		mMainGraph.Clear();
 
 		// setup resources	
-		auto resRTMain = mMainGraph.ImportTexture("rtMain", mRTMain.GetHandle(), &mRTMain.GetDesc());
-		mMainPipeline.SetResource("rtMain", resRTMain);
+		auto SetupResource = [&](Texture& texture, const char* name) {
+			auto res = mMainGraph.ImportTexture(name, texture.GetHandle(), &texture.GetDesc());
+			mMainPipeline.SetResource(name, res);
+		};
+		SetupResource(mRenderTargetMain, "rtMain");
+		SetupResource(mDepthBufferMain, "dbMain");
 
 		//setup pipelines
-		mMainPipeline.Setup(mMainGraph, mViewport, mFrameCB, mVisibility);
+		//mMainPipeline.Setup(mMainGraph, mViewport, mFrameCB, mVisibility);
 
-		if (!mMainGraph.Execute(mMainPipeline.GetResource("rtMain"))) {
-			Debug::Warning("Render graph failed to executed");
-		}
+		//if (!mMainGraph.Execute(mMainPipeline.GetResource("rtMain"))) {
+		//	Debug::Warning("Render graph failed to executed");
+		//}
 	}
 
 	void RenderGraphPath::Compose(GPU::CommandList& cmd)
 	{
-		if (mRTMain.GetHandle()) 
+		if (mRenderTargetMain.GetHandle())
 		{
 			ImageParams params;
 			params.mBlendFlag = BLENDMODE_OPAQUE;
 			params.EnableFullScreen();
 
-			RenderImage::Draw(mRTMain.GetHandle(), params, cmd);
+			RenderImage::Draw(mRenderTargetMain.GetHandle(), params, cmd);
 		}
 
 		RenderPath::Compose(cmd);

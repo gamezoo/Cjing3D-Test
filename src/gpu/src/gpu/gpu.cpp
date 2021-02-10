@@ -495,6 +495,12 @@ namespace GPU
 		mImpl->mDevice->AddStaticSampler(sampler);
 	}
 
+	GPUAllocation GPUAllcate(CommandList& cmd, size_t size)
+	{
+		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
+		return mImpl->mDevice->GPUAllcate(cmd.GetHanlde(), size);
+	}
+
 	const BufferDesc* GetBufferDesc(ResHandle handle)
 	{
 		return mImpl->mBufferDescMap.find(handle.GetValue());

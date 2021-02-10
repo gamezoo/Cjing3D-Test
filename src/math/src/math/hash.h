@@ -2,7 +2,8 @@
 
 #include "maths_common.h"
 
-#include<functional>
+#include <functional>
+#include <type_traits>
 
 namespace Cjing3D
 {
@@ -33,9 +34,15 @@ namespace Cjing3D
 		seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 
+	template<typename T>
+	inline std::enable_if_t<std::is_enum<T>::value, U64> HashFunc(U64 Input, const T& Data) {
+		I32 value = (I32)Data;
+		return FNV1aHash(Input, &value, 4);
+	}
+
 	// Hasher
 	template<typename T>
-	inline U64 HashFunc(U64 Input, const T& Data)
+	inline std::enable_if_t<!std::is_enum<T>::value, U64> HashFunc(U64 Input, const T& Data)
 	{
 		static_assert(false, "This Type of Hash function not defined");
 		return 0;

@@ -3,6 +3,7 @@
 #include "core\common\common.h"
 #include "core\container\dynamicArray.h"
 #include "core\container\staticArray.h"
+#include "core\container\hashMap.h"
 #include "core\helper\enumTraits.h"
 
 namespace Cjing3D
@@ -303,6 +304,97 @@ namespace Cjing3D
 			NodeVisitor* mVisitor;
 			T* mNode;
 			bool mResult = false;
+		};
+
+		class ShaderMetadata;
+
+		template<typename InfoT>
+		class StructVisitor : public NodeVisitor
+		{
+		public:
+			using ParseMemberFunc = bool(*)(InfoT& info, I32 index, ValueNode* node);
+			using VisitMemberFunc = bool(*)(InfoT& info, I32 index, FileNode* fileNode, ShaderMetadata& metadata, ValueNode* node);
+			using EndParseFunc = void(*)(InfoT& info, FileNode* fileNode, ShaderMetadata& metadata);
+
+			StructVisitor(InfoT& info, FileNode* fileNode, ShaderMetadata& metadata) :
+				mInfo(info),
+				mFileNode(fileNode),
+				mMetadata(metadata)
+			{}
+			virtual ~StructVisitor() {}
+
+			virtual bool VisitBegin(MemberValueNode* node)
+			{
+				if (node->mValue == nullptr) {
+					return false;
+				}
+
+				auto parseFunc = mParseFuncs.find(node->mMemberStr);
+				if (parseFunc != nullptr) {
+					return (*parseFunc)(mInfo, node->mIndex, node->mValue);
+				}
+
+				auto visitFunc = mVisitFuncs.find(node->mMemberStr);
+				if (visitFunc != nullptr) {
+					return (*visitFunc)(mInfo, node->mIndex, mFileNode, mMetadata, node->mValue);
+				}
+
+				return true;
+			}
+
+			virtual bool VisitBegin(ValueNode* node) 
+			{
+				mDepth++;
+				return true; 
+			}
+			virtual void VisitEnd(ValueNode* node) 
+			{
+				mDepth--;
+				if (mDepth <= 0 && mEndParseFunc) {
+					mEndParseFunc(mInfo, mFileNode, mMetadata);
+				}
+			}
+			virtual bool VisitBegin(ValuesNode* node)
+			{
+				mDepth++;
+				return true;
+			}
+			virtual void VisitEnd(ValuesNode* node)
+			{
+				mDepth--;
+				if (mDepth <= 0 && mEndParseFunc) {
+					mEndParseFunc(mInfo, mFileNode, mMetadata);
+				}
+			}
+
+			void AddParseFunc(const String& name, ParseMemberFunc&& func) {
+				mParseFuncs.insert(name, func);
+			}
+
+			void AddVisitFunc(const String& name, VisitMemberFunc&& func) {
+				mVisitFuncs.insert(name, func);
+			}
+
+			void DoEndParseFunc() {
+				if (mEndParseFunc != nullptr) {
+					mEndParseFunc(mInfo, mFileNode, mMetadata);
+				}
+			}
+
+		protected:
+			InfoT& mInfo;
+			FileNode* mFileNode;
+			ShaderMetadata& mMetadata;
+			HashMap<String, ParseMemberFunc> mParseFuncs;
+			HashMap<String, VisitMemberFunc> mVisitFuncs;
+			EndParseFunc mEndParseFunc = nullptr;
+			I32 mDepth = 0;
+		};
+
+	#define DECLARE_VISITOR(type, info)										\
+		class type : public StructVisitor<info> {							\
+		public:																\
+			type(info& info, FileNode* fileNode, ShaderMetadata& metadata); \
 		};
 	}
 }

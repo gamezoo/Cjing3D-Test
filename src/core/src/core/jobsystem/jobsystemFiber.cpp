@@ -2,6 +2,7 @@
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\helper\debug.h"
 #include "core\helper\timer.h"
+#include "core\memory\linearAllocator.h"
 
 #include <vector>
 #include <array>
@@ -57,6 +58,8 @@ namespace JobSystem
 		// job signals
 		MPMCBoundedQueue<U32> mFreeQueue;
 		std::vector<Counter> mCounterPool;
+
+		// job group allocator
 
 		// debug infos
 #ifdef DEBUG
@@ -564,7 +567,7 @@ namespace JobSystem
 		RunJobs(&jobInfo, 1, jobHandle);
 	}
 
-	void RunJobs(I32 jobCount, I32 groupSize, const JobFunc& jobFunc, void* jobData, JobHandle* jobHandle, Priority priority, const std::string& jobName)
+	void RunJobs(I32 jobCount, I32 groupSize, const JobGroupFunc& jobFunc, size_t sharedMemSize, JobHandle* jobHandle, Priority priority, const std::string& jobName)
 	{
 		if (!IsInitialized()) {
 			return;
@@ -584,12 +587,17 @@ namespace JobSystem
 			JobSystem::JobInfo jobInfo;
 			jobInfo.jobName = jobName;
 			jobInfo.userParam_ = groupID;
-			jobInfo.userData_ = jobData;
+			jobInfo.userData_ = nullptr;
 			jobInfo.jobPriority_ = priority;
-			jobInfo.jobFunc_ = [groupJobOffset, groupJobEnd, jobFunc](I32 param, void* data)
+			jobInfo.jobFunc_ = [groupJobOffset, groupJobEnd, jobFunc, sharedMemSize](I32 param, void* data)
 			{
 				JobGroupArgs groupArg;
 				groupArg.groupID_ = param;
+
+				void* sharedMemData = nullptr;
+				if (sharedMemSize > 0) {
+					sharedMemData = Memory::StackAlloca(sharedMemSize);
+				}
 
 				for (I32 i = groupJobOffset; i < groupJobEnd; i++)
 				{
@@ -597,7 +605,7 @@ namespace JobSystem
 					groupArg.isFirstJobInGroup_ = (i == groupJobOffset);
 					groupArg.isLastJobInGroup_ = (i == groupJobEnd - 1);
 
-					jobFunc(i, &groupArg);
+					jobFunc(i, &groupArg, sharedMemData);
 				}
 			};
 

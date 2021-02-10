@@ -40,6 +40,7 @@ namespace GPU
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
 		virtual void AddStaticSampler(const StaticSampler& sampler) = 0;
+		virtual GPUAllocation GPUAllcate(ResHandle handle, size_t size) = 0;
 
 		U32x2 GetResolution()const { return mResolution; }
 		U32 GetResolutionWidth()const { return mResolution.x(); }

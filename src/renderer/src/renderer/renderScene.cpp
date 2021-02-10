@@ -5,51 +5,55 @@
 namespace Cjing3D
 {	
     /// ////////////////////////////////////////////////////////////////////////////////
-    /// RenderScene Impl
+    /// RenderScene Systems
 
-    class TestComponent
+    MaterialSystem::MaterialSystem() {
+        DeclareDependencies<TransformSystem, HierarchySystem>();
+    }
+    void MaterialSystem::Update(Universe& universe, JobSystem::JobHandle& jobHandle, bool& waitJobs)
     {
-    public:
-        int mTestVal = 10;
-    };
+    }
 
+    MeshSystem::MeshSystem() {
+        DeclareDependencies<TransformSystem, HierarchySystem>();
+    }
+    void MeshSystem::Update(Universe& universe, JobSystem::JobHandle& jobHandle, bool& waitJobs)
+    {
+    }
+
+    ObjectSystem::ObjectSystem() {
+        DeclareDependencies<TransformSystem, HierarchySystem>();
+    }
+    void ObjectSystem::Update(Universe& universe, JobSystem::JobHandle& jobHandle, bool& waitJobs)
+    {
+    }
+
+    /// ////////////////////////////////////////////////////////////////////////////////
+    /// RenderScene Systems
     class RenderSceneImpl
     {
     public:
-        Engine& mEngine;
-        Universe& mUniverse;
-        int mTestVal;
-
-    public:
-        RenderSceneImpl(Engine& engine, Universe& universe) :
-            mEngine(engine),
-            mUniverse(universe)
-        {
-        }
-
-        ~RenderSceneImpl()
-        {
-        }
-
-        void CreateTestComponent(ECS::Entity entity) {
-        }
-
-        void DestroyTestComponent(ECS::Entity entity) {
-        }
     };
 
     /// ////////////////////////////////////////////////////////////////////////////////
     /// RenderScene
-    RenderScene::RenderScene(Engine& engine, Universe& universe)
+    RenderScene::RenderScene(Engine& engine, Universe& universe) :
+        mEngine(engine),
+        mUniverse(universe)
     {
-        mImpl = CJING_NEW(RenderSceneImpl)(engine, universe);
+        // components
+        mObjects = universe.RegisterComponents<ObjectComponent>(ECS::SceneReflection::RegisterComponentType("Object"));
+        mObjectAABBs = universe.RegisterComponents<AABB>(ECS::SceneReflection::RegisterComponentType("ObjectAABB"));
 
+        // systems
+        universe.RegisterSystem(CJING_NEW(ObjectSystem));
+
+        // reflection
         RenderScene::RegisterReflect();
     }
 
     RenderScene::~RenderScene()
     {
-        CJING_SAFE_DELETE(mImpl);
     }
 
     void RenderScene::Initialize()
@@ -74,12 +78,58 @@ namespace Cjing3D
 
     Universe& RenderScene::GetUniverse()
     {
-        return mImpl->mUniverse;
+        return mUniverse;
     }
 
-    CullResult RenderScene::GetCullResult()
+    void RenderScene::GetCullingResult(CullingResult& cullingResult, Frustum& frustum, I32 cullingFlag)
     {
-        return CullResult();
+        struct CullingEntityList
+        {
+            U32 mCount = 0;
+            U32* mList = nullptr;
+        };
+
+        JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
+
+        if (cullingFlag & CULLING_FLAG_OBJECTS)
+        {
+            I32 count = mObjectAABBs->GetCount();
+            cullingResult.mCulledObjects.resize(count);
+
+            JobSystem::RunJobs(count, 64, [&](I32 jobIndex, JobSystem::JobGroupArgs* args, void* sharedMem) {
+               
+                CullingEntityList* list = (CullingEntityList*)sharedMem;
+                if (args->isFirstJobInGroup_) {
+                    list->mCount = 0;
+                }
+
+                ECS::Entity entity = mObjectAABBs->GetEntityByIndex(jobIndex);
+                if (entity == ECS::INVALID_ENTITY) {
+                    return;
+                }
+
+                const AABB* aabb = mObjectAABBs->GetComponentByIndex(jobIndex);
+                if (aabb != nullptr) 
+                {
+                    if (frustum.Overlaps(*aabb)) {
+                        list->mList[list->mCount++] = jobIndex;
+                    }
+                }
+
+                if (args->isLastJobInGroup_ && list->mCount > 0)
+                {
+                    I32 newCount = Concurrency::AtomicAdd(&cullingResult.mObjectCount, list->mCount);
+                    for (int i = 0; i < list->mCount; i++) {
+                        cullingResult.mCulledObjects[newCount - list->mCount + i] = list->mList[i];
+                    }
+                }
+
+            }, sizeof(CullingEntityList), &jobHandle);
+        }
+
+        if (jobHandle != JobSystem::INVALID_HANDLE) {
+            JobSystem::Wait(&jobHandle);
+        }
     }
 
     void RenderScene::RegisterReflect()

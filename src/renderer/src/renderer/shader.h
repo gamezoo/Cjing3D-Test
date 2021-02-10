@@ -1,5 +1,6 @@
 #pragma once
 
+#include "definitions.h"
 #include "resource\resource.h"
 #include "resource\resRef.h"
 #include "gpu\resource.h"
@@ -77,6 +78,12 @@ namespace Cjing3D
 		~ShaderBindingContext();
 
 		template<typename... Args>
+		void Add(Args&&... args)
+		{
+			(AddImpl(args), ...);
+		}
+
+		template<typename... Args>
 		bool Bind(const ShaderTechnique& technique, Args&&... args)
 		{
 			(AddImpl(args), ...);
@@ -97,8 +104,11 @@ namespace Cjing3D
 		DECLARE_RESOURCE(Shader, "Shader")
 		~Shader();
 
+		ShaderTechnique CreateTechnique(const ShaderTechHasher& hasher, const ShaderTechniqueDesc& desc);
 		ShaderTechnique CreateTechnique(const char* name, const ShaderTechniqueDesc& desc);
 		ShaderBindingSet CreateBindingSet(const char* name);
+
+		static ShaderBindingSet CreateGlobalBindingSet(const char* name);
 
 	private:
 		friend class ShaderFactory;

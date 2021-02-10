@@ -82,4 +82,9 @@ namespace Cjing3D
 		memset(dst, c, count);
 	}
 
+	void* Memory::StackAlloca(size_t size)
+	{
+		return alloca(size);
+	}
+
 }

@@ -243,10 +243,29 @@ namespace Cjing3D
 				techFunctions.push(tech.mVS);
 				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_VS].insert(tech.mVS);
 			}
-			if (!tech.mPS.empty()) 
+			if (!tech.mHS.empty())
+			{
+				techFunctions.push(tech.mHS);
+				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_HS].insert(tech.mHS);
+			}
+			if (!tech.mDS.empty())
+			{
+				techFunctions.push(tech.mDS);
+				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_DS].insert(tech.mDS);
+			}
+			if (!tech.mPS.empty())
 			{
 				techFunctions.push(tech.mPS);
 				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_PS].insert(tech.mPS);
+			}
+			if (!tech.mCS.empty()) 
+			{
+				techFunctions.push(tech.mCS);
+				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_CS].insert(tech.mCS);
+			}
+			if (!tech.mGS.empty())
+			{
+				shaderMap[GPU::SHADERSTAGES::SHADERSTAGES_GS].insert(tech.mGS);
 			}
 		}
 
@@ -337,7 +356,6 @@ namespace Cjing3D
 			}
 			else
 			{
-				// 需要将未使用的BindingSet信息删除
 				I32 totalNumRes = bindingSet.mCBVs.size() + bindingSet.mSRVs.size() +
 					bindingSet.mUAVs.size() + bindingSet.mSamplers.size();
 				bindingHeaders.pop(totalNumRes);
@@ -455,6 +473,31 @@ namespace Cjing3D
 			header.mNumBindingSet = numUsedBindingSlot;
 		}
 
+		// Tech hashers
+		DynamicArray<ShaderTechHasherHeader> techHasherHeaders;
+		auto FindTechIdx = [&](const char* name) -> I32 {
+			if (!name) {
+				return -1;
+			}
+			I32 idx = 0;
+			for (const auto& tech : techniqueHeaders)
+			{
+				if (EqualString(tech.mName, name)) {
+					return idx;
+				}
+				idx++;
+			}
+			return -1;
+		};
+
+		const auto& techHashers = shaderMetadata.GetTechHashers();
+		for (const auto& techHasher : techHashers)
+		{
+			auto& hasher = techHasherHeaders.emplace();
+			hasher.mIdxTech = FindTechIdx(techHasher.mTech);
+			hasher.mHasher = techHasher.mHasher;
+		}
+
 		//////////////////////////////////////////////////////////////////////////////////
 		// 8. write shader
 
@@ -467,6 +510,7 @@ namespace Cjing3D
 		// | TechniqueHeaders 
 		// | RenderStateHeaders
 		// | RenderStateJson
+		// | TechHashers
 		// | bytecodes
 
 		ShaderSerializer serializer;
@@ -484,6 +528,7 @@ namespace Cjing3D
 		generalHeader.mNumShaders = compileOutput.size();
 		generalHeader.mNumTechniques = techniques.size();
 		generalHeader.mNumRenderStates = renderStates.size();
+		generalHeader.mNumTechHashers = techHasherHeaders.size();
 
 		file->Write(&generalHeader, sizeof(generalHeader));
 		if (!bindingSetHeaders.empty()) {
@@ -527,6 +572,9 @@ namespace Cjing3D
 
 			file->Write(renderStateHeaders.data(), renderStateHeaders.size() * sizeof(RenderStateHeader));
 			file->Write(mOutputRenderStates.data(), mOutputRenderStates.size());
+		}
+		if (!techHasherHeaders.empty()) {
+			file->Write(techHasherHeaders.data(), techHasherHeaders.size() * sizeof(ShaderTechHasherHeader));
 		}
 
 		// write bytecode

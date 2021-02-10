@@ -222,7 +222,7 @@ namespace GPU
 	{
 		ResHandle mResource;
 		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
-		GPU::SamplerDesc mDesc;
+		SamplerDesc mDesc;
 	};
 
 	struct BindingBuffer
@@ -231,6 +231,17 @@ namespace GPU
 		SHADERSTAGES mStage = SHADERSTAGES_COUNT;
 		I32 mOffset = 0;
 		I32 mStride = 0;
+	};
+
+	struct GPUAllocation
+	{
+		void* mData = nullptr;
+		ResHandle mBuffer;
+		I32 mOffset = 0;
+
+		explicit operator bool() const {
+			return mData != nullptr && mBuffer != ResHandle::INVALID_HANDLE;
+		}
 	};
 
 	struct StaticSampler
@@ -281,7 +292,7 @@ namespace GPU
 
 	struct PipelineBinding
 	{
-		GPU::ResHandle mPipelineBindingSet;
+		ResHandle mPipelineBindingSet;
 
 		struct Range
 		{

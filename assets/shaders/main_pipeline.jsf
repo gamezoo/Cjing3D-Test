@@ -1,67 +1,44 @@
-#include "common/common.jsh"
-#include "common/samplers.jsh"
-#include "common_bindings.jsh"
+#include "common/register.jsh"
+#include "common/states.jsh"
+#include "bindings_common.jsh"
+#include "render_object.jsh"
 
-RasterizerState RAS_OBJECT = 
+TechniqueRegister TECH_REGISTER_OBEJCT = 
 {
-    .mFillMode = FILL_SOLID,
-    .mCullMode = CULL_NONE,
-    .mFrontCounterClockwise = 0,
-    .mDepthBias = 0,
-    .mDepthBiasClamp = 0,
-    .mSlopeScaleDepthBias = 0,
-    .mDepthClipEnable = 1,
-    .mMultisampleEnable = 0,
-    .mAntialiaseLineEnable = 0,
-};
+    ////////////////////////////////////////////////////////////
+    // RenderPass: Main
+    .mRenderPass[0] = {
+        .mRenderPass = RENDERPASS_MAIN,
+        .mTechnique = {
+            .mVertexShader = VS_Object,
+            .mPixelShader = PS_Object,
 
-DepthStencilState DSS_OBJECT = 
-{
-    .mDepthEnable = 0,
-    .mStencilEnable = 0,
-};
+            .mRenderState = {
+                .mDepthStencilState = DSS_COMMON_DEFAULT,
+                .mRasterizerState = RAS_COMMON_FRONT,
+            },
+        },
 
-RenderTargetBlendState RTBS_OBJECT_BLENDMODE_OPAQUE = 
-{
-	.mBlendEnable = 0,
-    .mRenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL,
-};
-
-/////////////////////////////////////////////////////////////////////////////
-// FULLSCREEN FUNCTION
-struct VS_OBJECT_OUTPUT
-{
-    float4 pos : SV_POSITION;
-    float2 uv  : TEXCOORD0;
-};
-
-VS_OBJECT_OUTPUT VS_Object(uint id : SV_VertexID)
-{
-    VS_OBJECT_OUTPUT output;
-	FullScreenTriangle(id, output.pos, output.uv);
-    return output;
-}
-
-float4 PS_Object(VS_OBJECT_OUTPUT input) : SV_TARGET
-{
-    return float4(1.0f, 1.0f, 1.0f, 1.0f);
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// OBJECT TECH
-
-RenderState RS_OBJECT = 
-{
-    .mBlendState = {
-        .mRenderTarget[0] = RTBS_OBJECT_BLENDMODE_OPAQUE,
+        ////////////////////////////////////////////////
+        // BlendMode: Opaque
+        .mBlendState[0] = {
+            .mBlendMode = BLENDMODE_OPAQUE,
+            .mTechnique = {
+                .mRenderState = {
+                    .mBlendState = BS_COMMON_OPAQUE,
+                },
+            },
+        },
+        ////////////////////////////////////////////////
+        // BlendMode: Alpha
+        .mBlendState[1] = {
+            .mBlendMode = BLENDMODE_ALPHA,
+            .mTechnique = {
+                .mRenderState = {
+                    .mBlendState = BS_COMMON_TRANSPARENT,
+                },
+            },
+        },
     },
-    .mDepthStencilState = DSS_OBJECT,
-    .mRasterizerState = RAS_OBJECT,
 };
 
-Technique TECH_OBJECT = 
-{
-    .mVertexShader = VS_Object,
-    .mPixelShader = PS_Object,
-    .mRenderState = RS_OBJECT
-};

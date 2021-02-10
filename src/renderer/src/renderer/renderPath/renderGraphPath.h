@@ -29,10 +29,11 @@ namespace Cjing3D
 		MainRenderPipeline mMainPipeline;
 		ScopedConnection mResolutionChangedHandle;
 
-		Texture mRTMain;
+		Texture mRenderTargetMain;
+		Texture mDepthBufferMain;
 
 		Viewport mViewport;
-		CullResult mVisibility;
+		CullingResult mVisibility;
 		FrameCB mFrameCB;
 	};
 }

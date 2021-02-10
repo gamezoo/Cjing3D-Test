@@ -15,6 +15,11 @@ namespace Cjing3D
 		RenderGraphResource mResCameraCB;
 	};
 
+	struct DepthData
+	{
+		RenderGraphResource mOutDepth;
+	};
+
 	static RenderFramesData AddSetupRenderFramesPass(RenderGraph& graph, FrameCB& frameCB, const Viewport& viewport)
 	{
 		auto resFrameCB = graph.ImportBuffer("FrameCB", Renderer::GetConstantBuffer(CBTYPE_FRAME));
@@ -49,8 +54,47 @@ namespace Cjing3D
 		return framesData;
 	}
 
-	static void AddDepthPrepassPass(RenderGraph& graph)
+	static DepthData AddDepthPrepassPass(RenderGraph& graph, const CullingResult& cullResult, RenderFramesData& framesData, RenderGraphResource depthBufferMain)
 	{
+		struct DepthPrepassData
+		{
+			GPU::ViewPort mViewport;
+			RenderGraphResource mOutDepth;
+		};
+
+		auto& depthPass = graph.AddDataRenderPass<DepthPrepassData>("DepthPrepass",
+			[&](RenderGraphResBuilder& builder, DepthPrepassData& data) {
+
+				auto texture = builder.GetTextureDesc(depthBufferMain);
+				if (texture == nullptr) {
+					return;
+				}
+
+				data.mViewport.mWidth = (F32)texture->mWidth;
+				data.mViewport.mHeight = (F32)texture->mHeight;
+				
+				data.mOutDepth = builder.SetDSV(depthBufferMain, RenderGraphFrameAttachment::DepthStencil(
+					GPU::BindingFrameAttachment::LOAD_CLEAR
+				));
+			},
+			[&](RenderGraphResources& resources, GPU::CommandList& cmd, DepthPrepassData& data) 
+			{	
+				auto fbs = resources.GetFrameBindingSet();
+				if (fbs == GPU::ResHandle::INVALID_HANDLE) {
+					return;
+				}
+				
+				cmd.BindViewport(data.mViewport);
+				if (auto binding = cmd.BindScopedFrameBindingSet(fbs)) {
+					Renderer::DrawScene(RENDERPASS_PREPASS, RENDERTYPE_OPAQUE, cullResult, resources, cmd);
+				}
+			}
+		);
+
+		DepthData depthData;
+		depthData.mOutDepth = depthPass.GetData().mOutDepth;
+
+		return depthData;
 	}
 
 	static void AddLightCullingPass(RenderGraph& graph)
@@ -61,46 +105,48 @@ namespace Cjing3D
 	{
 	}
 
-	static void AddOpaqueScenePass(RenderGraph& graph)
+	static void AddOpaqueScenePass(RenderGraph& graph, const CullingResult& cullResult, RenderFramesData& framesData, DepthData& depthData, RenderGraphResource rtMain)
 	{
-	}
+		struct OpaqueSceneData
+		{
+			GPU::ViewPort mViewport;
+			CullingResult mCullResult;
+		};
 
-	static void AddTransparentScenePass(RenderGraph& graph)
-	{
-	}
+		graph.AddDataRenderPass<OpaqueSceneData>("OpaqueScenePass",
+			[&](RenderGraphResBuilder& builder, OpaqueSceneData& data) {
 
-	static void AddFullscreenPass(RenderGraph& graph, RenderGraphResource outColor)
-	{
-		graph.AddCallbackRenderPass("FullScreenPass",
-			[&](RenderGraphResBuilder& builder) {
+				auto texture = builder.GetTextureDesc(depthData.mOutDepth);
+				if (texture == nullptr) {
+					return;
+				}
+				data.mViewport.mWidth = (F32)texture->mWidth;
+				data.mViewport.mHeight = (F32)texture->mHeight;
 
-				builder.AddRTV(outColor, RenderGraphFrameAttachment::RenderTarget(
-						GPU::BindingFrameAttachment::LOAD_CLEAR
-					));
+				data.mCullResult = cullResult;
+
+				builder.AddRTV(rtMain, RenderGraphFrameAttachment::RenderTarget());
+				builder.SetDSV(depthData.mOutDepth, RenderGraphFrameAttachment::DepthStencil(
+					GPU::BindingFrameAttachment::LOAD_DEFAULT
+				));
 			},
-			[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+			[&](RenderGraphResources& resources, GPU::CommandList& cmd, OpaqueSceneData& data) {
+				
 				auto fbs = resources.GetFrameBindingSet();
 				if (fbs == GPU::ResHandle::INVALID_HANDLE) {
 					return;
 				}
 
-				auto shader = Renderer::GetShader(SHADERTYPE_MAIN);
-				if (!shader) {
-					return;
+				cmd.BindViewport(data.mViewport);
+				if (auto binding = cmd.BindScopedFrameBindingSet(fbs)) {
+					Renderer::DrawScene(RENDERPASS_MAIN, RENDERTYPE_OPAQUE, data.mCullResult, resources, cmd);
 				}
-
-				ShaderTechniqueDesc desc = {};
-				desc.mPrimitiveTopology = GPU::TRIANGLESTRIP;
-				auto tech = shader->CreateTechnique("TECH_OBJECT", desc);
-				cmd.BeginFrameBindingSet(fbs);
-				{
-					auto pipelineState = tech.GetPipelineState();
-					cmd.BindPipelineState(pipelineState);
-					cmd.Draw(3, 0);
-				}
-				cmd.EndFrameBindingSet();
 			}
 		);
+	}
+
+	static void AddTransparentScenePass(RenderGraph& graph)
+	{
 	}
 
 	/// ///////////////////////////////////////////////////////////////////
@@ -113,27 +159,27 @@ namespace Cjing3D
 	{
 	}
 
-	void MainRenderPipeline::Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullResult& cullResult)
+	void MainRenderPipeline::Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullingResult& cullResult)
 	{
 		// setup render frames
-		auto renderFramesData = AddSetupRenderFramesPass(graph, frameCB, viewport);
+		RenderFramesData renderFramesData = AddSetupRenderFramesPass(graph, frameCB, viewport);
 
 		// depth prepass
-		AddDepthPrepassPass(graph);
+		DepthData depthData =  AddDepthPrepassPass(graph, cullResult, renderFramesData, GetResource("dbMain"));
 
 		// light culling
-		AddLightCullingPass(graph);
+		//AddLightCullingPass(graph);
 
 		// shadow maps
-		AddShadowMapsPass(graph);
+		//AddShadowMapsPass(graph);
 
 		// opaque scene
-		AddOpaqueScenePass(graph);
+		AddOpaqueScenePass(graph, cullResult, renderFramesData, depthData, GetResource("rtMain"));
 
 		// transparent scene
-		AddTransparentScenePass(graph);
+		// AddTransparentScenePass(graph);
 
-		// test
-		AddFullscreenPass(graph, GetResource("rtMain"));
+		// post processes
+		// AddPostprocessesPass(graph);
 	}
 }

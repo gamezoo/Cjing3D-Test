@@ -205,7 +205,7 @@ namespace Renderer
 		}
 		cmd.EventBegin("ProcessRenderQueue");
 
-		RenderScene& scene = *mImpl->mRenderScene;
+		RenderScene& scene = *mRenderScene;
 		auto transforms = scene.GetUniverse().GetComponents<Transform>(ECS::SceneReflection::GetComponentType("Transform"));
 
 		// allocate all intances
@@ -338,10 +338,9 @@ namespace Renderer
 					cmd.DrawIndexedInstanced(subset.mIndexCount, batch->mInstanceCount, subset.mIndexOffset, 0, 0);
 				}
 			}
-
-			cmd.Free(instancedBatches.size() * sizeof(InstancedBatch));
 		}
 
+		cmd.Free(instancedBatches.size() * sizeof(InstancedBatch));
 		cmd.EventEnd();
 	}
 
@@ -349,13 +348,14 @@ namespace Renderer
 	{
 		auto shader = GetShader(SHADERTYPE_MAIN);
 
-		// todo, auto binding, load shader时自动注册对应的staticRenderState(根据blendMode、dss、bs等等)
+		ShaderTechHasher hasher;
+		hasher.mRenderPass = renderPass;
+		hasher.mBlendMode = blendMode;
+
 		ShaderTechniqueDesc desc = {};
 		desc.mPrimitiveTopology = GPU::TRIANGLESTRIP;
-
-		return std::move(shader->CreateTechnique("TECH_FULLSCREEN", desc));
+		return std::move(shader->CreateTechnique(hasher, desc));
 	}
-
 
 	//////////////////////////////////////////////////////////////////////////
 	// Function
@@ -540,6 +540,5 @@ namespace Renderer
 		cameraCB.gCameraInvNearZ = (1.0f / std::max(0.00001f, cameraCB.gCameraNearZ));
 		cameraCB.gCameraInvFarZ = (1.0f / std::max(0.00001f, cameraCB.gCameraFarZ));
 	}
-
 }
 }

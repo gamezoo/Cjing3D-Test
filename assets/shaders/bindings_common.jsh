@@ -3,7 +3,7 @@
 
 #include "shaderInterop/shaderInteropRender.h"
 
-BindingSet FrameBindings
+BindingSet CommonBindings
 {
     [register(SLOT_CB_FRAME)]
     ConstantBuffer<FrameCB> gFrameCB;

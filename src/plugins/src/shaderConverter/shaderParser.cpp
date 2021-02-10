@@ -1,4 +1,5 @@
 #include "shaderParser.h"
+#include "renderer\definitions.h"
 #include "core\string\stringUtils.h"
 #include "gpu\definitions.h"
 
@@ -110,6 +111,8 @@ namespace Cjing3D
 		{"ColorWriteEnable", GPU::ColorWriteEnable::COLOR_WRITE_ENABLE_ALL},
 		{"FILTER", GPU::FILTER::FILTER_COUNT},
 		{"TEXTURE_ADDRESS_MODE", GPU::TEXTURE_ADDRESS_MODE::TEXTURE_ADDRESS_COUNT},
+		{"RENDERPASS", RENDERPASS::RENDERPASS_COUNT},
+		{"BLENDMODE", BLENDMODE::BLENDMODE_COUNT},
 	};
 
 	/// /////////////////////////////////////////////////////////////////////////////////////////
@@ -462,6 +465,12 @@ namespace Cjing3D
 		}
 		
 		/// /////////////////////////////////////////////////////////////////////////
+		bool isPositive = true;
+		if (token.mType == ShaderAST::TokenType::CHAR && token.mValue == "-")
+		{
+			isPositive = false;
+			NEXT_TOKEN();
+		}
 
 		if (token.mType == ShaderAST::TokenType::STRING ||
 			token.mType == ShaderAST::TokenType::INT ||
@@ -473,11 +482,11 @@ namespace Cjing3D
 			{
 			case ShaderAST::TokenType::INT:
 				valueNode->mValueType = ShaderAST::ValueType::INT;
-				valueNode->mIntValue = token.mInt;
+				valueNode->mIntValue = isPositive ? token.mInt : -token.mInt;
 				break;
 			case ShaderAST::TokenType::FLOAT:
 				valueNode->mValueType = ShaderAST::ValueType::FLOAT;
-				valueNode->mFloatValue = token.mFloat;
+				valueNode->mFloatValue = isPositive ? token.mFloat : -token.mFloat;
 				break;
 			case ShaderAST::TokenType::STRING:
 				valueNode->mValueType = ShaderAST::ValueType::STRING;

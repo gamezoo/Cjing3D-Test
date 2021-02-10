@@ -7,6 +7,7 @@
 
 namespace Cjing3D {
 namespace GPU {
+	class GraphicsDevice;
 
 	class CommandList
 	{
@@ -42,6 +43,27 @@ namespace GPU {
 		void BeginFrameBindingSet(ResHandle handle);
 		void EndFrameBindingSet();
 
+		struct ScopedFrameBindingSet
+		{
+		public:
+			~ScopedFrameBindingSet() {
+				mCmd.EndFrameBindingSet();
+			}
+			ScopedFrameBindingSet(ScopedFrameBindingSet&& rhs) = default;
+
+			explicit operator bool()const {
+				return true;
+			}
+
+		private:
+			friend class CommandList;
+			ScopedFrameBindingSet(CommandList & cmd) : mCmd(cmd) {}
+			ScopedFrameBindingSet(const ScopedFrameBindingSet& rhs) = delete;
+
+			CommandList& mCmd;
+		};
+		ScopedFrameBindingSet BindScopedFrameBindingSet(ResHandle handle);
+
 		class ScopedEvent
 		{
 		public:
@@ -74,6 +96,12 @@ namespace GPU {
 			}
 			return nullptr;
 		}
+
+		void Free(size_t size) {
+			mAllocator.Free(size);
+		}
+
+		GPUAllocation GPUAlloc(size_t size);
 
 		const DynamicArray<Command*>& GetCommands()const { return mCommands; }
 		DynamicArray<Command*>& GetCommands() { return mCommands; }

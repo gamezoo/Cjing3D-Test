@@ -1,5 +1,6 @@
 #include "commandList.h"
 #include "gpu\gpu.h"
+#include "gpu\device.h"
 
 namespace Cjing3D {
 namespace GPU {
@@ -145,6 +146,12 @@ namespace GPU {
         mCommands.push(command);
     }
 
+    CommandList::ScopedFrameBindingSet CommandList::BindScopedFrameBindingSet(ResHandle handle)
+    {
+        BeginFrameBindingSet(handle);
+        return std::move(CommandList::ScopedFrameBindingSet(*this));
+    }
+
     CommandList::ScopedEvent CommandList::Event(const char* name)
     {
         EventBegin(name);
@@ -162,6 +169,11 @@ namespace GPU {
     {
         auto* command = Alloc<CommandEndEvent>();
         mCommands.push(command);
+    }
+
+    GPUAllocation CommandList::GPUAlloc(size_t size)
+    {
+        return GPU::GPUAllcate(*this, size);
     }
 }
 }

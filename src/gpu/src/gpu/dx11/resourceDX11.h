@@ -119,9 +119,11 @@ namespace GPU
 	struct GPUAllocatorDX11
 	{
 		static const U32 DefaultBufferSize = 1024 * 1024;
-
+		BufferDesc mDesc;
 		ResHandle mBuffer;
 		U32 mOffset = 0;
+		bool mIsDirty = false;
+		I32 mResidentFrame = 0;
 	};
 
 	class CommandListDX11
@@ -139,6 +141,8 @@ namespace GPU
 		bool IsValid()const { return mDeviceContext.Get() != nullptr; }
 		void ActivePipelineState(const PipelineStateDX11* pso);
 		void RefreshPipelineState();
+		GPUAllocation GPUAllocate(size_t size);
+		void CommitAllactor();
 		void ActiveFrameBindingSet(const FrameBindingSetDX11* bindingSet);
 		const FrameBindingSetDX11* GetActiveFrameBindingSet() { return mActiveFrameBindingSet; }
 
@@ -148,6 +152,8 @@ namespace GPU
 		ComPtr<ID3D11DeviceContext> mDeviceContext;
 		ComPtr<ID3D11CommandList> mCommandList;
 		ComPtr<ID3DUserDefinedAnnotation> mUserDefinedAnnotations;
+
+		GPUAllocatorDX11 mGPUAllocator;
 
 		const FrameBindingSetDX11* mActiveFrameBindingSet = nullptr;
 		const PipelineStateDX11* mActivePSO = nullptr;

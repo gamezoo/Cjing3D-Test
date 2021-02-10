@@ -1,4 +1,5 @@
 #include "shaderMetadata.h"
+#include "renderer\definitions.h"
 #include "core\helper\enumTraits.h"
 
 namespace Cjing3D
@@ -548,6 +549,14 @@ namespace ShaderAST
 			SamplerStateVisitor visitor(info, mFileNode, *this);
 			node->mValue->Visit(&visitor);
 			mSamplerStates.push(info);
+		}
+		else if (IsDeclTargetInternalType(node, "TechniqueRegister"))
+		{
+			ShaderTechniqueRegisterInfo info;
+			info.mName = node->mName;
+
+			ShaderTechniqueRegisterVisitor visitor(info, mFileNode, *this);
+			node->mValue->Visit(&visitor);
 		}
 
 		return false;

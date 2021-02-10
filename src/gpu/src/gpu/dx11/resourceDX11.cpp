@@ -33,6 +33,7 @@ namespace GPU
 		desc.mCPUAccessFlags = CPU_ACCESS_WRITE;
 		desc.mMiscFlags = RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
+		mAllocator.mDesc = desc;
 		mAllocator.mBuffer = GPU::AllocateHandle(RESOURCETYPE_BUFFER);
 		if (!device.CreateBuffer(mAllocator.mBuffer, &desc, nullptr))
 		{
@@ -246,6 +247,60 @@ namespace GPU
 
 			mDeviceContext->IASetPrimitiveTopology(primitiveTopology);
 			mPrevPrimitiveTopology = desc.mPrimitiveTopology;
+		}
+	}
+
+	GPUAllocation CommandListDX11::GPUAllocate(size_t size)
+	{
+		GPUAllocation allocation;
+		if (size == 0) {
+			return allocation;
+		}
+
+		if (mAllocator.mDesc.mByteWidth <= size)
+		{
+			if (mAllocator.mBuffer != ResHandle::INVALID_HANDLE) {
+				GPU::DestroyResource(mAllocator.mBuffer);
+			}
+
+			// grow the allocator
+			mAllocator.mDesc.mByteWidth *= 2;
+			mAllocator.mBuffer = GPU::AllocateHandle(RESOURCETYPE_BUFFER);
+			if (!mDevice.CreateBuffer(mAllocator.mBuffer, &mAllocator.mDesc, nullptr))
+			{
+				GPU::DestroyResource(mAllocator.mBuffer);
+				Debug::Error("[CommandList] Failed to create buffer.");
+				return allocation;
+			}
+			mDevice.SetResourceName(mAllocator.mBuffer, "CommandListFrameAllocator");
+		}
+
+		bool wrap = false;
+		size_t position = mAllocator.mOffset;
+		if (position + size > mAllocator.mDesc.mByteWidth ||
+			mAllocator.mResidentFrame != mDevice.GetFrameCount()) {
+			wrap = true;
+		}
+		position = wrap ? 0 : position;
+		
+		D3D11_MAP mapping = wrap ? D3D11_MAP_WRITE_DISCARD : D3D11_MAP_WRITE_NO_OVERWRITE;
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		const HRESULT hr = mDeviceContext->Map(mDevice.mBuffers.Read(mAllocator.mBuffer)->mResource.Get(), 0, mapping, 0, &mappedResource);
+		Debug::ThrowIfFailed(hr, "Failed to map buffer of allocator.");
+
+		mAllocator.mResidentFrame = (I32)mDevice.GetFrameCount();
+		mAllocator.mOffset = position + size;
+		mAllocator.mIsDirty = true;
+
+		return allocation;
+	}
+
+	void CommandListDX11::CommitAllactor()
+	{
+		if (mAllocator.mIsDirty)
+		{
+			mAllocator.mIsDirty = false;
+			mDeviceContext->Unmap(mDevice.mBuffers.Read(mAllocator.mBuffer)->mResource.Get(), 0);
 		}
 	}
 

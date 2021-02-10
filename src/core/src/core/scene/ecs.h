@@ -10,6 +10,7 @@
 namespace Cjing3D
 {
 	class Universe;
+	class ArchiveBase;
 
 namespace ECS
 {	
@@ -35,6 +36,18 @@ namespace ECS
 		bool operator< (const ComponentType& rhs) const {
 			return mTypeIndex < rhs.mTypeIndex;
 		}
+	};
+
+	struct IComponent
+	{
+		Entity mEntity = INVALID_ENTITY;
+		ComponentType mType;
+
+		Entity GetEntity()const { return mEntity; }
+		void SetEntity(Entity entity) { mEntity = entity; }
+
+		virtual void Serialize(ArchiveBase& archive) {}
+		virtual void Unserialize(ArchiveBase& archive)const {};
 	};
 
 	// Component 管理器，提供entity对Component映射
@@ -388,4 +401,12 @@ namespace ECS
 		}
 	};
 }
+
+#define DECLARE_SYSTEM(type) \
+	class type : public ECS::System<type> { \
+	public:	\
+		##type(); \
+		void Update(Universe& universe, JobSystem::JobHandle& jobHandle, bool& waitJobs)override; \
+	};
+
 }

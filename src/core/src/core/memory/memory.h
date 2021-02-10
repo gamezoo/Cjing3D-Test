@@ -38,6 +38,7 @@ namespace Cjing3D
 		static void  Memmove(void* dst, const void* src, size_t size);
 		static void  Memcpy(void* dst, const void* src, size_t size);
 		static void  Memset(void* dst, int c, int count);
+		static void* StackAlloca(size_t size);
 
 		template<typename T>
 		static void ObjectConstruct(T* ptr)

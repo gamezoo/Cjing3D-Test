@@ -4,6 +4,7 @@
 #include "gpu\resource.h"
 #include "renderer\shader.h"
 #include "core\serialization\jsonArchive.h"
+#include "definitions.h"
 
 namespace Cjing3D
 {
@@ -15,8 +16,8 @@ namespace Cjing3D
 	struct ShaderGeneralHeader
 	{
 		static const U32 MAGIC;
-		static const I32 MAJOR = 0;
-		static const I32 MINOR = 1;
+		static const I32 MAJOR = 1;
+		static const I32 MINOR = 2;
 
 		U32 mMagic = MAGIC;
 		I32 mMajor = MAJOR;
@@ -27,6 +28,7 @@ namespace Cjing3D
 		I32 mNumShaders = 0;
 		I32 mNumTechniques = 0;
 		I32 mNumRenderStates = 0;
+		I32 mNumTechHashers = 0;
 	};
 
 	struct RenderStateHeader
@@ -93,6 +95,12 @@ namespace Cjing3D
 		I32 mBindingSetIndexs[SHADER_MAX_BOUND_BINDING_SETS];
 	};
 
+	struct ShaderTechHasherHeader
+	{
+		I32 mIdxTech = -1;
+		ShaderTechHasher mHasher;
+	};
+
 	struct ShaderImpl
 	{
 	public:
@@ -106,6 +114,7 @@ namespace Cjing3D
 		DynamicArray<ShaderBytecodeHeader> mBytecodeHeaders;
 		DynamicArray<ShaderTechniqueHeader> mTechniqueHeaders;
 		DynamicArray<RenderStateHeader> mRenderStateHeaders;
+		DynamicArray<ShaderTechHasherHeader> mTechHasherHeaders;
 		DynamicArray<char> mBytecodes;
 		DynamicArray<GPU::ResHandle> mRhiShaders;
 		Concurrency::RWLock mRWLoclk;
@@ -125,6 +134,7 @@ namespace Cjing3D
 		ShaderImpl();
 		~ShaderImpl();
 
+		ShaderTechniqueImpl* CreateTechnique(const ShaderTechHasher& hasher, const ShaderTechniqueDesc& desc);
 		ShaderTechniqueImpl* CreateTechnique(const char* name, const ShaderTechniqueDesc& desc);
 	};
 

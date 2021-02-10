@@ -51,6 +51,7 @@ namespace GPU
 		void SetResolution(const U32x2 size)override;
 
 		void AddStaticSampler(const StaticSampler& sampler)override;
+		GPUAllocation GPUAllcate(ResHandle handle, size_t size)override;
 
 		ID3D11Device& GetDevice() { return *mDevice.Get(); }
 		ID3D11DeviceContext& GetDeviceContext() { return *mImmediateContext.Get(); }

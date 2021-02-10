@@ -1613,6 +1613,11 @@ namespace GPU
 		mStaticSamplers.push(sampler);
 	}
 
+	GPUAllocation GraphicsDeviceDx11::GPUAllcate(ResHandle handle, size_t size)
+	{
+		return GPUAllocation();
+	}
+
 	int GraphicsDeviceDx11::CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount)
 	{
 		auto& texDesc = texture.mDesc;

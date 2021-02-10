@@ -27,4 +27,9 @@ struct CameraCB
 	float    gCameraInvFarZ;
 };
 
+struct MaterialCB
+{
+    float4 mBaseColor;
+};
+
 #endif
