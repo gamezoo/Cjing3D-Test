@@ -1,14 +1,15 @@
 #pragma once
 
 #include "renderPipeline.h"
+#include "renderer\shaderInterop.h"
 
 namespace Cjing3D
 {
-	class MainRenderPipeline : public RenderPipeline
+	class RenderPipeline3D : public RenderPipeline
 	{
 	public:
-		MainRenderPipeline();
-		virtual ~MainRenderPipeline();
+		RenderPipeline3D();
+		virtual ~RenderPipeline3D();
 
 		void Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullingResult& cullResult);
 	};

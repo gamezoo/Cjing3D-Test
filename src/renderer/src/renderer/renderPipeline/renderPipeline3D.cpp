@@ -1,4 +1,4 @@
-#include "mainRenderPipeline.h"
+#include "renderPipeline3D.h"
 #include "renderer\renderer.h"
 #include "renderer\renderGraph.h"
 #include "gpu\commandList.h"
@@ -151,15 +151,15 @@ namespace Cjing3D
 
 	/// ///////////////////////////////////////////////////////////////////
 	// Main pipeline
-	MainRenderPipeline::MainRenderPipeline()
+	RenderPipeline3D::RenderPipeline3D()
 	{
 	}
 
-	MainRenderPipeline::~MainRenderPipeline()
+	RenderPipeline3D::~RenderPipeline3D()
 	{
 	}
 
-	void MainRenderPipeline::Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullingResult& cullResult)
+	void RenderPipeline3D::Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullingResult& cullResult)
 	{
 		// setup render frames
 		RenderFramesData renderFramesData = AddSetupRenderFramesPass(graph, frameCB, viewport);

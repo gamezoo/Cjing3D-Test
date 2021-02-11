@@ -601,6 +601,10 @@ namespace Cjing3D
 
 	void ShaderBindingSet::Set(const char* name, const GPU::BindingBuffer& buffer)
 	{
+		if (mImpl == nullptr) {
+			return;
+		}
+
 		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
 		
 		I32 slot = 0;
@@ -625,6 +629,10 @@ namespace Cjing3D
 
 	void ShaderBindingSet::Set(const char* name, const GPU::BindingSRV& srv)
 	{
+		if (mImpl == nullptr) {
+			return;
+		}
+
 		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
 
 		I32 slot = 0;
@@ -649,6 +657,10 @@ namespace Cjing3D
 
 	void ShaderBindingSet::Set(const char* name, const GPU::BindingUAV& uav)
 	{
+		if (mImpl == nullptr) {
+			return;
+		}
+
 		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
 
 		I32 slot = 0;
@@ -673,6 +685,10 @@ namespace Cjing3D
 
 	void ShaderBindingSet::Set(const char* name, const GPU::BindingSAM& sam)
 	{
+		if (mImpl == nullptr) {
+			return;
+		}
+
 		Debug::CheckAssertion(mImpl->mBindingSetHandle != GPU::ResHandle::INVALID_HANDLE);
 
 		I32 slot = 0;

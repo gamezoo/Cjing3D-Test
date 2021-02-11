@@ -2,6 +2,7 @@
 
 #include "gpu\device.h"
 #include "gpu\commandList.h"
+#include "renderer\renderGraph.h"
 
 namespace Cjing3D
 {

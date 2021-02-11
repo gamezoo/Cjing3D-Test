@@ -258,7 +258,9 @@ namespace Cjing3D
 				frameBindingSetDesc.mAttachments.push(attachment);
 			}
 
-			renderPass->mFrameBindingSet = GPU::CreateFrameBindingSet(&frameBindingSetDesc);
+			if (!frameBindingSetDesc.mAttachments.empty()) {
+				renderPass->mFrameBindingSet = GPU::CreateFrameBindingSet(&frameBindingSetDesc);
+			}
 		}
 	}
 
@@ -516,12 +518,19 @@ namespace Cjing3D
 		return RenderGraphResource(resInst.mIndex);
 	}
 
+	I32 RenderGraph::GetPassCount()const
+	{
+		return mImpl->mRenderPasses.size();
+	}
+
 	void RenderGraph::AddRenderPass(const char* name, RenderPass* renderPass)
 	{
 		auto it = mImpl->mRenderPassIndexMap.find(name);
 		if (it != nullptr)
 		{
+#ifndef DEBUG
 			Debug::Warning("The render pass \'%s\' is already exists.", name);
+#endif
 			return;
 		}
 
@@ -609,7 +618,7 @@ namespace Cjing3D
 					if (!GPU::CompileCommandList(*cmd))
 					{
 						Concurrency::AtomicIncrement(&impl->mCompileFailCount);
-						Debug::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName);
+						Debug::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
 					}
 				}
 			};
@@ -640,6 +649,106 @@ namespace Cjing3D
 		return true;
 	}
 
+	bool RenderGraph::ExecuteWithoutSubmit(Span<RenderGraphResource> finalResources)
+	{
+		mImpl->mExecuteRenderPasses.clear();
+		mImpl->mExecuteCmds.clear();
+		mImpl->mNeededResources.clear();
+
+		// 先找到各个renderPass所有的newest finalRes 
+		for (RenderGraphResource& res : finalResources) {
+			res.mVersion = -1;
+		}
+
+		for (const auto& renderPass : mImpl->mRenderPasses)
+		{
+			auto outputs = renderPass.mRenderPass->GetOutputs();
+			for (const RenderGraphResource& res : outputs)
+			{
+				for (RenderGraphResource& finalRes : finalResources)
+				{
+					if (res.mIndex == finalRes.mIndex && res.mVersion > finalRes.mVersion) {
+						finalRes = res;
+					}
+				}
+			}
+		}
+
+		for (RenderGraphResource& finalRes : finalResources)
+		{
+			if (finalRes.mVersion < 0)
+			{
+				Debug::Warning("Invalid final resource for render graph to execute");
+				return false;
+			}
+		}
+
+		// 根据finalRes和依赖关系，筛选出所有有效的renderPass
+		mImpl->mExecuteRenderPasses.reserve(mImpl->mRenderPasses.size());
+		mImpl->AddDependentRenderPass(mImpl->mExecuteRenderPasses, finalResources);
+		mImpl->FilterRenderPass(mImpl->mExecuteRenderPasses);
+
+		// 创建所有renderPasses所需的resources
+		mImpl->RefreshResources();
+
+		// create frameBindingSet for each renderPass
+		mImpl->CreateFrameBindingSets();
+
+		// execute all renderPasses by jobsystem
+		I32 renderPassCount = mImpl->mExecuteRenderPasses.size();
+		if (mImpl->mExecuteCmds.size() < renderPassCount)
+		{
+			mImpl->mExecuteCmds.resize(renderPassCount);
+			for (int i = 0; i < renderPassCount; i++) {
+				mImpl->mExecuteCmds[i] = GPU::CreateCommandlist();
+			}
+		}
+
+		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
+		DynamicArray<JobSystem::JobInfo> passJobs;
+		passJobs.reserve(renderPassCount);
+		for (int i = 0; i < renderPassCount; i++)
+		{
+			auto& jobInfo = passJobs.emplace();
+			jobInfo.jobName = mImpl->mExecuteRenderPasses[i]->mName;
+			jobInfo.userParam_ = i;
+			jobInfo.userData_ = mImpl;
+			jobInfo.jobFunc_ = [](I32 param, void* data)
+			{
+				RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
+				if (!impl) {
+					return;
+				}
+
+				RenderPassInst* renderPassInst = impl->mExecuteRenderPasses[param];
+				GPU::CommandList* cmd = impl->mExecuteCmds[param];
+				{
+					auto ent = cmd->Event(renderPassInst->mName);
+					RenderGraphResources resources(*impl, renderPassInst->mRenderPass);
+					renderPassInst->mRenderPass->Execute(resources, *cmd);
+				}
+
+				if (!cmd->GetCommands().empty())
+				{
+					if (!GPU::CompileCommandList(*cmd))
+					{
+						Concurrency::AtomicIncrement(&impl->mCompileFailCount);
+						Debug::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
+					}
+				}
+			};
+		}
+
+		JobSystem::RunJobs(passJobs.data(), passJobs.size(), &jobHandle);
+		JobSystem::Wait(&jobHandle);
+
+		if (mImpl->mCompileFailCount > 0) {
+			return false;
+		}
+
+		return true;
+	}
+
 	void RenderGraph::Clear()
 	{
 		for (auto& renderPassInst : mImpl->mRenderPasses) {
@@ -664,5 +773,16 @@ namespace Cjing3D
 	void* RenderGraph::Allocate(size_t size)
 	{
 		return (void*)mImpl->mAllocator.Allocate(size);
+	}
+
+	RenderGraphResource RenderGraph::GetResource(const char* name)const
+	{
+		for (const auto& res : mImpl->mResources)
+		{
+			if (res.mName == name) {
+				return RenderGraphResource(res.mIndex);
+			}
+		}
+		return RenderGraphResource();
 	}
 }

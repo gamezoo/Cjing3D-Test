@@ -149,13 +149,13 @@ namespace GPU {
     CommandList::ScopedFrameBindingSet CommandList::BindScopedFrameBindingSet(ResHandle handle)
     {
         BeginFrameBindingSet(handle);
-        return std::move(CommandList::ScopedFrameBindingSet(*this));
+        return CommandList::ScopedFrameBindingSet(this);
     }
 
     CommandList::ScopedEvent CommandList::Event(const char* name)
     {
         EventBegin(name);
-        return std::move(ScopedEvent(*this));
+        return ScopedEvent(this);
     }
 
     void CommandList::EventBegin(const char* name)

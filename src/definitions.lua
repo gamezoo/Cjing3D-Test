@@ -6,6 +6,7 @@ PROJECT_RENDERER_NAME   = "renderer"
 PROJECT_CLIENT_NAME     = "client"
 PROJECT_RESOURCE_NAME   = "resource"
 PROJECT_GPU_NAME        = "gpu"
+PROJECT_IMGUI           = "imguiRhi"
 
 all_project_table = 
 {
@@ -46,6 +47,10 @@ dependencies_mapping =
     [PROJECT_RENDERER_NAME] = { 
         PROJECT_GPU_NAME,
         PROJECT_RESOURCE_NAME
+    },
+
+    [PROJECT_IMGUI] = { 
+        PROJECT_RENDERER_NAME
     },
 }
 

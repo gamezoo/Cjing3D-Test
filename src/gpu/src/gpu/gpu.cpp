@@ -511,6 +511,11 @@ namespace GPU
 		return mImpl->mTextureDescMap.find(handle.GetValue());
 	}
 
+	FORMAT GetBackBufferFormat()
+	{
+		return mImpl->mDevice->GetBackBufferFormat();
+	}
+
 	U32 GetFormatStride(FORMAT value)
 	{
 		switch (value)

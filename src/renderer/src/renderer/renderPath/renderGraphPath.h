@@ -1,11 +1,9 @@
 #pragma once
 
 #include "renderPath.h"
-#include "renderer\renderer.h"
 #include "renderer\renderGraph.h"
 #include "renderer\texture.h"
 #include "core\event\eventSystem.h"
-#include "renderer\renderPipeline\mainRenderPipeline.h"
 
 namespace Cjing3D
 {
@@ -21,19 +19,12 @@ namespace Cjing3D
 		void Render()override;
 		void Compose(GPU::CommandList& cmd)override;
 
-		void Clear();
-		void ResizeBuffers();
+		virtual void UpdatePipelines() {};
+		void AddFinalResource(RenderGraphResource res);
+		RenderGraph& GetRenderGraph() { return mMainGraph; }
 
-	private:
+	protected:
 		RenderGraph mMainGraph;
-		MainRenderPipeline mMainPipeline;
-		ScopedConnection mResolutionChangedHandle;
-
-		Texture mRenderTargetMain;
-		Texture mDepthBufferMain;
-
-		Viewport mViewport;
-		CullingResult mVisibility;
-		FrameCB mFrameCB;
+		DynamicArray<RenderGraphResource> mFinalResources;
 	};
 }

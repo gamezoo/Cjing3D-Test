@@ -5,10 +5,6 @@
 #include "math\viewport.h"
 #include "core\scene\ecs.h"
 
-#define CJING_SHADER_INTEROP
-#include "shaderInterop\shaderInterop.h"
-#include "shaderInterop\shaderInteropRender.h"
-
 namespace Cjing3D
 {
 	enum RENDERPASS

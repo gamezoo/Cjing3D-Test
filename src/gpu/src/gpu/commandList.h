@@ -46,21 +46,24 @@ namespace GPU {
 		struct ScopedFrameBindingSet
 		{
 		public:
-			~ScopedFrameBindingSet() {
-				mCmd.EndFrameBindingSet();
+			~ScopedFrameBindingSet()
+			{
+				if (mCmd != nullptr) {
+					mCmd->EndFrameBindingSet();
+				}
 			}
 			ScopedFrameBindingSet(ScopedFrameBindingSet&& rhs) = default;
 
 			explicit operator bool()const {
-				return true;
+				return mCmd != nullptr;
 			}
 
 		private:
 			friend class CommandList;
-			ScopedFrameBindingSet(CommandList & cmd) : mCmd(cmd) {}
+			ScopedFrameBindingSet(CommandList* cmd) : mCmd(cmd) {}
 			ScopedFrameBindingSet(const ScopedFrameBindingSet& rhs) = delete;
 
-			CommandList& mCmd;
+			CommandList* mCmd = nullptr;
 		};
 		ScopedFrameBindingSet BindScopedFrameBindingSet(ResHandle handle);
 
@@ -68,20 +71,22 @@ namespace GPU {
 		{
 		public:
 			~ScopedEvent() {
-				mCmd.EventEnd();
+				if (mCmd != nullptr) {
+					mCmd->EventEnd();
+				}
 			}
 			ScopedEvent(ScopedEvent&& rhs) = default;
 
 			explicit operator bool()const {
-				return true;
+				return mCmd != nullptr;
 			}
 
 		private:
 			friend class CommandList;
-			ScopedEvent(CommandList& cmd) : mCmd(cmd) {}
+			ScopedEvent(CommandList* cmd) : mCmd(cmd) {}
 			ScopedEvent(const ScopedEvent& rhs) = delete;
 
-			CommandList& mCmd;
+			CommandList* mCmd = nullptr;
 		};
 		ScopedEvent Event(const char* name);
 		void EventBegin(const char* name);

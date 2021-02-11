@@ -1,6 +1,7 @@
 #pragma once
 
 #include "definitions.h"
+#include "shaderInterop.h"
 #include "core\common\common.h"
 #include "gpu\gpu.h"
 #include "renderer\shader.h"

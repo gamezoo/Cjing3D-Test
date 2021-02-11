@@ -19,6 +19,18 @@ local function link_all_plugins(config)
     end
 end 
 
+local function link_all_extra_dependencies(dependencies, config)
+    if dependencies == nil or type(dependencies) ~= "table" then 
+        return
+    end 
+    
+    for _, dependency in ipairs(dependencies) do 
+        libdirs {"../" .. dependency .. "/lib/" .. config}
+        links {dependency}     
+        setup_dependent_libs(dependency, "config")
+    end 
+end 
+
 ----------------------------------------------------------------------------
 
 function get_current_script_path()
@@ -26,7 +38,7 @@ function get_current_script_path()
     return str:match("(.*/)")
 end
 
-function create_example_app(project_name, source_directory, root_directory, app_kind)
+function create_example_app(project_name, source_directory, root_directory, app_kind, extra_dependencies)
     print("[APP]", project_name)
 
     local project_dir = root_directory .. "/build/" .. platform_dir .. "/" .. project_name
@@ -78,6 +90,14 @@ function create_example_app(project_name, source_directory, root_directory, app_
         end 
         debugdir (debug_dir)
 
+        -- set extra dependencies depenson
+        if extra_dependencies ~= nil and type(extra_dependencies) == "table" then 
+            for _, dependency in ipairs(extra_dependencies) do 
+                includedirs { env_dir .. "src/" .. dependency .. "/src" }
+                dependson { dependency }
+            end 
+        end 
+
         --------------------------------------------------------------
         -- Config
         targetdir (target_dir)
@@ -87,6 +107,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
             defines { "DEBUG" }
             setup_engine("Debug")
             link_all_plugins("Debug")
+            link_all_extra_dependencies(extra_dependencies, "Debug")
 
         -- Release config
         filter {"configurations:Release"}
@@ -94,6 +115,8 @@ function create_example_app(project_name, source_directory, root_directory, app_
             defines { "NDEBUG" }
             setup_engine("Release")
             link_all_plugins("Release")
+            link_all_extra_dependencies(extra_dependencies, "Release")
+
         filter { }
         --------------------------------------------------------------
 end

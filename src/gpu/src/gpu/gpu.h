@@ -53,6 +53,7 @@ namespace GPU
 	const BufferDesc* GetBufferDesc(ResHandle handle);
 	const TextureDesc* GetTextureDesc(ResHandle handle);
 
+	FORMAT GetBackBufferFormat();
 	U32  GetFormatStride(FORMAT value);
 	bool IsFormatSupportStencil(FORMAT value);
 	U32x2 GetResolution();
