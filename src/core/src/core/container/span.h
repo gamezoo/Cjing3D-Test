@@ -13,6 +13,10 @@ namespace Cjing3D
 			mBegin(begin),
 			mEnd(begin + len)
 		{}
+		constexpr Span(T& begin)noexcept :
+			mBegin(&begin),
+			mEnd(mBegin + 1)
+		{}
 		constexpr Span(T* begin, T* end)noexcept :
 			mBegin(begin),
 			mEnd(end)

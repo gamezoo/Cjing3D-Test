@@ -13,7 +13,7 @@ namespace Cjing3D
 	{
 	public:
 		RenderGraphResource() = default;
-		RenderGraphResource(I32 index) :mIndex(index) {}
+		RenderGraphResource(I32 index, I32 version = 0) :mIndex(index), mVersion(version) {}
 
 		bool operator==(const RenderGraphResource& rhs) const {
 			return mIndex == rhs.mIndex;

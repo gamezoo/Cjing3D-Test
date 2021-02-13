@@ -2,11 +2,8 @@
 
 #include "core\platform\platform.h"
 #include "core\input\InputSystem.h"
-
+#include "client\app\systemEvent.h"
 #include "client\app\win32\gameWindowWin32.h"
-#include "client\app\win32\input\keyboardWin32.h"
-#include "client\app\win32\input\mouseWin32.h"
-#include "client\app\win32\input\gamepadXInput.h"
 
 namespace Cjing3D::Win32
 {
@@ -22,13 +19,14 @@ namespace Cjing3D::Win32
 		void ProcessMouseEvent(const RAWMOUSE& mouse);
 		void ProcessKeyboardEvent(const RAWKEYBOARD& keyboard);
 
-		const SharedPtr<KeyBoard> GetKeyBoard()const override { return mKeyBoard; }
-		const SharedPtr<Mouse>    GetMouse()const override { return mMouse; }
-		const SharedPtr<Gamepad>  GetGamePad()const override { return mGamepad;  }
+		void ProcessTextInput(const InputTextEvent& ent);
+		I32 GetTextInput(char* outBuffer, I32 bytes) const override;
+
+		const SharedPtr<KeyBoard> GetKeyBoard()const override;
+		const SharedPtr<Mouse>    GetMouse()const override;
+		const SharedPtr<Gamepad>  GetGamePad()const override;
 
 	private:
-		SharedPtr<KeyBoardWin32> mKeyBoard = nullptr;
-		SharedPtr<MouseWin32> mMouse = nullptr;
-		SharedPtr<XInput::GamepadXInput> mGamepad = nullptr;
+		struct InputManagerWin32Impl* mImpl = nullptr;
 	};
 }

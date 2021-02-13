@@ -221,9 +221,12 @@ namespace GPU
 			}
 
 			Debug::Warning(os.str().c_str());
-#ifdef DEBUG
+
 			system("pause");
-#endif // DEBUG
+		}
+
+		for (I32 i = 0; i < (I32)ResourceType::RESOURCETYPE_COUNT; i++) {
+			mResourceDebugInfos[i].free();
 		}
 #endif
 		CJING_SAFE_DELETE(mImpl);
@@ -499,6 +502,16 @@ namespace GPU
 	{
 		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
 		return mImpl->mDevice->GPUAllcate(cmd.GetHanlde(), size);
+	}
+
+	void Map(GPU::ResHandle res, GPUMapping& mapping)
+	{
+		mImpl->mDevice->Map(res, mapping);
+	}
+
+	void Unmap(GPU::ResHandle res)
+	{
+		mImpl->mDevice->Unmap(res);
 	}
 
 	const BufferDesc* GetBufferDesc(ResHandle handle)

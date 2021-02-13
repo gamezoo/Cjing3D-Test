@@ -70,6 +70,29 @@ namespace Platform {
 		return i.QuadPart;
 	}
 
+	struct PlatformImpl
+	{
+		struct {
+			HCURSOR mArrow;
+			HCURSOR mSizeALL;
+			HCURSOR mSizeNS;
+			HCURSOR mSizeWE;
+			HCURSOR mSizeNWSE;
+			HCURSOR mTextInput;
+		} mCursors;
+	};
+	static PlatformImpl mImpl;
+
+	void Initialize()
+	{
+		mImpl.mCursors.mArrow = LoadCursor(NULL, IDC_ARROW);
+		mImpl.mCursors.mSizeALL = LoadCursor(NULL, IDC_SIZEALL);
+		mImpl.mCursors.mSizeNS = LoadCursor(NULL, IDC_SIZENS);
+		mImpl.mCursors.mSizeWE = LoadCursor(NULL, IDC_SIZEWE);
+		mImpl.mCursors.mSizeNWSE = LoadCursor(NULL, IDC_SIZENWSE);
+		mImpl.mCursors.mTextInput = LoadCursor(NULL, IDC_IBEAM);
+	}
+
 	/////////////////////////////////////////////////////////////////////////////////
 	// platform function
 	void SetLoggerConsoleFontColor(ConsoleFontColor fontColor)
@@ -241,6 +264,37 @@ namespace Platform {
 		RECT rect;
 		GetClientRect(window, &rect);
 		return { (I32)rect.left, (I32)rect.top, (I32)rect.right, (I32)rect.bottom };
+	}
+
+	void SetMouseCursorType(CursorType cursorType)
+	{
+		switch (cursorType)
+		{
+		case CursorType::DEFAULT: 
+			SetCursor(mImpl.mCursors.mArrow); break;
+		case CursorType::SIZE_ALL: 
+			SetCursor(mImpl.mCursors.mSizeALL); break;
+		case CursorType::SIZE_NS:
+			SetCursor(mImpl.mCursors.mSizeNS); break;
+		case CursorType::SIZE_WE: 
+			SetCursor(mImpl.mCursors.mSizeWE); break;
+		case CursorType::SIZE_NWSE: 
+			SetCursor(mImpl.mCursors.mSizeNWSE); break;
+		case CursorType::TEXT_INPUT: 
+			SetCursor(mImpl.mCursors.mTextInput); break;
+		default: 
+			break;
+		}
+	}
+
+	void SetMouseCursorVisible(bool isVisible)
+	{
+		if (isVisible) {
+			while (ShowCursor(isVisible) < 0);
+		}
+		else {
+			while (ShowCursor(isVisible) >= 0);
+		}
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////

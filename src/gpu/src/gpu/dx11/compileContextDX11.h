@@ -27,11 +27,12 @@ namespace GPU
 		bool CompileCommand(const CommandBeginFrameBindingSet* cmd);
 		bool CompileCommand(const CommandEndFrameBindingSet* cmd);
 		bool CompileCommand(const CommandUpdateBuffer* cmd);
+		bool CompileCommand(const CommandBindResource* cmd);
 
 	private:
 		GraphicsDeviceDx11& mDevice;
 		CommandListDX11& mCommandList;
-		DynamicArray<const char*> mEventStack;
+		DynamicArray<String> mEventStack;
 	};
 }
 }

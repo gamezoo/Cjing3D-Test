@@ -10,6 +10,6 @@ namespace Cjing3D
 		ImGuiPipeline();
 		virtual ~ImGuiPipeline();
 
-		void Setup(RenderGraph& graph, RenderGraphResource rtRes);
+		void Setup(RenderGraph& graph);
 	};
 }

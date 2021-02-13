@@ -39,6 +39,7 @@ namespace Cjing3D
 		I32 mIndex = -1;
 		GPU::ResourceType mType;
 		String mName;
+		I32 mVersion = 0;
 		bool mIsUsed = false;
 
 		GPU::TextureDesc mTexDesc;
@@ -400,6 +401,10 @@ namespace Cjing3D
 		mRenderPass->AddInput(res);
 		res.mVersion++;
 		mRenderPass->AddOutput(res);
+
+		// update graphs res version (TODO?)
+		resource.mVersion = res.mVersion;
+
 		return res;
 	}
 
@@ -427,6 +432,9 @@ namespace Cjing3D
 		mRenderPass->AddInput(res);
 		res.mVersion++;
 		mRenderPass->AddOutput(res);
+
+		// update graphs res version (TODO?)
+		resource.mVersion = res.mVersion;
 
 		return res;
 	}
@@ -761,8 +769,10 @@ namespace Cjing3D
 		mImpl->mRenderPassIndexMap.clear();
 
 		// res
-		for (auto& resInst : mImpl->mUsedResources) {
+		for (auto& resInst : mImpl->mUsedResources) 
+		{
 			resInst.mIsUsed = false;
+			resInst.mVersion = 0;
 		}
 		mImpl->mNeededResources.clear();
 		mImpl->mResources.clear();
@@ -780,7 +790,7 @@ namespace Cjing3D
 		for (const auto& res : mImpl->mResources)
 		{
 			if (res.mName == name) {
-				return RenderGraphResource(res.mIndex);
+				return RenderGraphResource(res.mIndex, res.mVersion);
 			}
 		}
 		return RenderGraphResource();

@@ -17,6 +17,7 @@ namespace GPU {
 		BIND_PIPELINE_BINDING_SET,
 		BIND_VIEWPORT,
 		BIND_SCISSOR_RECT,
+		BIND_RESOURCE,
 		DRAW,
 		DRAW_INDIRECT,
 		DISPATCH,
@@ -53,7 +54,7 @@ namespace GPU {
 
 	struct CommandBindVertexBuffer : CommandTyped<CommandType::BIND_VERTEX_BUFFER>
 	{
-		DynamicArray<BindingBuffer> mVertexBuffer;
+		Span<BindingBuffer> mVertexBuffer;
 		I32 mStartSlot = 0;
 	};
 
@@ -126,6 +127,14 @@ namespace GPU {
 		const void* mData = nullptr;
 		I32 mOffset = 0;
 		I32 mSize = -1;
+	};
+
+	struct CommandBindResource : CommandTyped<CommandType::BIND_RESOURCE>
+	{
+		ResHandle mHandle;
+		SHADERSTAGES mStage = SHADERSTAGES_VS;
+		I32 mSlot = 0;
+		I32 mSubresourceIndex = -1;
 	};
 }
 }

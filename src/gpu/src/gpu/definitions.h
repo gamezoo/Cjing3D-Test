@@ -461,6 +461,14 @@ namespace GPU {
 			InputClassification mInputSlotClass = InputClassification::INPUT_PER_VERTEX_DATA;
 			U32 mInstanceDataStepRate = 0;
 		};
+		static Element VertexData(
+			const char* semanticName,
+			U32 semanticIndex,
+			FORMAT format,
+			U32 inputSlot) {
+			return { semanticName, semanticIndex, format, inputSlot, APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA, 0u };
+		}
+
 		DynamicArray<Element> mElements;
 	};
 
@@ -602,5 +610,28 @@ namespace GPU {
 		RasterizerStateDesc mRasterizerState;
 		DepthStencilStateDesc mDepthStencilState;
 	};
+
+	struct GPUMapping
+	{
+		enum FLAGS
+		{
+			FLAG_EMPTY = 0,
+			FLAG_READ = 1 << 0,
+			FLAG_WRITE = 1 << 1,
+			FLAG_DISCARD = 1 << 2,
+		};
+		uint32_t mFlags = FLAG_EMPTY;
+		size_t mOffset = 0;
+		size_t mSize = 0;
+		bool mIsWaiting = false;
+
+		uint32_t mRowPitch = 0;
+		void* mData = nullptr;
+
+		explicit operator bool()const {
+			return mData != nullptr;
+		}
+	};
+
 }
 }

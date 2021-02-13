@@ -286,7 +286,7 @@ namespace GPU
 		D3D11_MAP mapping = wrap ? D3D11_MAP_WRITE_DISCARD : D3D11_MAP_WRITE_NO_OVERWRITE;
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
 		const HRESULT hr = mDeviceContext->Map(mDevice.mBuffers.Read(mAllocator.mBuffer)->mResource.Get(), 0, mapping, 0, &mappedResource);
-		Debug::ThrowIfFailed(hr, "Failed to map buffer of allocator.");
+		Debug::ThrowIfFailed(SUCCEEDED(hr), "Failed to map buffer of allocator.");
 
 		mAllocator.mResidentFrame = (I32)mDevice.GetFrameCount();
 		mAllocator.mOffset = position + size;

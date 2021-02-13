@@ -32,6 +32,9 @@ public:
 	MouseState GetMouseState()const;
 	MouseState GetPeveMouseState()const;
 
+	// text input
+	virtual I32 GetTextInput(char* outBuffer, I32 bytes) const { return 0; }
+
 	virtual const SharedPtr<KeyBoard> GetKeyBoard()const = 0;
 	virtual const SharedPtr<Mouse>    GetMouse()const = 0;
 	virtual const SharedPtr<Gamepad>  GetGamePad()const = 0;

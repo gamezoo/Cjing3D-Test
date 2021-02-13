@@ -31,6 +31,19 @@ namespace Platform {
 		I32 mBottom = 0;
 	};
 
+	enum CursorType
+	{
+		DEFAULT,
+		SIZE_ALL,
+		SIZE_NS,
+		SIZE_WE,
+		SIZE_NWSE,
+		LOAD,
+		TEXT_INPUT,
+
+		UNDEFINED
+	};
+
 	enum ConsoleFontColor
 	{
 		CONSOLE_FONT_WHITE,
@@ -39,6 +52,8 @@ namespace Platform {
 		CONSOLE_FONT_GREEN,
 		CONSOLE_FONT_RED
 	};
+
+	void Initialize();
 
 	void SetLoggerConsoleFontColor(ConsoleFontColor fontColor);
 	void ShowMessageBox(const char* msg);
@@ -53,6 +68,8 @@ namespace Platform {
 	/////////////////////////////////////////////////////////////////////////////////
 	// window
 	WindowRect GetClientBounds(WindowType window);
+	void SetMouseCursorType(CursorType cursorType);
+	void SetMouseCursorVisible(bool isVisible);
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// File 

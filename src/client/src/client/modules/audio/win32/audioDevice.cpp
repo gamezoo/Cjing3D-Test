@@ -331,7 +331,7 @@ namespace Audio
 		{
 			auto soundInst = std::static_pointer_cast<SoundInstantceImpl>(inst.mInst);
 			HRESULT hr = soundInst->mSourceVoice->Start();
-			Debug::ThrowIfFailed(hr, "Failed to play sound");
+			Debug::ThrowIfFailed(SUCCEEDED(hr), "Failed to play sound");
 		}
 	}
 

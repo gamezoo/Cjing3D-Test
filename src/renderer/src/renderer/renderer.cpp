@@ -119,7 +119,6 @@ namespace Renderer
 
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
 		StaticArray<GPU::ResHandle, CBTYPE_COUNT> mConstantBuffers;
-
 		DynamicArray<GPU::ResHandle> mSamplerStates;
 	};
 
@@ -287,7 +286,7 @@ namespace Renderer
 			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferTex,   0, sizeof(MeshComponent::VertexTex)));
 			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferColor, 0, sizeof(MeshComponent::VertexColor)));
 			buffers.push(GPU::Binding::VertexBuffer(instanceAllocation.mBuffer, batch->mInstanceOffset, sizeof(RenderInstance)));
-			cmd.BindVertexBuffer(buffers, 0);
+			cmd.BindVertexBuffer(Span(buffers.data(), buffers.size()), 0);
 
 			for (const auto& subset : mesh->mSubsets)
 			{

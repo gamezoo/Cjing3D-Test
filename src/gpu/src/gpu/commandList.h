@@ -3,6 +3,7 @@
 #include "definitions.h"
 #include "resource.h"
 #include "commands.h"
+#include "core\container\span.h"
 #include "core\memory\linearAllocator.h"
 
 namespace Cjing3D {
@@ -26,12 +27,13 @@ namespace GPU {
 
 		void UpdateBuffer(ResHandle handle, const void* data, I32 offset = 0, I32 size = -1);
 
-		void BindVertexBuffer(DynamicArray<BindingBuffer> handles, I32 startSlot = 0);
+		void BindVertexBuffer(Span<BindingBuffer> handles, I32 startSlot = 0);
 		void BindIndexBuffer(BindingBuffer handle, IndexFormat format);
 		void BindPipelineState(ResHandle handle);
 		void BindPipelineBindingSet(ResHandle handle);
 		void BindViewport(ViewPort vp);
 		void BindScissorRect(const ScissorRect& rect);
+		void BindResource(SHADERSTAGES stage, GPU::ResHandle res, I32 slot = 0, I32 subresourceIndex = -1);
 
 		void Draw(U32 vertexCount, U32 startVertexLocation);
 		void DrawIndexed(UINT indexCount, UINT startIndexLocation, UINT baseVertexLocation);
@@ -92,18 +94,34 @@ namespace GPU {
 		void EventBegin(const char* name);
 		void EventEnd();
 
+		void* Alloc(size_t size) {
+			return  mAllocator.Allocate(size);
+		}
+
+		void Free(size_t size) {
+			mAllocator.Free(size);
+		}
+
 		template<typename T>
 		T* Alloc(I32 num = 1)
 		{
-			void* data = mAllocator.Allocate(sizeof(T) * num);
+			void* data = Alloc(sizeof(T) * num);
 			if (data != nullptr) {
 				return new(data) T[num]; 
 			}
 			return nullptr;
 		}
 
-		void Free(size_t size) {
-			mAllocator.Free(size);
+		template<typename T>
+		const Span<T> Push(const Span<T> datas)
+		{
+			T* dest = reinterpret_cast<T*>(Alloc(sizeof(T) * datas.length()));
+			if (dest != nullptr) {
+				for (I32 i = 0; i < datas.length(); i++) {
+					new(dest + i) T(datas[i]);
+				}
+			}
+			return Span(dest, datas.length());
 		}
 
 		GPUAllocation GPUAlloc(size_t size);

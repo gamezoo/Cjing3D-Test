@@ -30,10 +30,10 @@ namespace GPU {
         mCommands.push(command);
     }
 
-    void CommandList::BindVertexBuffer(DynamicArray<BindingBuffer> handles, I32 startSlot)
+    void CommandList::BindVertexBuffer(Span<BindingBuffer> handles, I32 startSlot)
     {
         auto* command = Alloc<CommandBindVertexBuffer>();
-        command->mVertexBuffer = handles;
+        command->mVertexBuffer = Push(handles);
         command->mStartSlot = startSlot;
         mCommands.push(command);
     }
@@ -71,6 +71,16 @@ namespace GPU {
     {
         auto* command = Alloc<CommandBindScissorRect>();
         command->mRect = rect;
+        mCommands.push(command);
+    }
+
+    void CommandList::BindResource(SHADERSTAGES stage, GPU::ResHandle res, I32 slot, I32 subresourceIndex)
+    {
+        auto* command = Alloc<CommandBindResource>();
+        command->mHandle = res;
+        command->mStage = stage;
+        command->mSlot = slot;
+        command->mSubresourceIndex = subresourceIndex;
         mCommands.push(command);
     }
 

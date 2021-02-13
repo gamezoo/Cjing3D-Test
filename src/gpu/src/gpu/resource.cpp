@@ -25,14 +25,17 @@ namespace GPU
 		BindingBuffer VertexBuffer(ResHandle handle, I32 offset, I32 stride)
 		{
 			BindingBuffer binding;
-
+			binding.mResource = handle;
+			binding.mOffset = offset;
+			binding.mStride = stride;
 			return binding;
 		}
 
 		BindingBuffer IndexBuffer(ResHandle handle, I32 offset) 
 		{
 			BindingBuffer binding;
-
+			binding.mResource = handle;
+			binding.mOffset = offset;
 			return binding;
 		}
 
@@ -64,10 +67,10 @@ namespace GPU
 
 		BindingSAM Sampler(ResHandle handle, SHADERSTAGES stage)
 		{
-			BindingUAV binding;
+			BindingSAM binding;
 			binding.mResource = handle;
 			binding.mStage = stage;
-			return BindingSAM();
+			return binding;
 		}
 
 		BindingUAV RWBuffer(ResHandle handle, SHADERSTAGES stage)

@@ -12,7 +12,6 @@ namespace Cjing3D
 		void Start()override;
 		void Stop()override;
 		void UpdatePipelines()override;
-		void Compose(GPU::CommandList& cmd)override;
 
 	private:
 		ImGuiPipeline mImGuiPipeline;
@@ -26,8 +25,10 @@ namespace Cjing3D
 
 		void Initialize()override;
 		void Uninitialize()override;
+		void Update(F32 deltaTime)override;
 
 	private:
+		bool mShowDemo = true;
 		GameEditorRenderer* mRenderer = nullptr;
 	};
 

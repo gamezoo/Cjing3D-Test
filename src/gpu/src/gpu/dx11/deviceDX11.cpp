@@ -1618,6 +1618,87 @@ namespace GPU
 		return GPUAllocation();
 	}
 
+	void GraphicsDeviceDx11::Map(GPU::ResHandle res, GPUMapping& mapping)
+	{
+		ID3D11Resource* resD3D = nullptr;
+		switch (res.GetType())
+		{
+		case RESOURCETYPE_BUFFER:
+			resD3D = mBuffers.Write(res)->mResource.Get();
+			break;
+		case RESOURCETYPE_TEXTURE:
+			resD3D = mTextures.Write(res)->mResource.Get();
+			break;
+		default:
+			break;
+		}
+		if (resD3D == nullptr) {
+			return;
+		}
+
+		D3D11_MAPPED_SUBRESOURCE mapResult = {};
+		D3D11_MAP mapType = D3D11_MAP_READ_WRITE;
+		I32 mapFlag = D3D11_MAP_FLAG_DO_NOT_WAIT;
+		if (mapping.mFlags & GPUMapping::FLAG_READ)
+		{
+			if (mapping.mFlags & GPUMapping::FLAG_WRITE)
+			{
+				mapType = D3D11_MAP_READ_WRITE;
+			}
+			else
+			{
+				mapType = D3D11_MAP_READ;
+			}
+		}
+		else if (mapping.mFlags & GPUMapping::FLAG_WRITE)
+		{
+			if (mapping.mFlags & GPUMapping::FLAG_DISCARD)
+			{
+				mapType = D3D11_MAP_WRITE_DISCARD;
+
+				// D3D11_MAP_FLAG_DO_NOT_WAIT cannot be used with D3D11_MAP_WRITE_DISCARD or D3D11_MAP_WRITE_NOOVERWRITE.
+				mapFlag = 0;
+			}
+			else
+			{
+				mapType = D3D11_MAP_WRITE_NO_OVERWRITE;
+			}
+		}
+
+		HRESULT hr = mImmediateContext->Map(resD3D, 0, mapType, mapFlag, &mapResult);
+		if (SUCCEEDED(hr))
+		{
+			mapping.mData = mapResult.pData;
+			mapping.mRowPitch = mapResult.RowPitch;
+		}
+		else
+		{
+			mapping.mData = mapResult.pData;
+			mapping.mRowPitch = mapResult.RowPitch;
+		}
+	}
+
+	void GraphicsDeviceDx11::Unmap(GPU::ResHandle res)
+	{
+		ID3D11Resource* resD3D = nullptr;
+		switch (res.GetType())
+		{
+		case RESOURCETYPE_BUFFER:
+			resD3D = mBuffers.Write(res)->mResource.Get();
+			break;
+		case RESOURCETYPE_TEXTURE:
+			resD3D = mTextures.Write(res)->mResource.Get();
+			break;
+		default:
+			break;
+		}
+		if (resD3D == nullptr) {
+			return;
+		}
+
+		mImmediateContext->Unmap(resD3D, 0);
+	}
+
 	int GraphicsDeviceDx11::CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount)
 	{
 		auto& texDesc = texture.mDesc;

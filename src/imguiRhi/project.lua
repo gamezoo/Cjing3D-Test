@@ -34,8 +34,25 @@ project (PROJECT_IMGUI)
         SOURCE_DIR .. "/**.hpp",
         SOURCE_DIR .. "/**.h",
         SOURCE_DIR .. "/**.inl",
+
+        "../../3rdparty/imgui/**.h",
+        "../../3rdparty/imgui/**.cpp"
     }
     
+    vpaths { 
+        [""] =  {
+            SOURCE_DIR .. "/**.c",
+            SOURCE_DIR .. "/**.cpp",
+            SOURCE_DIR .. "/**.hpp",
+            SOURCE_DIR .. "/**.h",
+            SOURCE_DIR .. "/**.inl",
+        },
+        ["imgui"] =  {
+            "../../3rdparty/imgui/**.h", 
+            "../../3rdparty/imgui/**.cpp"
+        }
+    }
+
     -- includes
     includedirs {
         -- local

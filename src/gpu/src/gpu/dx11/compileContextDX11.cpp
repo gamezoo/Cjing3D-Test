@@ -47,6 +47,7 @@ namespace GPU
             GPU_COMMAND_CASE(CommandBeginFrameBindingSet);
             GPU_COMMAND_CASE(CommandEndFrameBindingSet);
             GPU_COMMAND_CASE(CommandUpdateBuffer);
+            GPU_COMMAND_CASE(CommandBindResource);
 
             case CommandBeginEvent::TYPE:
             {
@@ -79,13 +80,13 @@ namespace GPU
 
     bool CompileContextDX11::CompileCommand(const CommandBindVertexBuffer* cmd)
     {
-        Debug::CheckAssertion(cmd->mVertexBuffer.size() <= MAX_VERTEX_STREAMS);
+        Debug::CheckAssertion(cmd->mVertexBuffer.length() <= MAX_VERTEX_STREAMS);
 
         ID3D11Buffer* res[MAX_VERTEX_STREAMS] = {};
         U32 strides[MAX_VERTEX_STREAMS] = { 0 };
         U32 offsets[MAX_VERTEX_STREAMS] = { 0 };
 
-        for (U32 index = 0; index < cmd->mVertexBuffer.size(); index++)
+        for (U32 index = 0; index < cmd->mVertexBuffer.length(); index++)
         {
             const auto& vertexBuffer = cmd->mVertexBuffer[index];
             auto buffer = mDevice.mBuffers.Read(vertexBuffer.mResource);
@@ -98,7 +99,7 @@ namespace GPU
             offsets[index] = vertexBuffer.mOffset;
         }
 
-        mCommandList.GetContext()->IASetVertexBuffers(cmd->mStartSlot, cmd->mVertexBuffer.size(), res, strides, offsets);
+        mCommandList.GetContext()->IASetVertexBuffers(cmd->mStartSlot, cmd->mVertexBuffer.length(), res, strides, offsets);
         return true;
     }
 
@@ -368,7 +369,7 @@ namespace GPU
             }
         }
        
-        mCommandList.GetContext()->OMSetRenderTargets(rtvIndex, rtvs, dsv);
+        mCommandList.GetContext()->OMSetRenderTargets((UINT)rtvIndex, rtvs, dsv);
         return true;
     }
 
@@ -397,7 +398,7 @@ namespace GPU
         {
             D3D11_MAPPED_SUBRESOURCE mappedResource;
             HRESULT result = context.Map(buffer->mResource.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-            Debug::ThrowIfFailed(result, "Failed to map buffer:%08x", result);
+            Debug::ThrowIfFailed(SUCCEEDED(result), "Failed to map buffer:%08x", result);
 
             I32 dataSize = std::min(dataSize, (I32)desc.mByteWidth);
             dataSize = dataSize >= 0 ? dataSize : (I32)desc.mByteWidth;
@@ -423,6 +424,51 @@ namespace GPU
             box.back = 1;
 
             context.UpdateSubresource(buffer->mResource.Get(), 0, &box, cmd->mData, 0, 0);
+        }
+
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandBindResource* cmd)
+    {
+        ID3D11ShaderResourceView* srv = nullptr;
+        auto handle = cmd->mHandle;
+        if (handle.GetType() == RESOURCETYPE_BUFFER)
+        {
+            auto buffer = mDevice.mBuffers.Read(handle);
+            srv = cmd->mSubresourceIndex < 0 ? buffer->mSRV.Get() : buffer->mSubresourceSRVs[cmd->mSubresourceIndex].Get();
+        }
+        else {
+            auto texture = mDevice.mTextures.Read(handle);
+            srv = cmd->mSubresourceIndex < 0 ? texture->mSRV.Get() : texture->mSubresourceSRVs[cmd->mSubresourceIndex].Get();
+        }
+        if (srv == nullptr) {
+            return false;
+        }
+
+        ID3D11DeviceContext* context = mCommandList.GetContext();
+        switch (cmd->mStage)
+        {
+        case SHADERSTAGES_VS:
+            context->VSSetShaderResources(cmd->mSlot, 1, &srv);
+            break;
+        case SHADERSTAGES_GS:
+            context->GSSetShaderResources(cmd->mSlot, 1, &srv);
+            break;
+        case SHADERSTAGES_HS:
+            context->HSSetShaderResources(cmd->mSlot, 1, &srv);
+            break;
+        case SHADERSTAGES_DS:
+            context->DSSetShaderResources(cmd->mSlot, 1, &srv);
+            break;
+        case SHADERSTAGES_PS:
+            context->PSSetShaderResources(cmd->mSlot, 1, &srv);
+            break;
+        case SHADERSTAGES_CS:
+            context->CSSetShaderResources(cmd->mSlot, 1, &srv);
+            break;
+        default:
+            break;
         }
 
         return true;

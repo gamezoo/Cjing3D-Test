@@ -19,6 +19,8 @@ namespace Cjing3D
 
 		void ResizeBuffers();
 
+		static const char* RT_MAIN_NAME;
+
 	protected:
 		ScopedConnection mResolutionChangedHandle;
 		RenderPipeline2D mRenderPipeline2D;

@@ -42,8 +42,6 @@ project (PROJECT_RENDERER_NAME)
         SOURCE_DIR,
         -- 3rdParty
         "../../3rdparty", 
-        -- shaderInterop
-        "../../assets/shaders", 
     }
 
     -- Debug config

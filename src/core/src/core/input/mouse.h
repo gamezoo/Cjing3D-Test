@@ -33,10 +33,13 @@ namespace Cjing3D
 			{
 			case KeyCode::Click_Left:
 				keyState = mMouseState.mLeftButton;
+				break;
 			case KeyCode::Click_Middle:
 				keyState = mMouseState.mMiddleButton;
+				break;
 			case KeyCode::Click_Right:
 				keyState = mMouseState.mRightButton;
+				break;
 			}
 			return keyState == KeyState_Down;
 		}

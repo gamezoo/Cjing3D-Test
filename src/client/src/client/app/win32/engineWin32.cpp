@@ -43,6 +43,9 @@ namespace Cjing3D::Win32
 	{
 		Logger::Info("Initializing engine...");
 
+		// init platform
+		Platform::Initialize();
+
 		// init profiler
 		Profiler::Initialize();
 
@@ -197,17 +200,18 @@ namespace Cjing3D::Win32
 		else if (systemEvent.Is<InputTextEvent>())
 		{
 			const InputTextEvent* event = systemEvent.As<InputTextEvent>();
+			mImpl->mInputSystem->ProcessTextInput(*event);
 
 		}
 		else if (systemEvent.Is<RAWMOUSE>())
 		{
 			const RAWMOUSE* event = systemEvent.As<RAWMOUSE>();
-
+			mImpl->mInputSystem->ProcessMouseEvent(*event);
 		}
 		else if (systemEvent.Is<RAWKEYBOARD>())
 		{
 			const RAWKEYBOARD* event = systemEvent.As<RAWKEYBOARD>();
-
+			mImpl->mInputSystem->ProcessKeyboardEvent(*event);
 		}
 		else if (systemEvent.Is<ViewResizeEvent>())
 		{
@@ -224,5 +228,10 @@ namespace Cjing3D::Win32
 	BaseFileSystem* EngineWin32::GetFileSystem()
 	{
 		return mImpl->mFileSystem;
+	}
+
+	InputManager* EngineWin32::GetInputManager()
+	{
+		return mImpl->mInputSystem;
 	}
 }

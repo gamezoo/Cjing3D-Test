@@ -3,6 +3,8 @@
 
 namespace Cjing3D
 {
+	const char* RenderGraphPath2D::RT_MAIN_NAME = "rtMain2D";
+
 	RenderGraphPath2D::RenderGraphPath2D()
 	{
 	}
@@ -51,11 +53,12 @@ namespace Cjing3D
 
 	void RenderGraphPath2D::UpdatePipelines()
 	{
-		auto rtMainRes = mMainGraph.ImportTexture("rtMain2D", mRtMain.GetHandle(), &mRtMain.GetDesc());
+		auto rtMainRes = mMainGraph.ImportTexture(RT_MAIN_NAME, mRtMain.GetHandle(), &mRtMain.GetDesc());
 		mRenderPipeline2D.SetResource("rtMain", rtMainRes);
-	
 		mRenderPipeline2D.Setup(mMainGraph);
+
 		AddFinalResource(rtMainRes);
+
 		RenderGraphPath::UpdatePipelines();
 	}
 

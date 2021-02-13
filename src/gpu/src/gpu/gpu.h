@@ -49,6 +49,8 @@ namespace GPU
 
 	void AddStaticSampler(const StaticSampler& sampler);
 	GPUAllocation GPUAllcate(CommandList& cmd, size_t size);
+	void Map(GPU::ResHandle res, GPUMapping& mapping);
+	void Unmap(GPU::ResHandle res);
 
 	const BufferDesc* GetBufferDesc(ResHandle handle);
 	const TextureDesc* GetTextureDesc(ResHandle handle);

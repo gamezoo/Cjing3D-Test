@@ -52,6 +52,8 @@ namespace GPU
 
 		void AddStaticSampler(const StaticSampler& sampler)override;
 		GPUAllocation GPUAllcate(ResHandle handle, size_t size)override;
+		void Map(GPU::ResHandle res, GPUMapping& mapping)override;
+		void Unmap(GPU::ResHandle res)override;
 
 		ID3D11Device& GetDevice() { return *mDevice.Get(); }
 		ID3D11DeviceContext& GetDeviceContext() { return *mImmediateContext.Get(); }

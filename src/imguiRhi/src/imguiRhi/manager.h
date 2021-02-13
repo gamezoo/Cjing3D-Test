@@ -11,6 +11,9 @@ namespace Cjing3D
 		class CommandList;
 	}
 
+	class EventQueue;
+	class InputManager;
+
 	namespace ImGuiRHI
 	{
 		namespace Manager
@@ -19,8 +22,8 @@ namespace Cjing3D
 			void Uninitialize();
 			bool IsInitialized();
 			void Render(GPU::CommandList& cmd);
-
-			void BeginFrame();
+			
+			void BeginFrame(InputManager& input, F32 width, F32 height, F32 deltaTime);
 			void EndFrame();
 		};
 	}

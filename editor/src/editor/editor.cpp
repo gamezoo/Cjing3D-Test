@@ -17,11 +17,7 @@ namespace Cjing3D
 	{
 		RenderGraphPath3D::UpdatePipelines();
 
-		mImGuiPipeline.Setup(mMainGraph, mMainGraph.GetResource("rtMain2D"));
-	}
-
-	void GameEditorRenderer::Compose(GPU::CommandList& cmd)
-	{
+		mImGuiPipeline.Setup(mMainGraph);
 	}
 
 	GameEditor::GameEditor(const std::shared_ptr<Engine>& engine) :
@@ -55,5 +51,20 @@ namespace Cjing3D
 
 		ImGuiRHI::Manager::Uninitialize();
 		MainComponent::Uninitialize();
+	}
+
+	void GameEditor::Update(F32 deltaTime)
+	{
+		MainComponent::Update(deltaTime);
+
+		U32x2 resolution = GPU::GetResolution();
+		InputManager* input = mEngine->GetInputManager();
+		ImGuiRHI::Manager::BeginFrame(*input, (F32)resolution.x(), (F32)resolution.y(), deltaTime);
+
+		if (mShowDemo) {
+			ImGui::ShowDemoWindow(&mShowDemo);
+		}
+
+		ImGuiRHI::Manager::EndFrame();
 	}
 }

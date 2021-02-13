@@ -1,5 +1,6 @@
 #include "pipeline.h"
 #include "manager.h"
+#include "renderer\renderPath\renderGraphPath2D.h"
 
 namespace Cjing3D
 {
@@ -11,8 +12,10 @@ namespace Cjing3D
 	{
 	}
 
-	void ImGuiPipeline::Setup(RenderGraph& graph, RenderGraphResource rtRes)
+	void ImGuiPipeline::Setup(RenderGraph& graph)
 	{
+		RenderGraphResource rtRes = graph.GetResource(RenderGraphPath2D::RT_MAIN_NAME);
+
 		graph.AddCallbackRenderPass("ImGuiPass",
 			[&](RenderGraphResBuilder& builder) {
 
