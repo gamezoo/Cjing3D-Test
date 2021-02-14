@@ -217,7 +217,7 @@ def main():
             exit(0)
             # for root, dirs, files in os.walk(source):
             #     for file in files:
-            #         if file.endswith(".shdraw"):
+            #         if file.endswith(".jsh"):
             #             try:
             #                 compile_shader_file(file, root)
             #             except Exception as e:
@@ -229,7 +229,7 @@ def main():
                 exit(0)
 
             shader_info = CompileShaderInfo()
-            shader_info.name = os.path.basename(source).replace(".shdraw", "")
+            shader_info.name = os.path.basename(source).replace(".jsh", "")
             shader_info.source = source
             shader_info.shader_type = global_info.shader_types[index]
 

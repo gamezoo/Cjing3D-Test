@@ -257,7 +257,9 @@ namespace GPU
 				auto handle = cmd.GetHanlde();
 				if (handle != ResHandle::INVALID_HANDLE)
 				{
-					mImpl->mDevice->CompileCommandList(handle, cmd);
+					if (!cmd.IsCompiled()) {
+						mImpl->mDevice->CompileCommandList(handle, cmd);
+					}
 					handles.push(handle);
 				}
 			}
@@ -315,7 +317,12 @@ namespace GPU
 	bool CompileCommandList(CommandList& cmd)
 	{
 		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
-		return mImpl->mDevice->CompileCommandList(cmd.GetHanlde(), cmd);
+		if (!cmd.IsCompiled())
+		{
+			cmd.SetCompiled(true);
+			return mImpl->mDevice->CompileCommandList(cmd.GetHanlde(), cmd);
+		}
+		return false;
 	}
 
 	bool SubmitCommandList(const CommandList& cmd)

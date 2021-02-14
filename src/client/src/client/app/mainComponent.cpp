@@ -168,8 +168,11 @@ namespace Cjing3D
 		GPU::CommandList* cmd = GPU::CreateCommandlist();
 		Renderer::PresentBegin(*cmd);
 		{
-			if (mRenderPath != nullptr) {
+			if (mRenderPath != nullptr) 
+			{
+				cmd->EventBegin("Compose");
 				mRenderPath->Compose(*cmd);
+				cmd->EventEnd();
 			}
 		}
 		Renderer::PresentEnd();

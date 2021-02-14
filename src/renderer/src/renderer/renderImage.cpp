@@ -22,7 +22,7 @@ namespace Cjing3D
 		if (!shader) {
 			return;
 		}
-		cmd.Event("Image");
+		cmd.EventBegin("RenderImage");
 
 		// bind resources
 		ShaderBindingContext bindingContext(cmd);
@@ -43,5 +43,7 @@ namespace Cjing3D
 				cmd.Draw(3, 0);
 			}
 		}
+
+		cmd.EventEnd();
 	}
 }

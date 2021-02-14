@@ -32,6 +32,5 @@ typedef U32x4 uint4;
 
 #define CONSTANTBUFFER(name, type, slot) ConstantBuffer<type> name : register(b ## slot)
 
-
 #endif
 #endif

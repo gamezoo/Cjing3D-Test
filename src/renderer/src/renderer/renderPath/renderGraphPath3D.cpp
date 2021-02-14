@@ -94,6 +94,7 @@ namespace Cjing3D
 
 	void RenderGraphPath3D::Compose(GPU::CommandList& cmd)
 	{
+		cmd.EventBegin("Compose3D");
 		if (mRtMain.GetHandle())
 		{
 			ImageParams params;
@@ -102,6 +103,7 @@ namespace Cjing3D
 
 			RenderImage::Draw(mRtMain.GetHandle(), params, cmd);
 		}
+		cmd.EventEnd();
 
 		RenderGraphPath2D::Compose(cmd);
 	}

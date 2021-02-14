@@ -42,10 +42,22 @@ print("-------------------------------------------------------------")
 print("[APPS]")
 print("-------------------------------------------------------------")
 if build_editor then 
-    create_example_app(editor_name, "src/editor", get_current_script_path(), "WindowedApp", {PROJECT_IMGUI})
+    create_example_app(
+        editor_name, 
+        "src/editor", 
+        get_current_script_path(), 
+        "WindowedApp", 
+        all_plugins, 
+        {PROJECT_IMGUI}
+    )
 end 
 
 if build_app then 
-    create_example_app(app_name, "src/app", get_current_script_path(), "WindowedApp")
+    create_example_app(
+        app_name, 
+        "src/app", 
+        get_current_script_path(), 
+        "WindowedApp"
+    )
 end 
 print("-------------------------------------------------------------")

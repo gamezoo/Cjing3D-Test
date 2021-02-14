@@ -18,6 +18,7 @@ namespace GPU {
     {
         mAllocator.Reset();
         mCommands.clear();
+        mIsCompiled = false;
     }
 
     void CommandList::UpdateBuffer(ResHandle handle, const void* data, I32 offset, I32 size)

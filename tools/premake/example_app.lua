@@ -11,10 +11,14 @@ end
 local function setup_third_modules()
 end 
 
-local function link_all_plugins(config)
+local function link_all_plugins(plugins, config)
+    if plugins == nil then 
+        return
+    end 
+
     includedirs {env_dir .. "src/plugins/src"}
 
-    for _, plugin in ipairs(all_plugins) do
+    for _, plugin in ipairs(plugins) do
         link_plugin(plugin)
     end
 end 
@@ -38,7 +42,7 @@ function get_current_script_path()
     return str:match("(.*/)")
 end
 
-function create_example_app(project_name, source_directory, root_directory, app_kind, extra_dependencies)
+function create_example_app(project_name, source_directory, root_directory, app_kind, plugins, extra_dependencies)
     print("[APP]", project_name)
 
     local project_dir = root_directory .. "/build/" .. platform_dir .. "/" .. project_name
@@ -106,7 +110,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
             targetname(project_name)
             defines { "DEBUG" }
             setup_engine("Debug")
-            link_all_plugins("Debug")
+            link_all_plugins(plugins, "Debug")
             link_all_extra_dependencies(extra_dependencies, "Debug")
 
         -- Release config
@@ -114,7 +118,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
             targetname(project_name .. "_d")
             defines { "NDEBUG" }
             setup_engine("Release")
-            link_all_plugins("Release")
+            link_all_plugins(plugins, "Release")
             link_all_extra_dependencies(extra_dependencies, "Release")
 
         filter { }

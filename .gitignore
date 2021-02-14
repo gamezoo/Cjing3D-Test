@@ -39,3 +39,5 @@ src/imguiRhi/lib
 3rdparty/optick
 3rdparty/config_user.jsc
 /editor/src/app/note.h
+assets/imgui.ini
+tools/cjing_build/scripts/jsc/

@@ -20,6 +20,10 @@ create_plugin(
         -- libdirs
         libdirs {  "../../3rdparty/fcpp/lib/" .. platform_dir }
         
+        -- todo, better way?
+        local shaderInterop_path = path.getabsolute("../renderer/src/renderer")
+        defines { "SHADER_INTEROP_PATH=\"" .. shaderInterop_path .. "\""}
+
         -- Debug config
         filter {"configurations:Debug"}
             links {"fcpp_d"}

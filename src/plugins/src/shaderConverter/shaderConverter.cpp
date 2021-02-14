@@ -119,7 +119,7 @@ namespace Cjing3D
 			static void FppError(void* userData, char* format, va_list varArgs)
 			{
 				StaticString<128> errMsg;
-				Debug::Warning(errMsg.Sprintfv(format, varArgs));
+				Debug::Error(errMsg.Sprintfv(format, varArgs));
 			}
 
 			static char* FppInput(char* buffer, int size, void* userData)
@@ -166,15 +166,8 @@ namespace Cjing3D
 		Concurrency::Mutex ShaderPreprocessor::mMutex;
 	}
 
-	void ShaderMetaObject::Serialize(JsonArchive& archive)const
-	{
-
-	}
-
-	void ShaderMetaObject::Unserialize(JsonArchive& archive) 
-	{
-
-	}
+	void ShaderMetaObject::Serialize(JsonArchive& archive)const {}
+	void ShaderMetaObject::Unserialize(JsonArchive& archive) {}
 
 	bool ShaderResConverter::Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest)
 	{
@@ -205,6 +198,8 @@ namespace Cjing3D
 
 		ShaderPreprocessor preprocessor;
 		preprocessor.AddInclude(fullRootPath.c_str());
+		preprocessor.AddInclude(SHADER_INTEROP_PATH);
+
 		if (!preprocessor.Preprocess(fullSrcPath.c_str(), source.data()))
 		{
 			Debug::Warning("[ShaderConverter] failed to preprocess shader source.");

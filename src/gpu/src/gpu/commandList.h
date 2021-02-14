@@ -16,6 +16,7 @@ namespace GPU {
 		ResHandle mHandle;
 		LinearAllocator mAllocator;
 		DynamicArray<Command*> mCommands;
+		bool mIsCompiled = false;
 
 	public:
 		CommandList(I32 bufferSize = 1024 * 1024);
@@ -24,6 +25,8 @@ namespace GPU {
 		void Reset();
 		void SetHanlde(const ResHandle& handle) { mHandle = handle; }
 		ResHandle GetHanlde()const { return mHandle; }
+		bool IsCompiled()const { return mIsCompiled; }
+		void SetCompiled(bool isCompiled) { mIsCompiled = isCompiled; }
 
 		void UpdateBuffer(ResHandle handle, const void* data, I32 offset = 0, I32 size = -1);
 

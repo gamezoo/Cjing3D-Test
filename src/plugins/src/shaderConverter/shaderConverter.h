@@ -8,9 +8,6 @@ namespace Cjing3D
 	class ShaderMetaObject : public SerializedObject
 	{
 	public:
-		
-
-	public:
 		virtual void Serialize(JsonArchive& archive)const;
 		virtual void Unserialize(JsonArchive& archive);
 	};
