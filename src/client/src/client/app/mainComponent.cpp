@@ -84,6 +84,11 @@ namespace Cjing3D
 		return mUniverse;
 	}
 
+	Engine* MainComponent::GetEngine()
+	{
+		return mEngine.get();
+	}
+
 	void MainComponent::Tick()
 	{
 		Profiler::BeginFrame();

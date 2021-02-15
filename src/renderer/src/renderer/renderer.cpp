@@ -361,7 +361,7 @@ namespace Renderer
 	//////////////////////////////////////////////////////////////////////////
 	RendererImpl* mImpl = nullptr;
 
-	void Initialize(GPU::GPUSetupParams params)
+	void Initialize(GPU::GPUSetupParams params, bool loadShaders)
 	{
 		if (IsInitialized()) {
 			return;
@@ -376,7 +376,11 @@ namespace Renderer
 		// initialize impl
 		mImpl = CJING_NEW(RendererImpl);
 		mImpl->PreLoadBuffers();
-		mImpl->PreLoadShaders();
+
+		// editor may load shaders lazy
+		if (loadShaders) {
+			mImpl->PreLoadShaders();
+		}
 
 		// initialize renderImage
 		RenderImage::Initialize();
@@ -474,11 +478,16 @@ namespace Renderer
 
 	GPU::ResHandle GetConstantBuffer(CBTYPE type)
 	{
+		Debug::CheckAssertion(IsInitialized());
 		return mImpl->mConstantBuffers[(U32)type];
 	}
 
 	ShaderRef GetShader(SHADERTYPE type)
 	{
+		Debug::CheckAssertion(IsInitialized());
+		if (mImpl->mShaders[(U32)type] == nullptr) {
+			Debug::Warning("Failed to get shader:(shaderType) %d", (I32)type);
+		}
 		return mImpl->mShaders[(U32)type];
 	}
 
@@ -489,6 +498,12 @@ namespace Renderer
 			ResourceManager::WaitForResource(shader);
 		}
 		return shader;
+	}
+
+	void LoadAllShaders()
+	{
+		Debug::CheckAssertion(IsInitialized());
+		mImpl->PreLoadShaders();
 	}
 
 	RenderScene* GetRenderScene()

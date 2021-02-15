@@ -6,15 +6,19 @@ namespace Cjing3D
 {
 	class BaseFileSystem;
 
+	static const char* COMPILED_PATH_NAME = "converter_output";
+	static const char* COMPILED_PATH_LIST = "converter_output/assetList.txt";
+
 	namespace ResourceManager
 	{
-		void Initialize(BaseFileSystem* filesystem, bool convertEnable = false);
+		void Initialize(BaseFileSystem* filesystem);
 		void Uninitialize();
 		bool IsInitialized();
 		void RegisterFactory(ResourceType type, ResourceFactory* factory);
 		void UnregisterFactory(ResourceType type);
 
 		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate);
+		Resource* ConvertResource(ResourceType type, const Path& inPath, bool continueLoad = true);
 
 		template<typename T>
 		T* LoadResource(const Path& inPath)
@@ -59,5 +63,18 @@ namespace Cjing3D
 		};
 		AsyncResult ReadFileData(const char* path, char*& buffer, size_t& size, AsyncHandle* asyncHanlde = nullptr);
 		AsyncResult WriteFileData(const char* path, void* buffer, size_t size,  AsyncHandle* asyncHanlde = nullptr);
+
+		struct LoadHook
+		{
+			LoadHook() = default;
+			virtual ~LoadHook() {}
+
+			enum class HookResult { 
+				IMMEDIATE,
+				DEFERRED 
+			};
+			virtual HookResult OoBeforeLoad(Resource* res) = 0;
+		};
+		void SetCurrentLoadHook(LoadHook* loadHook);
 	};
 }

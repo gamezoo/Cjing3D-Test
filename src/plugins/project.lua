@@ -6,10 +6,9 @@ group "plugins"
 -----------------------------------------------------------------
 -- Converter
 -----------------------------------------------------------------
-group "plugins/converters"
 -- plugin shader converter
 create_plugin(
-    "shaderConverter",
+    "resConverter",
     { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME },
     function()
         -- includes
@@ -33,21 +32,5 @@ create_plugin(
             links {"fcpp"}
     end 
 )
-
-create_plugin(
-    "textureConverter",
-    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME }
-)
-
-create_plugin(
-    "modelConverter",
-    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME }
-)
-
-create_plugin(
-    "materialConverter",
-    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME }
-)
-
 
 group ""

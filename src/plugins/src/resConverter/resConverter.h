@@ -2,23 +2,21 @@
 
 #include "resource\converter.h"
 #include "core\serialization\serializedObject.h"
+#include "core\container\hashMap.h"
 
 namespace Cjing3D
 {
-	class TextureMetaObject : public SerializedObject
+	class ResConverter : public IResConverter
 	{
 	public:
-		
+		ResConverter();
+		~ResConverter();
 
-	public:
-		virtual void Serialize(JsonArchive& archive)const;
-		virtual void Unserialize(JsonArchive& archive);
-	};
-
-	class TextureResConverter : public IResConverter
-	{
-	public:
+		void AddConverter(const ResourceType& type, IResConverter* converter);
 		bool SupportsType(const char* ext, const ResourceType& type)override;
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override;
+	
+	private:
+		HashMap<U32, IResConverter*> mResConverters;
 	};
 }

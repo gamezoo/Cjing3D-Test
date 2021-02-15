@@ -20,6 +20,7 @@ namespace Cjing3D
 		void SetRenderPath(RenderPath* renderPath);
 		RenderPath* GetRenderPath();
 		Universe* GetUniverse();
+		Engine* GetEngine();
 
 	protected:
 		virtual void OnLoad() {}

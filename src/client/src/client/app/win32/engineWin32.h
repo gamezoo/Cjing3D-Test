@@ -26,6 +26,7 @@ namespace Cjing3D::Win32
 
 		BaseFileSystem* GetFileSystem()override;
 		InputManager* GetInputManager()override;
+		EventQueue* GetEventQueue()override;
 
 	private:
 		struct EngineWin32Impl* mImpl = nullptr;

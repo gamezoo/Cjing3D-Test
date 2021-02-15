@@ -966,12 +966,12 @@ namespace GPU
 			return;
 		}
 
-		Logger::Info("Initialized graphics device dx11");
+		Logger::Info("Graphics device dx11 Iinitialized");
 	}
 
 	GraphicsDeviceDx11::~GraphicsDeviceDx11()
 	{
-		Logger::Info("Uninitialized graphics device dx11");
+		Logger::Info("Uninitialize graphics device dx11");
 	}
 
 	bool GraphicsDeviceDx11::CreateCommandlist(ResHandle handle)

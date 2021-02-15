@@ -69,4 +69,14 @@ namespace Cjing3D {
 
 		return hashValue;
 	}
+	
+	U32 HashFunc(U32 Input, const StringID& Data)
+	{
+		return HashFunc(Input, Data.GetHash());
+	}
+
+	U64 HashFunc(U64 Input, const StringID& Data)
+	{
+		return HashFunc(Input, Data.GetHash());
+	}
 }

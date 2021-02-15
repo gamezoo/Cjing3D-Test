@@ -27,7 +27,7 @@ namespace Cjing3D::Win32
 		void Run(InitConfig config, CreateGameFunc createGame = nullptr);
 
 	private:
-		HINSTANCE   mHinstance;
+		HINSTANCE  mHinstance;
 	};
 }
 #endif

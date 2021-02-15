@@ -23,7 +23,6 @@ int WINAPI WinMain(
 	config.mFlag = InitConfigFlag::PresentFlag_WinApp;
 	config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
 	config.mIsApp = false;
-	config.mEnableResConvert = false;
 
 	auto renderPath = CJING_MAKE_SHARED<RenderGraphPath3D>();
 	Win32::GameAppWin32 gameApp(hInstance);

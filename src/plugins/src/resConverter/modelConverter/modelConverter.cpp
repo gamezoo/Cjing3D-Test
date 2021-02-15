@@ -5,6 +5,8 @@
 #include "core\string\stringUtils.h"
 #include "renderer\model.h"
 
+#include "modelImporterOBJ.h"
+
 namespace Cjing3D
 {
 	void ModelMetaObject::Serialize(JsonArchive& archive)const
@@ -17,15 +19,10 @@ namespace Cjing3D
 
 	}
 
-	class ModelResConverter : public IResConverter
+	ModelResConverter::ModelResConverter()
 	{
-	private:
-
-	public:
-		bool SupportsFileExt(const char* ext);
-		bool SupportsType(const char* ext, const ResourceType& type)override;
-		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override;
-	};
+		RegisterImporter("obj", CJING_NEW(ModelImporterOBJ));
+	}
 
 	bool ModelResConverter::Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest)
 	{
@@ -37,8 +34,18 @@ namespace Cjing3D
 		}
 		context.AddSource(src);
 
+		// 1. get taget model importer
+		MaxPathString srcExt;
+		Path::GetPathExtension(Span(src, StringLength(src)), srcExt.toSpan());
+		ModelImporter* importer = GetImporter(srcExt);
+		if (importer == nullptr) {
+			return false;
+		}
 
-
+		// 2. import model by importer
+		if (!importer->Import(context, src)) {
+			return false;
+		}
 
 		context.AddOutput(dest);
 		context.SetMetaData<ModelMetaObject>(data);
@@ -48,7 +55,7 @@ namespace Cjing3D
 
 	bool ModelResConverter::SupportsFileExt(const char* ext)
 	{
-		return false;
+		return mImporters.find(ext) != nullptr;
 	}
 
 	bool ModelResConverter::SupportsType(const char* ext, const ResourceType& type)

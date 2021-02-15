@@ -213,6 +213,14 @@ namespace Cjing3D
 			return ret;
 		}
 
+		void Reset()
+		{
+			if (mPtr) {
+				CJING_DELETE(mPtr);
+			}
+			mPtr = nullptr;
+		}
+
 		T* Get()const {
 			return mPtr;
 		}

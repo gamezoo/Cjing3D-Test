@@ -22,9 +22,8 @@ int WINAPI WinMain(
 	config.mIsLockFrameRate = true;
 	config.mTargetFrameRate = 60;
 	config.mFlag = InitConfigFlag::PresentFlag_WinApp;
-	config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
+	config.mTitle = "Cjing3D Editor";
 	config.mIsApp = false;
-	config.mEnableResConvert = true;
 
 	Win32::GameAppWin32 gameApp(hInstance);
 	gameApp.Run(config,

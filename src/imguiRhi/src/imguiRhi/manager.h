@@ -11,7 +11,6 @@ namespace Cjing3D
 		class CommandList;
 	}
 
-	class EventQueue;
 	class InputManager;
 
 	namespace ImGuiRHI

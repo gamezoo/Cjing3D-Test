@@ -42,7 +42,7 @@ function get_current_script_path()
     return str:match("(.*/)")
 end
 
-function create_example_app(project_name, source_directory, root_directory, app_kind, plugins, extra_dependencies)
+function create_example_app(project_name, source_directory, root_directory, app_kind, plugins, extra_dependencies, ext_func)
     print("[APP]", project_name)
 
     local project_dir = root_directory .. "/build/" .. platform_dir .. "/" .. project_name
@@ -65,7 +65,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
         -- includes
         includedirs { 
             -- local
-            project_dir,
+            source_dir,
             -- 3rdParty
             env_dir .. "3rdparty/",       
             -- shaderInterop
@@ -93,6 +93,10 @@ function create_example_app(project_name, source_directory, root_directory, app_
             debug_dir = env_dir .. "assets"
         end 
         debugdir (debug_dir)
+
+        if ext_func ~= nil then 
+            ext_func()
+        end 
 
         -- set extra dependencies depenson
         if extra_dependencies ~= nil and type(extra_dependencies) == "table" then 

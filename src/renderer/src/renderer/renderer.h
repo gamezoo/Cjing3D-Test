@@ -16,7 +16,7 @@ namespace Cjing3D
 
 	namespace Renderer
 	{
-		void Initialize(GPU::GPUSetupParams params);
+		void Initialize(GPU::GPUSetupParams params, bool loadShaders = true);
 		bool IsInitialized();
 		void Uninitialize();
 		void InitRenderScene(Engine& engine, Universe& universe);
@@ -31,6 +31,7 @@ namespace Cjing3D
 		GPU::ResHandle GetConstantBuffer(CBTYPE type);
 		ShaderRef GetShader(SHADERTYPE type);
 		ShaderRef LoadShader(const char* path, bool waitFor = false);
+		void LoadAllShaders();
 		RenderScene* GetRenderScene();
 
 		void AddStaticSampler(const GPU::ResHandle& handle, I32 slot);

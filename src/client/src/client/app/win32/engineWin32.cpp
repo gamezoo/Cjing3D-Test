@@ -89,7 +89,7 @@ namespace Cjing3D::Win32
 		BuildConfig::Initialize(filesystem);
 
 		// init resource manager
-		ResourceManager::Initialize(filesystem, mInitConfig.mEnableResConvert);
+		ResourceManager::Initialize(filesystem);
 
 		// init input system
 		mImpl->mInputSystem = CJING_NEW(Win32::InputManagerWin32);
@@ -99,7 +99,7 @@ namespace Cjing3D::Win32
 		GPU::GPUSetupParams gpuSetupParams;
 		gpuSetupParams.mWindow = mImpl->mGameWindowWin32->GetHwnd();
 		gpuSetupParams.mIsFullscreen = mInitConfig.mIsFullScreen;
-		Renderer::Initialize(gpuSetupParams);
+		Renderer::Initialize(gpuSetupParams, mInitConfig.mIsApp ? true : false);
 
 		// load custom plugins
 		for (const char* plugin : mInitConfig.mPlugins) {
@@ -233,5 +233,10 @@ namespace Cjing3D::Win32
 	InputManager* EngineWin32::GetInputManager()
 	{
 		return mImpl->mInputSystem;
+	}
+
+	EventQueue* EngineWin32::GetEventQueue()
+	{
+		return mImpl->mSystemEventQueue.get();
 	}
 }

@@ -10,6 +10,7 @@ namespace Cjing3D
 	class ModulerPlugin;
 	class BaseFileSystem;
 	class InputManager;
+	class EventQueue;
 
 	class Engine : public ENABLE_SHARED_FROM_THIS<Engine>
 	{
@@ -27,6 +28,7 @@ namespace Cjing3D
 
 		virtual BaseFileSystem* GetFileSystem() = 0;
 		virtual InputManager* GetInputManager() = 0;
+		virtual EventQueue* GetEventQueue() = 0;
 
 		SharedPtr<GameWindow> GetGameWindow()const {
 			return mGameWindow;

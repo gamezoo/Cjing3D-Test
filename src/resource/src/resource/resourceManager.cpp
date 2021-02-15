@@ -59,12 +59,10 @@ namespace ResourceManager
 		// resource file io
 		Concurrency::Semaphore mWriteTaskSem;
 		Concurrency::Semaphore mReadTaskSem;
-		Concurrency::Semaphore mTimesteampSem;
 		MPMCBoundedQueue<FileIOTask> mWriteTaskQueue;
 		MPMCBoundedQueue<FileIOTask> mReadTaskQueue;
 		Concurrency::Thread mWriteThread;
 		Concurrency::Thread mReadThread;
-		Concurrency::Thread mTimestampThread;
 		bool mIOExiting = false;
 
 		// converter plugins
@@ -73,11 +71,13 @@ namespace ResourceManager
 		volatile I32 mPendingResJobs = 0;
 		volatile I32 mConversionJobs = 0;
 
-		bool mConvertEnable = true;
+		// load hook
+		LoadHook* mLoadHook = nullptr;
+
 		bool mIsInitialized = false;
 
 	public:
-		ResourceManagerImpl(BaseFileSystem* filesystem, bool convertEnable);
+		ResourceManagerImpl(BaseFileSystem* filesystem);
 		~ResourceManagerImpl();
 
 		ResourceFactory* GetFactory(ResourceType type);
@@ -91,22 +91,15 @@ namespace ResourceManager
 	};
 	ResourceManagerImpl* mImpl = nullptr;
 
-	ResourceManagerImpl::ResourceManagerImpl(BaseFileSystem* filesystem, bool convertEnable) :
+	ResourceManagerImpl::ResourceManagerImpl(BaseFileSystem* filesystem) :
 		mReadTaskQueue(MAX_READ_TASKS),
 		mWriteTaskQueue(MAX_WRITE_TASKS),
 		mWriteTaskSem(0, MAX_WRITE_TASKS, "ResWriteSem"),
 		mReadTaskSem(0,  MAX_READ_TASKS, "ResReadSem"),
-		mTimesteampSem(0, MAX_READ_TASKS, "TimesteampSem"),
 		mWriteThread(WriteIOTaskFunc, this, 65536, "WriteIOThread"),
 		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread"),
-		mFilesystem(filesystem),
-		mConvertEnable(convertEnable)
+		mFilesystem(filesystem)
 	{
-		// run timesteamp thread is converting is enable
-		if (convertEnable) {
-			mTimestampThread = std::move(Concurrency::Thread(TimesteampFunc, this, 65536, "TimesteampThread"));
-		}
-
 		// acquire all converter plugins
 		DynamicArray<Plugin*> plugins;
 		PluginManager::GetPlugins<ResConverterPlugin>(plugins);
@@ -134,9 +127,6 @@ namespace ResourceManager
 
 		mWriteTaskSem.Signal(1);
 		mWriteThread.Join();
-
-		mTimesteampSem.Signal(1);
-		mTimestampThread.Join();
 	}
 
 	ResourceFactory* ResourceManagerImpl::GetFactory(ResourceType type)
@@ -358,20 +348,6 @@ namespace ResourceManager
 		return 0;
 	}
 
-	static int TimesteampFunc(void* data)
-	{
-		auto* impl = reinterpret_cast<ResourceManagerImpl*>(data);
-
-		// check resource is out of date every 100ms
-		impl->mTimesteampSem.Wait();
-		while (impl->mIsInitialized)
-		{
-			impl->mTimesteampSem.Wait(100);
-		}
-
-		return 0;
-	}
-
 	//////////////////////////////////////////////////////////////////////////
 	// Task job
 	//////////////////////////////////////////////////////////////////////////
@@ -562,12 +538,12 @@ namespace ResourceManager
 	//////////////////////////////////////////////////////////////////////////
 	// Manager
 	//////////////////////////////////////////////////////////////////////////
-	void Initialize(BaseFileSystem* filesystem, bool convertEnable)
+	void Initialize(BaseFileSystem* filesystem)
 	{
 		Debug::CheckAssertion(JobSystem::IsInitialized());
 		Debug::CheckAssertion(PluginManager::IsInitialized());
 		Debug::CheckAssertion(mImpl == nullptr);
-		mImpl = CJING_NEW(ResourceManagerImpl)(filesystem, convertEnable);
+		mImpl = CJING_NEW(ResourceManagerImpl)(filesystem);
 	}
 
 	void Uninitialize()
@@ -635,6 +611,16 @@ namespace ResourceManager
 				mImpl->RecordResource(inPath, type, *ret);
 				ret->SetPath(inPath);
 
+				// onBeforeLoad
+				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
+				if (mImpl->mLoadHook != nullptr) {
+					hookRet = mImpl->mLoadHook->OoBeforeLoad(ret);
+				}
+
+				if (hookRet == LoadHook::HookResult::DEFERRED) {
+					return ret;
+				}
+
 				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), inPath.c_str(), inPath.c_str());
 				if (isImmediate) {
 					loadJob->RunTaskImmediate(0);
@@ -659,14 +645,20 @@ namespace ResourceManager
 				mImpl->RecordResource(inPath, type, *ret);
 				ret->SetPath(inPath);
 
+				// onBeforeLoad
+				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
+				if (mImpl->mLoadHook != nullptr) {
+					hookRet = mImpl->mLoadHook->OoBeforeLoad(ret);
+				}
+
+				if (hookRet == LoadHook::HookResult::DEFERRED) {
+					return ret;
+				}
+
 				// set converted directory path
 				MaxPathString convertedPath, convertedFileName;
 				sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
 				sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
-
-				if (!mImpl->mFilesystem->IsDirExists(convertedPath.c_str())) {
-					mImpl->mFilesystem->CreateDir(convertedPath.c_str());
-				}
 
 				// converted full path
 				Path convertedfullPath(convertedPath.c_str());
@@ -674,51 +666,7 @@ namespace ResourceManager
 				convertedfullPath.AppendPath(Path(convertedFileName));
 				ret->SetConvertedPath(convertedfullPath);
 
-				bool needConvert = true;
 				if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
-				{
-					// 仅当系统支持converting操作才检查, TODO: use macro?
-					if (mImpl->mConvertEnable)
-					{
-						MaxPathString metaPath(inPath.c_str());
-						metaPath.append(".metadata");
-
-						if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
-						{
-							// check res metadata last modified time
-							U64 srcModTime = mImpl->mFilesystem->GetLastModTime(inPath.c_str());
-							U64 metaModTime = mImpl->mFilesystem->GetLastModTime(metaPath.c_str());
-
-							if (metaModTime >= srcModTime) {
-								needConvert = false;
-							}
-
-							// check source files is out of date
-							DynamicArray<String> sources;
-							JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, mImpl->mFilesystem);
-							archive.Read("sources", sources);
-
-							for (const auto& sourceFile : sources)
-							{
-								U64 modTime = 0;
-								if (Path::IsAbsolutePath(sourceFile)) {
-									modTime = Platform::GetLastModTime(sourceFile);
-								}
-								else {
-									modTime = mImpl->mFilesystem->GetLastModTime(sourceFile.c_str());
-								}
-								if (modTime > metaModTime) 
-								{
-									needConvert = true;
-									break;
-								}
-							}
-						}
-					}
-				}
-
-				// 如果convert_output存在，直接加载文件
-				if (needConvert == false)
 				{
 					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
 					if (isImmediate) {
@@ -729,32 +677,100 @@ namespace ResourceManager
 					}
 					return ret;
 				}
-
-				// check whether the current system support converting (editor/app)
-				if (!mImpl->mConvertEnable)
+				else
 				{
 					mImpl->ReleaseResource(ret);
 					Debug::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
 					return nullptr;
 				}
-
-				// load job
-				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
-
-				// convert job
-				auto* convertJob = CJING_NEW(ResourceConvertJob)(*ret, type, inPath.c_str(), convertedfullPath.c_str());
-				convertJob->SetLoadJob(loadJob);
-				convertJob->SetIsImmediate(isImmediate);
-
-				if (isImmediate) {
-					convertJob->RunTaskImmediate(0);
-				}
-				else {
-					convertJob->RunTask(0, JobSystem::Priority::LOW);
-				}
 			}
 			return ret;
 		}                                                                                           
+	}
+
+	Resource* ConvertResource(Resource* resource, ResourceFactory& factory, ResourceType type, const Path& inPath, bool continueLoad)
+	{
+		MaxPathString dirPath, fileName, ext;
+		if (!inPath.SplitPath(dirPath.data(), dirPath.size(), fileName.data(), fileName.size(), ext.data(), ext.size()))
+		{
+			Debug::Warning("Invalid path:%s", inPath.c_str());
+			return nullptr;
+		}
+
+		// set converted directory path
+		MaxPathString convertedPath, convertedFileName;
+		sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
+		sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
+
+		if (!mImpl->mFilesystem->IsDirExists(convertedPath.c_str())) {
+			mImpl->mFilesystem->CreateDir(convertedPath.c_str());
+		}
+
+		// converted full path
+		Path convertedfullPath(convertedPath.c_str());
+		convertedfullPath.AppendPath(Path(dirPath));
+		convertedfullPath.AppendPath(Path(convertedFileName));
+		resource->SetConvertedPath(convertedfullPath);
+
+		bool needConvert = true;
+		if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
+		{
+			// 仅当系统支持converting操作才检查, TODO: use macro?
+			MaxPathString metaPath(inPath.c_str());
+			metaPath.append(".metadata");
+
+			if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
+			{
+				// check res metadata last modified time
+				U64 srcModTime = mImpl->mFilesystem->GetLastModTime(inPath.c_str());
+				U64 metaModTime = mImpl->mFilesystem->GetLastModTime(metaPath.c_str());
+
+				if (metaModTime >= srcModTime) {
+					needConvert = false;
+				}
+
+				// check source files is out of date
+				DynamicArray<String> sources;
+				JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, mImpl->mFilesystem);
+				archive.Read("sources", sources);
+
+				for (const auto& sourceFile : sources)
+				{
+					U64 modTime = 0;
+					if (Path::IsAbsolutePath(sourceFile)) {
+						modTime = Platform::GetLastModTime(sourceFile);
+					}
+					else {
+						modTime = mImpl->mFilesystem->GetLastModTime(sourceFile.c_str());
+					}
+					if (modTime > metaModTime)
+					{
+						needConvert = true;
+						break;
+					}
+				}
+			}
+		}
+
+		// 如果convert_output存在，直接加载文件
+		if (!needConvert && continueLoad)
+		{
+			auto* loadJob = CJING_NEW(ResourceLoadJob)(factory, *resource, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
+			loadJob->RunTask(0, JobSystem::Priority::LOW);
+			return resource;
+		}
+
+		auto* convertJob = CJING_NEW(ResourceConvertJob)(*resource, type, inPath.c_str(), convertedfullPath.c_str());
+		convertJob->SetIsImmediate(false);
+		convertJob->RunTask(0, JobSystem::Priority::LOW);
+
+		if (continueLoad)
+		{
+			auto* loadJob = CJING_NEW(ResourceLoadJob)(factory, *resource, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
+			convertJob->SetLoadJob(loadJob);
+		}
+
+		return resource;
 	}
 
 	void ReloadResource(Resource* resource)
@@ -925,6 +941,12 @@ namespace ResourceManager
 			mImpl->mWriteTaskSem.Signal(1);
 			return AsyncResult::PENDING;
 		}
+	}
+
+	void SetCurrentLoadHook(LoadHook* loadHook)
+	{
+		Debug::CheckAssertion(IsInitialized());
+		mImpl->mLoadHook = loadHook;
 	}
 }
 }

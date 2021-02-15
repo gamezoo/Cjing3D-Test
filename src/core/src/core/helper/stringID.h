@@ -55,5 +55,9 @@ namespace Cjing3D {
 		unsigned int mValue;
 	};
 
+	// hash func
+	U32 HashFunc(U32 Input, const StringID& Data);
+	U64 HashFunc(U64 Input, const StringID& Data);
+
 #define STRING_ID(key) StringID(#key)
 }
