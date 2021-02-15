@@ -745,12 +745,10 @@ namespace Cjing3D
 					}
 				}
 			};
-
-			jobInfo.jobFunc_(i, mImpl);
 		}
 
-		//JobSystem::RunJobs(passJobs.data(), passJobs.size(), &jobHandle);
-		//JobSystem::Wait(&jobHandle);
+		JobSystem::RunJobs(passJobs.data(), passJobs.size(), &jobHandle);
+		JobSystem::Wait(&jobHandle);
 
 		if (mImpl->mCompileFailCount > 0) {
 			return false;
