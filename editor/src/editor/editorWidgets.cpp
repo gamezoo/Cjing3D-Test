@@ -116,4 +116,15 @@ namespace Cjing3D
 		ImGui::Text("SOFTWARE.");
 		ImGui::End();
 	}
+
+	EditorWidgetAssertBrowser::EditorWidgetAssertBrowser(GameEditor& editor) :
+		EditorWidget(editor)
+	{
+		mTitleName = "AssertBrowser";
+		mIsWindow = false;
+	}
+
+	void EditorWidgetAssertBrowser::Update(F32 deltaTime)
+	{
+	}
 }

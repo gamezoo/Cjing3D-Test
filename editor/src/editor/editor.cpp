@@ -40,7 +40,7 @@ namespace Cjing3D
 		mAssertCompiler = CJING_MAKE_UNIQUE<AssertCompiler>(*this);
 
 		// load shader lazy after assert compiler initialzed
-		Renderer::LoadAllShaders();
+		//Renderer::LoadAllShaders();
 
 		// imguiRhi
 		ImGuiConfigFlags configFlags =

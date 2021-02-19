@@ -34,7 +34,6 @@ namespace ResourceManager
 
 	static int ReadIOTaskFunc(void* data);
 	static int WriteIOTaskFunc(void* data);
-	static int TimesteampFunc(void* data);
 
 	//////////////////////////////////////////////////////////////////////////
 	// Impl
@@ -87,7 +86,7 @@ namespace ResourceManager
 		void RecordResource(const Path& path, ResourceType type, Resource& resource);
 		void ProcessReleasedResources();
 		DynamicArray<String> LoadResSources(const char* src);
-		bool CheckResourceIsOutofDate(Resource* resource);
+		Path GetResourceConvertedPath(const Path& inPath);
 	};
 	ResourceManagerImpl* mImpl = nullptr;
 
@@ -203,6 +202,7 @@ namespace ResourceManager
 		for (auto resource : releasedResources)
 		{
 			Debug::CheckAssertion(resource->IsLoaded() || resource->IsFaild());
+			resource->OnUnloaded();
 
 			ResourceFactory* factory = mImpl->GetFactory(resource->GetType());
 			if (factory != nullptr) {
@@ -225,9 +225,25 @@ namespace ResourceManager
 		return ret;
 	}
 
-	bool ResourceManagerImpl::CheckResourceIsOutofDate(Resource* resource)
+	Path ResourceManagerImpl::GetResourceConvertedPath(const Path& inPath)
 	{
-		return false;
+		MaxPathString dirPath, fileName, ext;
+		if (!inPath.SplitPath(dirPath.data(), dirPath.size(), fileName.data(), fileName.size(), ext.data(), ext.size()))
+		{
+			Debug::Warning("Invalid path:%s", inPath.c_str());
+			return Path();
+		}
+
+		MaxPathString convertedPath, convertedFileName;
+		sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
+		sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
+
+		// converted full path
+		Path convertedfullPath(convertedPath.c_str());
+		convertedfullPath.AppendPath(Path(dirPath));
+		convertedfullPath.AppendPath(Path(convertedFileName));
+
+		return convertedfullPath;
 	}
 
 	AsyncResult FileIOTask::DoRead()
@@ -492,6 +508,7 @@ namespace ResourceManager
 		mPath(path),
 		mOriginalPath(path)
 	{
+		resource.SetDesiredState(Resource::ResState::LOADED); // desired loaded
 		mImpl->AcquireResource(&resource);	// add ref
 		Concurrency::AtomicIncrement(&mImpl->mPendingResJobs);
 	}
@@ -610,18 +627,23 @@ namespace ResourceManager
 				}
 				mImpl->RecordResource(inPath, type, *ret);
 				ret->SetPath(inPath);
+			}
 
-				// onBeforeLoad
+			if (ret->IsNeedLoad())
+			{
 				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
 				if (mImpl->mLoadHook != nullptr) {
 					hookRet = mImpl->mLoadHook->OoBeforeLoad(ret);
 				}
 
-				if (hookRet == LoadHook::HookResult::DEFERRED) {
+				if (hookRet == LoadHook::HookResult::DEFERRED)
+				{
+					ret->SetDesiredState(Resource::ResState::LOADED);
+					mImpl->AcquireResource(ret);	// for hook
 					return ret;
 				}
 
-				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), inPath.c_str(), inPath.c_str());
+				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, inPath.c_str(), inPath.c_str(), inPath.c_str());
 				if (isImmediate) {
 					loadJob->RunTaskImmediate(0);
 				}
@@ -629,7 +651,6 @@ namespace ResourceManager
 					loadJob->RunTask(0, JobSystem::Priority::LOW);
 				}
 			}
-
 			return ret;
 		}
 		else
@@ -644,31 +665,30 @@ namespace ResourceManager
 				}
 				mImpl->RecordResource(inPath, type, *ret);
 				ret->SetPath(inPath);
+			}
 
+			if (ret->IsNeedLoad())
+			{
 				// onBeforeLoad
 				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
 				if (mImpl->mLoadHook != nullptr) {
 					hookRet = mImpl->mLoadHook->OoBeforeLoad(ret);
 				}
 
-				if (hookRet == LoadHook::HookResult::DEFERRED) {
+				if (hookRet == LoadHook::HookResult::DEFERRED)
+				{
+					ret->SetDesiredState(Resource::ResState::LOADED);
+					mImpl->AcquireResource(ret);	// for hook
 					return ret;
 				}
 
-				// set converted directory path
-				MaxPathString convertedPath, convertedFileName;
-				sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
-				sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
-
 				// converted full path
-				Path convertedfullPath(convertedPath.c_str());
-				convertedfullPath.AppendPath(Path(dirPath));
-				convertedfullPath.AppendPath(Path(convertedFileName));
+				Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
 				ret->SetConvertedPath(convertedfullPath);
 
 				if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
 				{
-					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
+					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, inPath.c_str(), convertedfullPath.c_str(), inPath.c_str());
 					if (isImmediate) {
 						loadJob->RunTaskImmediate(0);
 					}
@@ -688,30 +708,10 @@ namespace ResourceManager
 		}                                                                                           
 	}
 
-	Resource* ConvertResource(Resource* resource, ResourceFactory& factory, ResourceType type, const Path& inPath, bool continueLoad)
+	bool CheckResourceNeedConverter(const Path& inPath, Path* outPath)
 	{
-		MaxPathString dirPath, fileName, ext;
-		if (!inPath.SplitPath(dirPath.data(), dirPath.size(), fileName.data(), fileName.size(), ext.data(), ext.size()))
-		{
-			Debug::Warning("Invalid path:%s", inPath.c_str());
-			return nullptr;
-		}
-
-		// set converted directory path
-		MaxPathString convertedPath, convertedFileName;
-		sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
-		sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
-
-		if (!mImpl->mFilesystem->IsDirExists(convertedPath.c_str())) {
-			mImpl->mFilesystem->CreateDir(convertedPath.c_str());
-		}
-
 		// converted full path
-		Path convertedfullPath(convertedPath.c_str());
-		convertedfullPath.AppendPath(Path(dirPath));
-		convertedfullPath.AppendPath(Path(convertedFileName));
-		resource->SetConvertedPath(convertedfullPath);
-
+		Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
 		bool needConvert = true;
 		if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
 		{
@@ -752,25 +752,46 @@ namespace ResourceManager
 			}
 		}
 
-		// 如果convert_output存在，直接加载文件
-		if (!needConvert && continueLoad)
-		{
-			auto* loadJob = CJING_NEW(ResourceLoadJob)(factory, *resource, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
-			loadJob->RunTask(0, JobSystem::Priority::LOW);
-			return resource;
+		if (outPath != nullptr) {
+			*outPath = convertedfullPath;
 		}
 
-		auto* convertJob = CJING_NEW(ResourceConvertJob)(*resource, type, inPath.c_str(), convertedfullPath.c_str());
-		convertJob->SetIsImmediate(false);
-		convertJob->RunTask(0, JobSystem::Priority::LOW);
+		return needConvert;
+	}
 
-		if (continueLoad)
+	bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate)
+	{
+		ResourceFactory* factory = mImpl->GetFactory(type);
+		if (factory == nullptr)
 		{
-			auto* loadJob = CJING_NEW(ResourceLoadJob)(factory, *resource, fileName.c_str(), convertedfullPath.c_str(), inPath.c_str());
-			convertJob->SetLoadJob(loadJob);
+			Debug::Warning("Invalid res type:%d", type.Type());
+			return false;
 		}
 
-		return resource;
+		Path convertedPath;
+		if (!CheckResourceNeedConverter(inPath, &convertedPath)) {
+			return true;
+		}
+	
+		// create target dir
+		MaxPathString dirPath;
+		if (!convertedPath.SplitPath(dirPath.data(), dirPath.size())) {
+			return false;
+		}
+		if (!mImpl->mFilesystem->IsDirExists(dirPath.c_str())) {
+			mImpl->mFilesystem->CreateDir(dirPath.c_str());
+		}
+
+		auto* convertJob = CJING_NEW(ResourceConvertJob)(*resource, type, inPath.c_str(), convertedPath.c_str());
+		convertJob->SetIsImmediate(isImmediate);
+		if (isImmediate) {
+			convertJob->RunTaskImmediate(0);
+		}
+		else {
+			convertJob->RunTask(0, JobSystem::Priority::LOW);
+		}
+
+		return true;
 	}
 
 	void ReloadResource(Resource* resource)
@@ -823,6 +844,10 @@ namespace ResourceManager
 		F64 startTime = Timer::GetAbsoluteTime();
 		while(!resource->IsLoaded() && !resource->IsFaild())
 		{
+			if (mImpl->mLoadHook != nullptr) {
+				mImpl->mLoadHook->OnWait();
+			}
+
 			JobSystem::YieldCPU();
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
 			{
@@ -843,6 +868,10 @@ namespace ResourceManager
 		F64 startTime = Timer::GetAbsoluteTime();
 		while (mImpl->mPendingResJobs > 0) 
 		{
+			if (mImpl->mLoadHook != nullptr) {
+				mImpl->mLoadHook->OnWait();
+			}
+
 			JobSystem::YieldCPU();
 
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
@@ -947,6 +976,57 @@ namespace ResourceManager
 	{
 		Debug::CheckAssertion(IsInitialized());
 		mImpl->mLoadHook = loadHook;
+	}
+
+	void LoadHook::ContinueLoad(Resource* res, bool isImmediate)
+	{
+		Debug::CheckAssertion(res->IsEmpty());
+		mImpl->ReleaseResource(res);		// release from hook
+		res->SetDesiredState(Resource::ResState::EMPTY);
+
+		// load resource
+		ResourceFactory* factory = mImpl->GetFactory(res->GetType());
+		if (factory == nullptr) {
+			Debug::Warning("Invalid res type:%d", res->GetType().Type());
+			return;
+		}
+
+		if (!factory->IsNeedConvert())
+		{
+			const char* inPath = res->GetPath().c_str();
+			auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *res, inPath, inPath, inPath);
+			if (isImmediate) {
+				loadJob->RunTaskImmediate(0);
+			}
+			else {
+				loadJob->RunTask(0, JobSystem::Priority::LOW);
+			}
+		}
+		else
+		{
+			const Path& inPath = res->GetPath();
+
+			// converted full path
+			Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
+			res->SetConvertedPath(convertedfullPath);
+
+			if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
+			{
+				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *res, inPath.c_str(), convertedfullPath.c_str(), inPath.c_str());
+				if (isImmediate) {
+					loadJob->RunTaskImmediate(0);
+				}
+				else {
+					loadJob->RunTask(0, JobSystem::Priority::LOW);
+				}
+			}
+			else
+			{
+				mImpl->ReleaseResource(res);
+				Debug::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
+				return;
+			}
+		}
 	}
 }
 }

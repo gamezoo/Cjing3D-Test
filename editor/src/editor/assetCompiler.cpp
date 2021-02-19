@@ -8,15 +8,20 @@ namespace Cjing3D
 {
 	/// //////////////////////////////////////////////////////////////////////////////////
 	/// AssertCompilerImpl
+	
+	struct ResCompileTask
+	{
+		Resource* mRes = nullptr;
+		Path mInPath;
+	};
+
 	class AssertCompilerImpl;
 	struct AssertCompilerHook : public ResourceManager::LoadHook
 	{
 		AssertCompilerHook(AssertCompilerImpl& impl) : mImpl(impl) {}
 
-		virtual HookResult OoBeforeLoad(Resource* res) {
-			return HookResult::IMMEDIATE;
-		}
-
+		virtual HookResult OoBeforeLoad(Resource* res);
+		virtual void OnWait();
 		AssertCompilerImpl& mImpl;
 	};
 
@@ -31,8 +36,9 @@ namespace Cjing3D
 		Concurrency::Semaphore mCompileSemaphore;
 
 		Concurrency::RWLock mRWLock;
-		MPMCBoundedQueue<Path> mToCompileTasks;
-		MPMCBoundedQueue<Path> mCompiledTasks;
+		MPMCBoundedQueue<ResCompileTask> mToCompileTasks;
+		MPMCBoundedQueue<ResCompileTask> mCompiledTasks;
+		volatile I32 mPendingTasks = 0;
 
 		bool mIsExit = false;
 
@@ -40,8 +46,20 @@ namespace Cjing3D
 		AssertCompilerImpl(GameEditor& gameEditor);
 		~AssertCompilerImpl();
 
-		bool Compile(const Path& path);
+		bool Compile(const ResCompileTask& task);
+		ResourceManager::LoadHook::HookResult OnBeforeLoad(Resource* res);
+		void ProcessCompiledTasks();
 	};
+
+	ResourceManager::LoadHook::HookResult AssertCompilerHook::OoBeforeLoad(Resource* res)
+	{
+		return mImpl.OnBeforeLoad(res);
+	}
+
+	void AssertCompilerHook::OnWait()
+	{
+		mImpl.ProcessCompiledTasks();
+	}
 
 	static int CompileTaskFunc(void* data)
 	{
@@ -50,16 +68,16 @@ namespace Cjing3D
 		{
 			impl->mCompileSemaphore.Wait();
 
-			Path path;
-			if (!impl->mToCompileTasks.Dequeue(path)){
+			ResCompileTask task;
+			if (!impl->mToCompileTasks.Dequeue(task)) {
 				continue;
 			}
 
-			if (!impl->Compile(path)) {
-				Debug::Error("Failed to compile resource:%s", path.c_str());
+			if (!impl->Compile(task)) {
+				Debug::Error("Failed to compile resource:%s", task.mInPath.c_str());
 			}
 
-			impl->mCompiledTasks.Enqueue(path);
+			impl->mCompiledTasks.Enqueue(task);
 		}
 		return 0;
 	}
@@ -92,9 +110,50 @@ namespace Cjing3D
 		Logger::Info("Assert compiler uninitialized");
 	}
 
-	bool AssertCompilerImpl::Compile(const Path& path)
+	bool AssertCompilerImpl::Compile(const ResCompileTask& task)
 	{
-		return false;
+		if (task.mRes == nullptr) {
+			return false;
+		}
+		
+		// do task immediate
+		if (!ResourceManager::ConvertResource(task.mRes, task.mRes->GetType(), task.mInPath, true)) {
+			return false;
+		}
+
+		return !task.mRes->IsFaild();
+	}
+
+	ResourceManager::LoadHook::HookResult AssertCompilerImpl::OnBeforeLoad(Resource* res)
+	{
+		Path inPath = res->GetPath();
+		Path convertedPath;
+		if (!ResourceManager::CheckResourceNeedConverter(inPath, &convertedPath)) {
+			return ResourceManager::LoadHook::IMMEDIATE;
+		}
+
+		ResCompileTask task;
+		task.mRes = res;
+		task.mInPath = inPath;
+		mToCompileTasks.Enqueue(task);
+
+		Concurrency::AtomicIncrement(&mPendingTasks);
+		mCompileSemaphore.Signal(1);
+
+		return ResourceManager::LoadHook::DEFERRED;
+	}
+
+	void AssertCompilerImpl::ProcessCompiledTasks()
+	{
+		while (true)
+		{
+			ResCompileTask compiledTask;
+			if (!mCompiledTasks.Dequeue(compiledTask)) {
+				break;
+			}
+
+			mLoadHook.ContinueLoad(compiledTask.mRes);
+		}
 	}
 
 	/// //////////////////////////////////////////////////////////////////////////////////
@@ -116,5 +175,4 @@ namespace Cjing3D
 	void AssertCompiler::Update(F32 deltaTime)
 	{
 	}
-
 }

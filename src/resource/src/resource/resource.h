@@ -36,14 +36,9 @@ namespace Cjing3D
 		U32 mTypeValue = 0;
 	}; 
 
-	//namespace ResourceManager {
-	//	class ResourceManagerImpl;
-	//}
 	class Resource
 	{
 	public:
-		//friend class ResourceManager::ResourceManagerImpl;
-		
 		enum class ResState
 		{
 			EMPTY = 0,
@@ -55,10 +50,13 @@ namespace Cjing3D
 		Resource(const Path& path);
 		virtual ~Resource();
 
+		void SetDesiredState(ResState state) { mDesiredState = state; }
 		ResState GetState()const { return mState; }
+		ResState GetDesiredState()const { return mDesiredState; }
 		bool IsFaild()const  { return mState == ResState::FAILURE; }
 		bool IsLoaded()const { return mState == ResState::LOADED; }
 		bool IsEmpty()const  { return mState == ResState::EMPTY; }
+		bool IsNeedLoad()const { return IsEmpty() && mDesiredState == ResState::EMPTY; }
 
 		Path GetPath()const { return mPath; }
 		void SetPath(const Path& path) { mPath = path; }
@@ -73,6 +71,7 @@ namespace Cjing3D
 		void AddDependency(Resource& res);
 		void RemoveDependency(Resource& res);
 		void OnLoaded(bool ret);
+		void OnUnloaded();
 
 		Signal<void(ResState oldState, ResState newState)> OnStateChangedSignal;
 
@@ -102,6 +101,8 @@ namespace Cjing3D
 		Path mConvertedPath;
 		DynamicArray<String> mSourceFiles;
 		ResState mState;
+		ResState mDesiredState;
+
 		ConnectionMap mConnectionMap;
 	};
 

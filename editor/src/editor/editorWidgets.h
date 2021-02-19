@@ -54,4 +54,12 @@ namespace Cjing3D
 		bool bShowAboutWindow = false;
 		void ShowAboutWindow();
 	};
+
+	class EditorWidgetAssertBrowser : public EditorWidget
+	{
+	public:
+		EditorWidgetAssertBrowser(GameEditor& editor);
+
+		void Update(F32 deltaTime)override;
+	};
 }

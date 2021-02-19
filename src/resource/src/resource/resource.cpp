@@ -19,7 +19,8 @@ namespace  Cjing3D
 		mEmpty(1),
 		mFailed(0),
 		mConverting(0),
-		mState(ResState::EMPTY)
+		mState(ResState::EMPTY),
+		mDesiredState(ResState::EMPTY)
 	{
 	}
 
@@ -29,7 +30,8 @@ namespace  Cjing3D
 		mEmpty(1),
 		mFailed(0),
 		mConverting(0),
-		mState(ResState::EMPTY)
+		mState(ResState::EMPTY),
+		mDesiredState(ResState::EMPTY)
 	{
 	}
 
@@ -101,6 +103,14 @@ namespace  Cjing3D
 		CheckState();
 	}
 
+	void Resource::OnUnloaded()
+	{
+		mDesiredState = ResState::EMPTY;
+		mEmpty = 1;
+		mFailed = 0;
+		CheckState();
+	}
+
 	bool Resource::SetConverting(bool isConverting)
 	{
 		if (isConverting) {
@@ -122,7 +132,9 @@ namespace  Cjing3D
 		}
 		else if (mFailed <= 0)
 		{
-			if (mEmpty == 0 && mState != ResState::LOADED)
+			if (mEmpty == 0 && 
+				mState != ResState::LOADED && 
+				mDesiredState != ResState::EMPTY)
 			{
 				mState = ResState::LOADED;
 				OnStateChangedSignal(oldState, mState);
@@ -139,7 +151,7 @@ namespace  Cjing3D
 	void Resource::OnStateChanged(ResState oldState, ResState newState)
 	{
 		Debug::CheckAssertion(oldState != newState);
-		Debug::CheckAssertion(mState != ResState::EMPTY);
+		Debug::CheckAssertion(mState != ResState::EMPTY || mDesiredState != ResState::EMPTY);
 
 		// process old states
 		if (oldState == ResState::EMPTY)

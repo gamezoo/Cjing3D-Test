@@ -18,7 +18,8 @@ namespace Cjing3D
 		void UnregisterFactory(ResourceType type);
 
 		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate);
-		Resource* ConvertResource(ResourceType type, const Path& inPath, bool continueLoad = true);
+		bool CheckResourceNeedConverter(const Path& inPath, Path* outPath = nullptr);
+		bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate = false);
 
 		template<typename T>
 		T* LoadResource(const Path& inPath)
@@ -69,11 +70,14 @@ namespace Cjing3D
 			LoadHook() = default;
 			virtual ~LoadHook() {}
 
-			enum class HookResult { 
+			enum HookResult { 
 				IMMEDIATE,
 				DEFERRED 
 			};
 			virtual HookResult OoBeforeLoad(Resource* res) = 0;
+			virtual void OnWait() = 0;
+
+			void ContinueLoad(Resource* res, bool isImmediate = false);
 		};
 		void SetCurrentLoadHook(LoadHook* loadHook);
 	};
