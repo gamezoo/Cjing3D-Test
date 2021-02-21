@@ -119,7 +119,7 @@ namespace Cjing3D
 			static void FppError(void* userData, char* format, va_list varArgs)
 			{
 				StaticString<128> errMsg;
-				Debug::Error(errMsg.Sprintfv(format, varArgs));
+				Logger::Error(errMsg.Sprintfv(format, varArgs));
 			}
 
 			static char* FppInput(char* buffer, int size, void* userData)
@@ -185,7 +185,7 @@ namespace Cjing3D
 		MaxPathString parentPath;
 		if (!Path(src).SplitPath(parentPath.data(), parentPath.size()))
 		{
-			Debug::Warning("[ShaderConverter] Invalid path:%s", src);
+			Logger::Warning("[ShaderConverter] Invalid path:%s", src);
 			return false;
 		}
 
@@ -202,7 +202,7 @@ namespace Cjing3D
 
 		if (!preprocessor.Preprocess(fullSrcPath.c_str(), source.data()))
 		{
-			Debug::Warning("[ShaderConverter] failed to preprocess shader source.");
+			Logger::Warning("[ShaderConverter] failed to preprocess shader source.");
 			return false;
 		}
 
@@ -217,7 +217,7 @@ namespace Cjing3D
 		auto shaderFileNode = parser.Parse(src, preprocessor.GetOutput());
 		if (!shaderFileNode)
 		{
-			Debug::Warning("[ShaderConverter] failed to parse shader source.");
+			Logger::Warning("[ShaderConverter] failed to parse shader source.");
 			return false;
 		}
 
@@ -275,7 +275,7 @@ namespace Cjing3D
 		DynamicArray<ShaderCompileOutput> compileOutput;
 		if (!shaderCompiler.GenerateAndCompile(shaderFileNode, techFunctions, shaderMap, compileOutput))
 		{
-			Debug::Warning("[ShaderConverter] failed to generate and compile shader source.");
+			Logger::Warning("[ShaderConverter] failed to generate and compile shader source.");
 			return false;
 		}	
 

@@ -672,7 +672,7 @@ namespace Cjing3D
 		//////////////////////////////////////////////
 		// test
 		auto outputCode = generator.GetOutputCode();
-		Logger::Log("\n%s", outputCode.c_str());
+		Logger::Print("\n%s", outputCode.c_str());
 		/////////////////////////////////////////////
 
 		// 2. compile shader source 
@@ -702,7 +702,7 @@ namespace Cjing3D
 				compileInfo.mStage, compileInfo.mMajorVer, compileInfo.mMinorVer);
 			if (!compileOutput)
 			{
-				Debug::Error("Failed to compile shader source:%s", compileOutput.mErrMsg.c_str());
+				Logger::Error("Failed to compile shader source:%s", compileOutput.mErrMsg.c_str());
 				return false;
 			}
 
@@ -720,7 +720,7 @@ namespace Cjing3D
 			return CompileHLSL5(code, entryPoint, stage, major, minor);
 		}
 
-		Debug::Error("Unsupport hlsl shader model:%d_%d", major, minor);
+		Logger::Error("Unsupport hlsl shader model:%d_%d", major, minor);
 		return ShaderCompileOutput();
 	}
 

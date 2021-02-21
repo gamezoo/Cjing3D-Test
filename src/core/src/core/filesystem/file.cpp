@@ -129,7 +129,7 @@ namespace Cjing3D
 			mHandle = ::CreateFileA(path, desiredAccess, shareMode, nullptr, createFlags, fileFlags, 0);
 			if (mHandle == INVALID_HANDLE_VALUE)
 			{
-				Debug::Error("Failed to create file:\"%s\", error:%x", path, ::GetLastError());
+				Logger::Error("Failed to create file:\"%s\", error:%x", path, ::GetLastError());
 			}
 			else
 			{

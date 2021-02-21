@@ -1,0 +1,19 @@
+14:18:41  [Info]Initializing engine...
+14:18:41  [Info]Jobsystem initialized; numThreads:4
+14:18:41  [Info]Loading plugin:resConverter.dll
+14:18:41  [Info]Plugin loaded
+14:18:41  [Info]Initialize luaContext.
+14:18:41  [Info][BuildConfig] build cmd: cd /d H:\Github\Cjing3D-0.2.0\editor && ..\tools\cjing_build\cjing_build 
+14:18:41  [Info][BuildConfig] profile: win32
+14:18:41  [Info]Initializing graphics device dx11...
+14:18:42  [Info]Graphics device dx11 Iinitialized
+14:18:42  [Info]Engine initialized
+14:18:42  [Info]Assert compiler initialzied
+14:18:42  [Info][Resource] Shader loaded successful:shaders/render_image.jsf.
+14:18:42  [Info][Resource] Shader loaded successful:shaders/main_pipeline.jsf.
+14:18:42  [Info]ImGui initialized
+14:18:48  [Info]Assert compiler uninitialized
+14:18:48  [Info]ImGui uninitialized
+14:18:48  [Info]Uninitialize graphics device dx11
+14:18:48  [Info]Jobsystem uninitialized
+14:18:48  [Info]Engine uninitialized

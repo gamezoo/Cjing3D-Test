@@ -2,6 +2,7 @@
 
 #include "core\common\definitions.h"
 #include "core\string\string.h"
+#include "core\helper\log.h"
 
 #include <exception>
 #include <sstream>
@@ -25,25 +26,16 @@ namespace Cjing3D {
 		char mMsg[2048];
 	};
 
-	namespace Logger
-	{
-		void Info(const char* msg, ...);
-		void LogArgs(const char* msg, va_list args, const char* prefix = nullptr);
-		void Log(const char* msg, ...);
-		void LogWithPrefix(const char* prefix, const char* msg, ...);
-		void PrintConsoleHeader();
-	}
-
 	namespace Debug
 	{
 		void SetDieOnError(bool t);
+		bool IsDieOnError();
 		void SetPopBoxOnDie(bool t);
 		void SetAbortOnDie(bool t);
 		void SetDebugConsoleEnable(bool t);
 		bool IsDebugConsoleEnable();
 
-		void Warning(const char* format, ...);
-		void Error(const char* format, ...);
+		void DebugOuput(const char* msg);
 		void Die(const char* format, ...);
 
 		void CheckAssertion(bool assertion);
@@ -94,7 +86,8 @@ namespace Cjing3D {
 		std::ostringstream oss;																		\
 		oss << __FUNCTION__; oss << __FILE__; oss << __LINE__;										\
 		oss << "Condition \"" _STR(mCond) "\" is true. returned: " _STR(mRet);					    \
-		Debug::Error(oss.str().c_str());																	\
+		Logger::Error(oss.str().c_str());															\
+		Debug::Die(oss.str().c_str());																\
 	} else                                                                                          \
 		((void)0)
 
@@ -103,7 +96,8 @@ namespace Cjing3D {
 		std::ostringstream oss;																		\
 		oss << __FUNCTION__; oss << __FILE__; oss << __LINE__;										\
 		oss << "Condition \"" _STR(mCond) "\" is true. returned: " _STR(mRet);					    \
-		Debug::Error(oss.str().c_str());																	\
+		Logger::Error(oss.str().c_str());															\
+		Debug::Die(oss.str().c_str());																\
 		return mRet;                                                                                \
 	} else                                                                                          \
 		((void)0)

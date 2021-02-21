@@ -3,7 +3,7 @@
 #include "core\common\common.h"
 #include "core\filesystem\path.h"
 #include "core\filesystem\file.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 #include "core\container\dynamicArray.h"
 #include "core\signal\connectionMap.h"
 

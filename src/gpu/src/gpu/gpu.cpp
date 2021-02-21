@@ -1,6 +1,6 @@
 #include "gpu.h"
 #include "resource.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 #include "core\container\staticArray.h"
 #include "core\helper\enumTraits.h"
 
@@ -147,7 +147,7 @@ namespace GPU
 #ifdef CJING3D_RENDERER_DX11
 		SharedPtr<GPU::GraphicsDevice> device = CJING_MAKE_SHARED<GPU::GraphicsDeviceDx11>(window, fullscreen, debug);
 #else
-		Debug::Error("Unsupport graphics device");
+		Logger::Error("Unsupport graphics device");
 #endif
 		mImpl = CJING_NEW(ManagerImpl);
 		mImpl->mDevice = device;
@@ -220,7 +220,7 @@ namespace GPU
 				}
 			}
 
-			Debug::Warning(os.str().c_str());
+			Logger::Warning(os.str().c_str());
 
 			system("pause");
 		}
@@ -496,7 +496,7 @@ namespace GPU
 	void CopyPipelineBindings(const PipelineBinding& dst, const PipelineBinding& src)
 	{
 		if (!mImpl->mDevice->CopyPipelineBindings(dst, src)) {
-			Debug::Warning("Failed to copy pipelineBindingSet");
+			Logger::Warning("Failed to copy pipelineBindingSet");
 		}
 	}
 

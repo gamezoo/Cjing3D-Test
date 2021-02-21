@@ -1,7 +1,7 @@
 #ifdef CJING_TEST_JOBSYSTEM
 
-#include "core\jobsystem\jobsystem.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\jobsystem.h"
+#include "core\concurrency\concurrency.h"
 
 #include "math\maths.h"
 #include "core\helper\timer.h"

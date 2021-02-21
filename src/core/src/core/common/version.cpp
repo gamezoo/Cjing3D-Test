@@ -11,6 +11,7 @@ namespace CjingVersion
 	const int PatchVersion = 0;
 	// version string
 	const Cjing3D::String VersionString = std::to_string(MajorVersion) + "." + std::to_string(MinorVersion) + "." + std::to_string(PatchVersion);
+	Cjing3D::StaticString<128> HeaderString;
 
 	int GetVersion()
 	{
@@ -20,6 +21,17 @@ namespace CjingVersion
 	const char* GetVersionString()
 	{
 		return VersionString.c_str();
+	}
+
+	const char* GetHeaderString()
+	{
+		HeaderString = "";
+		HeaderString += "Cjing3D Version ";
+		HeaderString += CjingVersion::GetVersionString();
+		HeaderString += "\n";
+		HeaderString += "Copyright (c) 2019-2021 by ZZZY";
+		HeaderString += "\n\n";
+		return HeaderString.c_str();
 	}
 }
 

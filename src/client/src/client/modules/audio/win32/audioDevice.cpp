@@ -147,14 +147,14 @@ namespace Audio
 		HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 		if (FAILED(hr))
 		{
-			Debug::Warning("[Audio] Failed to initialize xaudio.");
+			Logger::Warning("[Audio] Failed to initialize xaudio.");
 			return false;
 		}
 
 		hr = XAudio2Create(&mAudioDevice, 0, XAUDIO2_DEFAULT_PROCESSOR);
 		if (FAILED(hr))
 		{
-			Debug::Warning("[Audio] Failed to initialize xaudio.");
+			Logger::Warning("[Audio] Failed to initialize xaudio.");
 			return false;
 		}
 
@@ -168,7 +168,7 @@ namespace Audio
 		hr = mAudioDevice->CreateMasteringVoice(&mMasteringVoice);
 		if (FAILED(hr))
 		{
-			Debug::Warning("[Audio] Failed to initialize xaudio.");
+			Logger::Warning("[Audio] Failed to initialize xaudio.");
 			return false;
 		}
 
@@ -184,7 +184,7 @@ namespace Audio
 			);
 			if (FAILED(hr))
 			{
-				Debug::Warning("[Audio] Failed to create submix voice.");
+				Logger::Warning("[Audio] Failed to create submix voice.");
 				return false;
 			}
 		}
@@ -195,7 +195,7 @@ namespace Audio
 		hr = X3DAudioInitialize(channelMask, X3DAUDIO_SPEED_OF_SOUND, mAudio3D);
 		if (FAILED(hr))
 		{
-			Debug::Warning("[Audio] X3DAudioInitialize fail.");
+			Logger::Warning("[Audio] X3DAudioInitialize fail.");
 			return false;
 		}
 
@@ -236,21 +236,21 @@ namespace Audio
 		// check file type
 		if (!FindChunk(audioData, fourccRIFF, dwChunkSize, dwChunkPosition))
 		{
-			Debug::Warning("Faild to open sound resource");
+			Logger::Warning("Faild to open sound resource");
 			return false;
 		}
 		DWORD filetype;
 		memcpy(&filetype, audioData + dwChunkPosition, sizeof(DWORD));
 		if (filetype != fourccWAVE)
 		{
-			Debug::Warning("Faild to open sound resource: invalid file type.");
+			Logger::Warning("Faild to open sound resource: invalid file type.");
 			return false;
 		}
 
 		// write WAVEFORMAT
 		if (!FindChunk(audioData, fourccFMT, dwChunkSize, dwChunkPosition))
 		{
-			Debug::Warning("Faild to open sound resource");
+			Logger::Warning("Faild to open sound resource");
 			return false;
 		}
 		memcpy(&soundInst->mWfx, audioData + dwChunkPosition, dwChunkSize);
@@ -259,7 +259,7 @@ namespace Audio
 		// write audio data
 		if (!FindChunk(audioData, fourccDATA, dwChunkSize, dwChunkPosition))
 		{
-			Debug::Warning("Faild to open sound resource");
+			Logger::Warning("Faild to open sound resource");
 			return false;
 		}
 		soundInst->mAudioData.resize(dwChunkSize);
@@ -291,7 +291,7 @@ namespace Audio
 		);
 		if (FAILED(hr))
 		{
-			Debug::Warning("Failed to create sound instance.");
+			Logger::Warning("Failed to create sound instance.");
 			return false;
 		}
 
@@ -318,7 +318,7 @@ namespace Audio
 		hr = soundInst->mSourceVoice->SubmitSourceBuffer(&soundBuffer);
 		if (FAILED(hr))
 		{
-			Debug::Warning("Failed to submit sound source buffer.");
+			Logger::Warning("Failed to submit sound source buffer.");
 			return false;
 		}
 
@@ -415,7 +415,7 @@ namespace Audio
 			HRESULT hr = soundInst->mSourceVoice->SetFrequencyRatio(settings.DopplerFactor);
 			if (FAILED(hr))
 			{
-				Debug::Warning("Failed to SetFrequencyRatio.");
+				Logger::Warning("Failed to SetFrequencyRatio.");
 				return;
 			}
 
@@ -427,7 +427,7 @@ namespace Audio
 			);
 			if (FAILED(hr))
 			{
-				Debug::Warning("Failed to SetOutputMatrix.");
+				Logger::Warning("Failed to SetOutputMatrix.");
 				return;
 			}
 
@@ -435,7 +435,7 @@ namespace Audio
 			hr = soundInst->mSourceVoice->SetOutputFilterParameters(mSubmixVoices[instance.mType], &FilterParametersDirect);
 			if (FAILED(hr))
 			{
-				Debug::Warning("Failed to SetOutputFilterParameters.");
+				Logger::Warning("Failed to SetOutputFilterParameters.");
 				return;
 			}
 		}

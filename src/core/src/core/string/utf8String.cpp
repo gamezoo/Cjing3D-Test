@@ -82,7 +82,7 @@ namespace Cjing3D
 	{
 		if (!CheckUTF8StringValid(str))
 		{
-			Debug::Warning("Invalid utf8 string:%s", str);
+			Logger::Warning("Invalid utf8 string:%s", str);
 			return;
 		}
 		mString = str;
@@ -146,7 +146,7 @@ namespace Cjing3D
 	{
 		if (!CheckUTF8StringValid(str.data()))
 		{
-			Debug::Warning("Invalid utf8 string:%s", str);
+			Logger::Warning("Invalid utf8 string:%s", str);
 			mLength = 0;
 			return *this;
 		}
@@ -208,7 +208,7 @@ namespace Cjing3D
 	{
 		if (!CheckUTF8StringValid(value.data()))
 		{
-			Debug::Warning("Invalid utf8 string:%s", value);
+			Logger::Warning("Invalid utf8 string:%s", value);
 			return *this;
 		}
 		mString.append(value);
@@ -229,7 +229,7 @@ namespace Cjing3D
 	{
 		if (!CheckUTF8StringValid(value))
 		{
-			Debug::Warning("Invalid utf8 string:%s", value);
+			Logger::Warning("Invalid utf8 string:%s", value);
 			return *this;
 		}
 		mString.append(value);
@@ -276,7 +276,7 @@ namespace Cjing3D
 	{
 		if (!CheckUTF8StringValid(value))
 		{
-			Debug::Warning("Invalid utf8 string:%s", value);
+			Logger::Warning("Invalid utf8 string:%s", value);
 			return;
 		}
 
@@ -327,7 +327,7 @@ namespace Cjing3D
 
 		if (!CheckUTF8StringValid(str))
 		{
-			Debug::Warning("Invalid utf8 string:%s", str);
+			Logger::Warning("Invalid utf8 string:%s", str);
 			return;
 		}
 

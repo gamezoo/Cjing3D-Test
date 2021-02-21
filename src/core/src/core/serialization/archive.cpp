@@ -44,7 +44,7 @@ namespace Cjing3D
 		U32 dataSize = 0;
 		if (!mFileSystem->ReadFile(path.c_str(), &mDataBuffer, dataSize)) 
 		{
-			Debug::Warning("Fail to open file:%s", path.c_str());
+			Logger::Warning("Fail to open file:%s", path.c_str());
 			return false;
 		}
 

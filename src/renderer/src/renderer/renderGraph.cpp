@@ -5,7 +5,7 @@
 #include "core\container\dynamicArray.h"
 #include "core\container\hashMap.h"
 #include "core\container\set.h"
-#include "core\jobsystem\jobsystem.h"
+#include "core\concurrency\jobsystem.h"
 #include "gpu\gpu.h"
 
 namespace Cjing3D
@@ -390,7 +390,7 @@ namespace Cjing3D
 			resource.mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_RENDER_TARGET;
 			break;
 		default:
-			Debug::Warning("Invalid res \'%d\', nnly texture could bind render target", (I32)resource.mType);
+			Logger::Warning("Invalid res \'%d\', nnly texture could bind render target", (I32)resource.mType);
 			break;
 		}
 
@@ -421,7 +421,7 @@ namespace Cjing3D
 			resource.mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_DEPTH_STENCIL;
 			break;
 		default:
-			Debug::Warning("Invalid res \'%d\', nnly texture could bind depth stencil", (I32)resource.mType);
+			Logger::Warning("Invalid res \'%d\', nnly texture could bind depth stencil", (I32)resource.mType);
 			break;
 		}
 
@@ -537,7 +537,7 @@ namespace Cjing3D
 		if (it != nullptr)
 		{
 #ifndef DEBUG
-			Debug::Warning("The render pass \'%s\' is already exists.", name);
+			Logger::Warning("The render pass \'%s\' is already exists.", name);
 #endif
 			return;
 		}
@@ -572,7 +572,7 @@ namespace Cjing3D
 
 		if (finalRes.mVersion < 0) 
 		{
-			Debug::Warning("Invalid final resource for render graph to execute");
+			Logger::Warning("Invalid final resource for render graph to execute");
 			return false;
 		}
 
@@ -626,7 +626,7 @@ namespace Cjing3D
 					if (!GPU::CompileCommandList(*cmd))
 					{
 						Concurrency::AtomicIncrement(&impl->mCompileFailCount);
-						Debug::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
+						Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
 					}
 				}
 			};
@@ -650,7 +650,7 @@ namespace Cjing3D
 		}
 		if (!GPU::SubmitCommandList(Span(cmdsToSubmit.data(), cmdsToSubmit.size())))
 		{
-			Debug::Warning("Failed to submit command lists.");
+			Logger::Warning("Failed to submit command lists.");
 			return false;
 		}
 
@@ -686,7 +686,7 @@ namespace Cjing3D
 		{
 			if (finalRes.mVersion < 0)
 			{
-				Debug::Warning("Invalid final resource for render graph to execute");
+				Logger::Warning("Invalid final resource for render graph to execute");
 				return false;
 			}
 		}
@@ -741,7 +741,7 @@ namespace Cjing3D
 					if (!GPU::CompileCommandList(*cmd))
 					{
 						Concurrency::AtomicIncrement(&impl->mCompileFailCount);
-						Debug::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
+						Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
 					}
 				}
 			};

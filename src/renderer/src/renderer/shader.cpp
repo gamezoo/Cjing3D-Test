@@ -100,7 +100,7 @@ namespace Cjing3D
 			ShaderGeneralHeader generalHeader;
 			if (!file.Read(&generalHeader, sizeof(generalHeader)))
 			{
-				Debug::Warning("Failed to read shader general header");
+				Logger::Warning("Failed to read shader general header");
 				return false;
 			}
 
@@ -109,7 +109,7 @@ namespace Cjing3D
 				generalHeader.mMajor != ShaderGeneralHeader::MAJOR ||
 				generalHeader.mMinor != ShaderGeneralHeader::MINOR) 
 			{
-				Debug::Warning("Shader version mismatch.");
+				Logger::Warning("Shader version mismatch.");
 				return false;
 			}
 
@@ -123,7 +123,7 @@ namespace Cjing3D
 				shaderImpl->mBindingSetHeaders.resize(generalHeader.mNumBindingSets);
 				if (!file.Read(shaderImpl->mBindingSetHeaders.data(), generalHeader.mNumBindingSets * sizeof(ShaderBindingSetHeader)))
 				{
-					Debug::Warning("Failed to read bindingSet headers");
+					Logger::Warning("Failed to read bindingSet headers");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -143,7 +143,7 @@ namespace Cjing3D
 				shaderImpl->mBindingHeaders.resize(totalNumBinding);
 				if (!file.Read(shaderImpl->mBindingHeaders.data(), totalNumBinding * sizeof(ShaderBindingHeader)))
 				{
-					Debug::Warning("Failed to read binding headers");
+					Logger::Warning("Failed to read binding headers");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -155,7 +155,7 @@ namespace Cjing3D
 				shaderImpl->mSamplerStateHeaders.resize(generalHeader.mNumSamplerStates);
 				if (!file.Read(shaderImpl->mSamplerStateHeaders.data(), generalHeader.mNumSamplerStates * sizeof(ShaderSamplerStateHeader)))
 				{
-					Debug::Warning("Failed to read samlper state headers");
+					Logger::Warning("Failed to read samlper state headers");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -167,7 +167,7 @@ namespace Cjing3D
 				shaderImpl->mBytecodeHeaders.resize(generalHeader.mNumShaders);
 				if (!file.Read(shaderImpl->mBytecodeHeaders.data(), generalHeader.mNumShaders * sizeof(ShaderBytecodeHeader)))
 				{
-					Debug::Warning("Failed to read shader bytecode header");
+					Logger::Warning("Failed to read shader bytecode header");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -179,7 +179,7 @@ namespace Cjing3D
 				shaderImpl->mTechniqueHeaders.resize(generalHeader.mNumTechniques);
 				if (!file.Read(shaderImpl->mTechniqueHeaders.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
 				{
-					Debug::Warning("Failed to read shader bytecode header");
+					Logger::Warning("Failed to read shader bytecode header");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -191,7 +191,7 @@ namespace Cjing3D
 				shaderImpl->mRenderStateHeaders.resize(generalHeader.mNumRenderStates);
 				if (!file.Read(shaderImpl->mRenderStateHeaders.data(), generalHeader.mNumRenderStates * sizeof(RenderStateHeader)))
 				{
-					Debug::Warning("Failed to read render state header");
+					Logger::Warning("Failed to read render state header");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -203,7 +203,7 @@ namespace Cjing3D
 					renderStateBuffer.resize(header.mBytes);
 					if (!file.Read(renderStateBuffer.data(), header.mBytes))
 					{
-						Debug::Warning("Failed to read render state bytecode");
+						Logger::Warning("Failed to read render state bytecode");
 						CJING_SAFE_DELETE(shaderImpl);
 						return false;
 					}
@@ -220,7 +220,7 @@ namespace Cjing3D
 				shaderImpl->mTechHasherHeaders.resize(generalHeader.mNumTechHashers);
 				if (!file.Read(shaderImpl->mTechHasherHeaders.data(), generalHeader.mNumTechHashers * sizeof(ShaderTechHasherHeader)))
 				{
-					Debug::Warning("Failed to read technique hasher headers");
+					Logger::Warning("Failed to read technique hasher headers");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -234,7 +234,7 @@ namespace Cjing3D
 			shaderImpl->mBytecodes.resize(totalSize);
 			if (!file.Read(shaderImpl->mBytecodes.data(), totalSize))
 			{
-				Debug::Warning("Failed to read shader bytecode header");
+				Logger::Warning("Failed to read shader bytecode header");
 				CJING_SAFE_DELETE(shaderImpl);
 				return false;
 			}
@@ -249,7 +249,7 @@ namespace Cjing3D
 				GPU::ResHandle handle = GPU::CreateShader(info.mStage, bytecode, info.mBytes);
 				if (handle == GPU::ResHandle::INVALID_HANDLE)
 				{
-					Debug::Warning("Failed to create shader");
+					Logger::Warning("Failed to create shader");
 					CJING_SAFE_DELETE(shaderImpl);
 					return false;
 				}
@@ -314,7 +314,7 @@ namespace Cjing3D
 					GPU::ResHandle handle = GPU::CreateSampler(&header.mSamplerState, header.mName);
 					if (handle == GPU::ResHandle::INVALID_HANDLE)
 					{
-						Debug::Warning("Failed to create static sampler \"%s\"", header.mName);
+						Logger::Warning("Failed to create static sampler \"%s\"", header.mName);
 						CJING_SAFE_DELETE(shaderImpl);
 						return false;
 					}
@@ -465,7 +465,7 @@ namespace Cjing3D
 		}
 		if (targetHeader == nullptr)
 		{
-			Debug::Warning("Invalid technique \'%s\' in shader", technique->mName.c_str());
+			Logger::Warning("Invalid technique \'%s\' in shader", technique->mName.c_str());
 			return false;
 		}
 
@@ -499,7 +499,7 @@ namespace Cjing3D
 
 		if (handle == GPU::ResHandle::INVALID_HANDLE)
 		{
-			Debug::Warning("Failed to create render pipeline statefor technique.");
+			Logger::Warning("Failed to create render pipeline statefor technique.");
 			return false;
 		}
 
@@ -610,12 +610,12 @@ namespace Cjing3D
 		I32 slot = 0;
 		I32 handle = GetHandleByName(name, slot);
 		if (!handle) {
-			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			Logger::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
 			return;
 		}
 		if (!(handle & (I32)ShaderBindingFlags::CBV)) 
 		{
-			Debug::Warning("The binding \"%s\" must is CBV", name);
+			Logger::Warning("The binding \"%s\" must is CBV", name);
 			return;
 		}
 
@@ -638,12 +638,12 @@ namespace Cjing3D
 		I32 slot = 0;
 		I32 handle = GetHandleByName(name, slot);
 		if (!handle) {
-			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			Logger::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
 			return;
 		}
 		if (!(handle & (I32)ShaderBindingFlags::SRV))
 		{
-			Debug::Warning("The binding \"%s\" must is SRV", name);
+			Logger::Warning("The binding \"%s\" must is SRV", name);
 			return;
 		}
 
@@ -666,12 +666,12 @@ namespace Cjing3D
 		I32 slot = 0;
 		I32 handle = GetHandleByName(name, slot);
 		if (!handle) {
-			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			Logger::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
 			return;
 		}
 		if (!(handle & (I32)ShaderBindingFlags::CBV))
 		{
-			Debug::Warning("The binding \"%s\" must is UAV", name);
+			Logger::Warning("The binding \"%s\" must is UAV", name);
 			return;
 		}
 
@@ -694,12 +694,12 @@ namespace Cjing3D
 		I32 slot = 0;
 		I32 handle = GetHandleByName(name, slot);
 		if (!handle) {
-			Debug::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
+			Logger::Warning("Failed to set binding \"%s\" in bindingSet \"%s\"", name, mImpl->mHeader.mName);
 			return;
 		}
 		if (!(handle & (I32)ShaderBindingFlags::SAMPLER))
 		{
-			Debug::Warning("The binding \"%s\" must is Sampler", name);
+			Logger::Warning("The binding \"%s\" must is Sampler", name);
 			return;
 		}
 
@@ -760,7 +760,7 @@ namespace Cjing3D
 		I32 index = bindingSet.mImpl->mIndex;
 		if (index < 0)
 		{
-			Debug::Warning("Failed to bind bindingSet \"%s\"", bindingSet.mName.c_str());
+			Logger::Warning("Failed to bind bindingSet \"%s\"", bindingSet.mName.c_str());
 			return;
 		}
 		mImpl->mBindingSets[index] = bindingSet.mImpl;
@@ -780,7 +780,7 @@ namespace Cjing3D
 			{
 				const auto* factory = Shader::GetFactory();
 				const auto& bindingSetHeader = factory->mBindingSetHeaders[index];
-				Debug::Warning("Expect binding set \"%s\", but not found.", bindingSetHeader.mName);
+				Logger::Warning("Expect binding set \"%s\", but not found.", bindingSetHeader.mName);
 				return false;
 			}
 
@@ -802,7 +802,7 @@ namespace Cjing3D
 			{
 				const auto* factory = Shader::GetFactory();
 				const auto& bindingSetHeader = factory->mBindingSetHeaders[index];
-				Debug::Warning("Expect binding set \"%s\", but not found.", bindingSetHeader.mName);
+				Logger::Warning("Expect binding set \"%s\", but not found.", bindingSetHeader.mName);
 				return false;
 			}
 

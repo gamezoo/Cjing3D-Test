@@ -22,7 +22,7 @@ namespace Cjing3D
 			}
 			catch (const std::exception& e)
 			{
-				Debug::Warning("Failed to parse json string: %s", e.what());
+				Logger::Warning("Failed to parse json string: %s", e.what());
 				Close();
 			}
 		}
@@ -58,7 +58,7 @@ namespace Cjing3D
 		}
 		catch (const std::exception& e)
 		{
-			Debug::Warning("Fail to open json file:%s, %s", path, e.what());
+			Logger::Warning("Fail to open json file:%s, %s", path, e.what());
 			Close();
 		}
 	}

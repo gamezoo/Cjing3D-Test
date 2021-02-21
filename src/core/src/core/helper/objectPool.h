@@ -279,14 +279,14 @@ namespace Cjing3D
 			{
 				currentBlock = AllocateBlock();
 				if (currentBlock == nullptr) {
-					Debug::Error("[ObjectPool] Failed to allocate memory.");
+					Logger::Error("[ObjectPool] Failed to allocate memory.");
 					return nullptr;
 				}
 			}
 
 			T* ret = currentBlock->blocks_->New(std::forward<Args>(args)...);
 			if (ret == nullptr) {
-				Debug::Error("[ObjectPool] Failed to create new instance.");
+				Logger::Error("[ObjectPool] Failed to create new instance.");
 				return nullptr;
 			}
 			currentBlock->freeBlockCount_--;

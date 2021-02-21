@@ -17,7 +17,7 @@ namespace BuildConfig
 	{
 		const char* configName = "build_config.json";
 		if (!filesystem->IsFileExists(configName)) {
-			Debug::Warning("Failed to open build config \"build_config.json\"");
+			Logger::Warning("Failed to open build config \"build_config.json\"");
 		}
 
 		char* buffer = nullptr;
@@ -32,7 +32,7 @@ namespace BuildConfig
 		}
 		catch (const std::exception& e)
 		{
-			Debug::Warning("Failed to open build config \"build_config.json\"");
+			Logger::Warning("Failed to open build config \"build_config.json\"");
 		}
 
 		// build cmd

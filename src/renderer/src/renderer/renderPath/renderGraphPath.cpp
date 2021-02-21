@@ -38,7 +38,7 @@ namespace Cjing3D
 		if (mMainGraph.GetPassCount() > 0 && mFinalResources.size() > 0)
 		{
 			if (!mMainGraph.ExecuteWithoutSubmit(Span(mFinalResources.data(), mFinalResources.size()))) {
-				Debug::Warning("Render graph failed to executed");
+				Logger::Warning("Render graph failed to executed");
 			}
 		}
 

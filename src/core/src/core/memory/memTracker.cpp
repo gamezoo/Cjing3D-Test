@@ -2,7 +2,7 @@
 
 #ifdef CJING_MEMORY_TRACKER
 #include "core\helper\debug.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 
 #include <fstream>
 #include <sstream>
@@ -85,7 +85,7 @@ namespace Cjing3D
 		auto it = mAllocNodeMap.find(ptr);
 		if (it == mAllocNodeMap.end())
 		{
-			Debug::Error("The address is already free");
+			Logger::Error("The address is already free");
 		}
 		else
 		{
@@ -115,7 +115,7 @@ namespace Cjing3D
 			os << std::endl;
 		}
 
-		Debug::Warning(os.str().c_str());
+		Logger::Warning(os.str().c_str());
 
 #ifdef DEBUG
 		system("pause");

@@ -7,7 +7,7 @@
 #include "core\platform\platform.h"
 #include "core\filesystem\filesystem.h"
 #include "core\filesystem\filesystem_physfs.h"
-#include "core\jobsystem\jobsystem.h"
+#include "core\concurrency\jobsystem.h"
 #include "core\helper\timer.h"
 #include "core\plugin\pluginManager.h"
 

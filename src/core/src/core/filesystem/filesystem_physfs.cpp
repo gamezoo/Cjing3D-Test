@@ -92,18 +92,18 @@ namespace Cjing3D {
 	FileSystemPhysfs::~FileSystemPhysfs()
 	{
 		if (!PHYSFS_deinit()) {
-			Debug::Error(String("[FileData] Failed to deinit fhysfs:") + PHYSFS_getLastError());
+			Logger::Error(String("[FileData] Failed to deinit fhysfs:") + PHYSFS_getLastError());
 		}
 	}
 
 	void FileSystemPhysfs::SetBasePath(const char* path)
 	{
 		if (!PHYSFS_mount(path, nullptr, 1)) {
-			Debug::Error(String("[FileData] Failed to mount archive, path:") + path + ", " + PHYSFS_getLastError());
+			Logger::Error(String("[FileData] Failed to mount archive, path:") + path + ", " + PHYSFS_getLastError());
 		}
 	
 		if (!PHYSFS_setWriteDir(path)) {
-			Debug::Error(String("[FileData] Failed to set write path:") + PHYSFS_getLastError());
+			Logger::Error(String("[FileData] Failed to set write path:") + PHYSFS_getLastError());
 		}
 
 		mBasePath = path;
@@ -144,14 +144,14 @@ namespace Cjing3D {
 	{
 		if (!PHYSFS_exists(name))
 		{
-			Debug::Warning(String("[fileData] The file : ") + name + " isn't exits.");
+			Logger::Warning(String("[fileData] The file : ") + name + " isn't exits.");
 			return false;
 		}
 
 		PHYSFS_file* file = PHYSFS_openRead(name);
 		if (file == nullptr)
 		{
-			Debug::Warning(String("[fileData] The file : ") + name + " read failed.");
+			Logger::Warning(String("[fileData] The file : ") + name + " read failed.");
 			return false;
 		}
 
@@ -160,7 +160,7 @@ namespace Cjing3D {
 		auto readSize = PHYSFS_read(file, *buffer, 1, (PHYSFS_uint32)length);
 		if (readSize != length)
 		{
-			Debug::Warning("[fileData] The file \"%s\" read failed,%s", name, PHYSFS_getLastError());
+			Logger::Warning("[fileData] The file \"%s\" read failed,%s", name, PHYSFS_getLastError());
 			return false;
 		}
 		PHYSFS_close(file);
@@ -172,14 +172,14 @@ namespace Cjing3D {
 	{
 		if (!PHYSFS_exists(name))
 		{
-			Debug::Warning(String("[fileData] The file : ") + name + " isn't exits.");
+			Logger::Warning(String("[fileData] The file : ") + name + " isn't exits.");
 			return false;
 		}
 
 		PHYSFS_file* file = PHYSFS_openRead(name);
 		if (file == nullptr)
 		{
-			Debug::Warning(String("[fileData] The file : ") + name + " read failed.");
+			Logger::Warning(String("[fileData] The file : ") + name + " read failed.");
 			return false;
 		}
 
@@ -189,7 +189,7 @@ namespace Cjing3D {
 		auto readed = PHYSFS_read(file, data.data(), 1, (PHYSFS_uint32)size);
 		if (readed != size)
 		{
-			Debug::Warning("[fileData] The file \"%s\" read failed,%s", name, PHYSFS_getLastError());
+			Logger::Warning("[fileData] The file \"%s\" read failed,%s", name, PHYSFS_getLastError());
 			return false;
 		}
 
@@ -212,14 +212,14 @@ namespace Cjing3D {
 		{
 			if (!PHYSFS_exists(path))
 			{
-				Debug::Warning("[fileData] The file \"%s\" is not exists.", path);
+				Logger::Warning("[fileData] The file \"%s\" is not exists.", path);
 				return false;
 			}
 
 			PHYSFS_file* physfsFile = PHYSFS_openRead(path);
 			if (physfsFile == nullptr)
 			{
-				Debug::Warning("[fileData] The file \"%s\" open failed.", path);
+				Logger::Warning("[fileData] The file \"%s\" open failed.", path);
 				return false;
 			}
 
@@ -231,7 +231,7 @@ namespace Cjing3D {
 			PHYSFS_file* physfsFile = PHYSFS_openWrite(path);
 			if (physfsFile == nullptr)
 			{
-				Debug::Warning("[fileData] The file \"%s\" open failed.", path);
+				Logger::Warning("[fileData] The file \"%s\" open failed.", path);
 				return false;
 			}
 
@@ -261,13 +261,13 @@ namespace Cjing3D {
 		PHYSFS_File* file = PHYSFS_openWrite(path);
 		if (file == nullptr)
 		{
-			Debug::Warning(String("[fileData] The file : ") + path + " write failed.");
+			Logger::Warning(String("[fileData] The file : ") + path + " write failed.");
 			return false;
 		}
 
 		if (!PHYSFS_write(file, buffer, (PHYSFS_uint32)length, 1))
 		{
-			Debug::Warning(String("[fileData] The file : ") + path + " write failed.");
+			Logger::Warning(String("[fileData] The file : ") + path + " write failed.");
 			return false;
 		}
 

@@ -1,7 +1,7 @@
 #include "assetCompiler.h"
 #include "editor.h"
 #include "resource\resourceManager.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 #include "core\container\mpmc_bounded_queue.h"
 
 namespace Cjing3D
@@ -49,6 +49,7 @@ namespace Cjing3D
 		bool Compile(const ResCompileTask& task);
 		ResourceManager::LoadHook::HookResult OnBeforeLoad(Resource* res);
 		void ProcessCompiledTasks();
+		void RecoredResources();
 	};
 
 	ResourceManager::LoadHook::HookResult AssertCompilerHook::OoBeforeLoad(Resource* res)
@@ -74,7 +75,7 @@ namespace Cjing3D
 			}
 
 			if (!impl->Compile(task)) {
-				Debug::Error("Failed to compile resource:%s", task.mInPath.c_str());
+				Logger::Error("Failed to compile resource:%s", task.mInPath.c_str());
 			}
 
 			impl->mCompiledTasks.Enqueue(task);
@@ -156,6 +157,11 @@ namespace Cjing3D
 		}
 	}
 
+	void AssertCompilerImpl::RecoredResources()
+	{
+
+	}
+
 	/// //////////////////////////////////////////////////////////////////////////////////
 	/// AssertCompiler
 	AssertCompiler::AssertCompiler(GameEditor& gameEditor)
@@ -165,6 +171,7 @@ namespace Cjing3D
 
 	AssertCompiler::~AssertCompiler()
 	{
+		mImpl->RecoredResources();
 		CJING_SAFE_DELETE(mImpl);
 	}
 
@@ -174,5 +181,7 @@ namespace Cjing3D
 
 	void AssertCompiler::Update(F32 deltaTime)
 	{
+		// process compiled tasks
+		mImpl->ProcessCompiledTasks();
 	}
 }

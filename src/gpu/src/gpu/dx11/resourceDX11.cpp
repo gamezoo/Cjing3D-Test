@@ -14,14 +14,14 @@ namespace GPU
 		HRESULT hr = deviceDX11.CreateDeferredContext(0, &mDeviceContext);
 		if (FAILED(hr))
 		{
-			Debug::Error("[CommandList] Failed to create deferred context: %08X", hr);
+			Logger::Error("[CommandList] Failed to create deferred context: %08X", hr);
 			return;
 		}
 
 		hr = mDeviceContext.As(&mUserDefinedAnnotations);
 		if (FAILED(hr))
 		{
-			Debug::Error("[CommandList] Failed to set user defined annotations: %08X", hr);
+			Logger::Error("[CommandList] Failed to set user defined annotations: %08X", hr);
 			return;
 		}
 
@@ -38,7 +38,7 @@ namespace GPU
 		if (!device.CreateBuffer(mAllocator.mBuffer, &desc, nullptr))
 		{
 			GPU::DestroyResource(mAllocator.mBuffer);
-			Debug::Error("[CommandList] Failed to create buffer.");
+			Logger::Error("[CommandList] Failed to create buffer.");
 			return;
 		}
 		device.SetResourceName(mAllocator.mBuffer, "CommandListFrameAllocator");
@@ -269,7 +269,7 @@ namespace GPU
 			if (!mDevice.CreateBuffer(mAllocator.mBuffer, &mAllocator.mDesc, nullptr))
 			{
 				GPU::DestroyResource(mAllocator.mBuffer);
-				Debug::Error("[CommandList] Failed to create buffer.");
+				Logger::Error("[CommandList] Failed to create buffer.");
 				return allocation;
 			}
 			mDevice.SetResourceName(mAllocator.mBuffer, "CommandListFrameAllocator");

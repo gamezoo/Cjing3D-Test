@@ -90,6 +90,8 @@ namespace Platform {
 	void DestroyFileIterator(FileIterator* it);
 	bool GetNextFile(FileIterator* it, FileInfo& info);
 
+	void DebugOutput(const char* msg);
+
 	/////////////////////////////////////////////////////////////////////////////////
 	// library
 	void* LibraryOpen(const char* path);

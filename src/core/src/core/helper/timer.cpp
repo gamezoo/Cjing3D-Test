@@ -54,7 +54,7 @@ namespace Cjing3D {
 #ifdef CJING3D_PLATFORM_WIN32
 		LARGE_INTEGER li;
 		if (!QueryPerformanceFrequency(&li)) {
-			Debug::Error("QueryPerformanceFrequency failed!");
+			Logger::Error("QueryPerformanceFrequency failed!");
 		}
 		mFrequency = double(li.QuadPart) / 1000.0;
 

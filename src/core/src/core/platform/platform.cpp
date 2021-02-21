@@ -333,7 +333,7 @@ namespace Platform {
 		BOOL retVal = ::CopyFile(pathFrom, pathTo, FALSE);
 		if (retVal == FALSE)
 		{
-			Debug::Warning("FileCopy failed: %x", ::GetLastError());
+			Logger::Warning("FileCopy failed: %x", ::GetLastError());
 			return false;
 		}
 		return true;
@@ -377,7 +377,7 @@ namespace Platform {
 		struct stat attrib;
 		if (stat(file, &attrib) != 0)
 		{
-			Debug::Warning("Faild to get last mod time \"%s\"", file);
+			Logger::Warning("Faild to get last mod time \"%s\"", file);
 			return 0;
 		}
 
@@ -466,6 +466,12 @@ namespace Platform {
 
 		it->mIsValid = ::FindNextFile(it->mHandle, &it->mFFD) != FALSE;
 		return true;
+	}
+
+	void DebugOutput(const char* msg)
+	{
+		WPathString tmp(msg);
+		::OutputDebugString(tmp);
 	}
 
 	void* LibraryOpen(const char* path)

@@ -203,7 +203,7 @@ namespace GPU
                 context->CSSetUnorderedAccessViews(uav.mSlot, 1, &uav.mUAV, nullptr);
                 break;
             default:
-                Debug::Warning("[GPU] Failed to bind pipeline binding set");
+                Logger::Warning("[GPU] Failed to bind pipeline binding set");
                 break;
             }
         }

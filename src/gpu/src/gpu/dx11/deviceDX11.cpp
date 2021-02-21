@@ -892,7 +892,7 @@ namespace GPU
 		}
 		if (FAILED(result))
 		{
-			Debug::Error("Failed to create graphics device: %08X", result);
+			Logger::Error("Failed to create graphics device: %08X", result);
 			return;
 		}
 
@@ -936,7 +936,7 @@ namespace GPU
 			&mSwapChain);
 		if (FAILED(result))
 		{
-			Debug::Error("Failed to create graphics swap chain: %08X", result);
+			Logger::Error("Failed to create graphics swap chain: %08X", result);
 			return;
 		}
 
@@ -955,14 +955,14 @@ namespace GPU
 		result = mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &mBackBuffer);
 		if (FAILED(result))
 		{
-			Debug::Error("Failed to create back buffer texture: %08X", result);
+			Logger::Error("Failed to create back buffer texture: %08X", result);
 			return;
 		}
 
 		result = mDevice->CreateRenderTargetView(mBackBuffer.Get(), nullptr, &mRenderTargetView);
 		if (FAILED(result))
 		{
-			Debug::Error("Failed to create render target view: %08X", result);
+			Logger::Error("Failed to create render target view: %08X", result);
 			return;
 		}
 
@@ -1210,7 +1210,7 @@ namespace GPU
 		HRESULT ret = mDevice->CreateSamplerState(&samplerDesc, &sampler->mHandle);
 		if (FAILED(ret))
 		{
-			Debug::Warning("[GPU] Faile to create sampler state.");
+			Logger::Warning("[GPU] Faile to create sampler state.");
 			return false;
 		}
 		return SUCCEEDED(ret);
@@ -1246,7 +1246,7 @@ namespace GPU
 			ret = mDevice->CreateBlendState(&blendDesc, &pipelineState->mBS);
 			if (FAILED(ret))
 			{
-				Debug::Warning("[GPU::PipelineState] Faile to create blend state.");
+				Logger::Warning("[GPU::PipelineState] Faile to create blend state.");
 				return false;
 			}
 		}
@@ -1277,7 +1277,7 @@ namespace GPU
 			ret = mDevice->CreateDepthStencilState(&depthDesc, &pipelineState->mDSS);
 			if (FAILED(ret))
 			{
-				Debug::Warning("[GPU::PipelineState] Faile to create depth stencil state.");
+				Logger::Warning("[GPU::PipelineState] Faile to create depth stencil state.");
 				return false;
 			}
 		}
@@ -1305,7 +1305,7 @@ namespace GPU
 			ret = mDevice->CreateRasterizerState(&rasterizerDesc, &pipelineState->mRS);
 			if (FAILED(ret))
 			{
-				Debug::Warning("[GPU::PipelineState] Faile to create rasterizer state.");
+				Logger::Warning("[GPU::PipelineState] Faile to create rasterizer state.");
 				return false;
 			}
 		}
@@ -1330,14 +1330,14 @@ namespace GPU
 
 			if (desc->mVS == ResHandle::INVALID_HANDLE)
 			{
-				Debug::Warning("[GPU::PipelineState] Faile to create input layout.");
+				Logger::Warning("[GPU::PipelineState] Faile to create input layout.");
 				return false;
 			}
 
 			auto shader = mShaders.Read(desc->mVS);
 			if (!shader)
 			{
-				Debug::Warning("[GPU::PipelineState] Faile to create input layout.");
+				Logger::Warning("[GPU::PipelineState] Faile to create input layout.");
 				return false;
 			}
 
@@ -1349,7 +1349,7 @@ namespace GPU
 				&pipelineState->mIL);
 			if (FAILED(ret))
 			{
-				Debug::Warning("[GPU::PipelineState] Faile to create input layout.");
+				Logger::Warning("[GPU::PipelineState] Faile to create input layout.");
 				return false;
 			}
 		}
@@ -1587,7 +1587,7 @@ namespace GPU
 				0);
 			if (FAILED(result))
 			{
-				Debug::Error("Failed to resize swapchain buffer: %08X", result);
+				Logger::Error("Failed to resize swapchain buffer: %08X", result);
 				return;
 			}
 
@@ -1595,14 +1595,14 @@ namespace GPU
 			result = mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &mBackBuffer);
 			if (FAILED(result))
 			{
-				Debug::Error("Failed to create back buffer texture: %08X", result);
+				Logger::Error("Failed to create back buffer texture: %08X", result);
 				return;
 			}
 
 			result = mDevice->CreateRenderTargetView(mBackBuffer.Get(), nullptr, &mRenderTargetView);
 			if (FAILED(result))
 			{
-				Debug::Error("Failed to create render target view: %08X", result);
+				Logger::Error("Failed to create render target view: %08X", result);
 				return;
 			}
 		}
@@ -1997,7 +1997,7 @@ namespace GPU
 			}
 			break;
 			default:
-				Debug::Error("[GPU] Failed to create depth stencil view, invalid texture type");
+				Logger::Error("[GPU] Failed to create depth stencil view, invalid texture type");
 				break;
 			}
 
@@ -2120,7 +2120,7 @@ namespace GPU
 		}
 		break;
 		default:
-			Debug::Error("[GPU] Failed to create buffer, invalid buffer type");
+			Logger::Error("[GPU] Failed to create buffer, invalid buffer type");
 			break;
 		}
 		return -1;

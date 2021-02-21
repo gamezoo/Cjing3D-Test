@@ -1,5 +1,5 @@
 #include "eventSystem.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 
 namespace Cjing3D
 {

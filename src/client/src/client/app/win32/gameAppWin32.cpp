@@ -6,6 +6,21 @@
 
 namespace Cjing3D::Win32
 {
+	class DebugLoggerSink : public LoggerSink
+	{
+	public:
+		void Log(LogLevel level, const char* msg)override
+		{
+			if (level == LogLevel::LVL_ERROR) {
+				Debug::DebugOuput("Error:");
+			}
+			Debug::DebugOuput(msg);
+			Debug::DebugOuput("\n");
+		}
+	};
+	static StdoutLoggerSink mStdoutLoggerSink;
+	static DebugLoggerSink  mDebugLoggerSink;
+
 	GameAppWin32::GameAppWin32(HINSTANCE hInstance) :
 		mHinstance(hInstance)
 	{
@@ -35,8 +50,12 @@ namespace Cjing3D::Win32
 			freopen("CONOUT$", "w", stdout);
 			freopen("CONOUT$", "w", stderr);
 		}
-		// print console header
-		Logger::PrintConsoleHeader();
+		Logger::RegisterSink(mStdoutLoggerSink);
+		Logger::RegisterSink(mDebugLoggerSink);
+
+		Logger::SetIsDisplayTime(false);
+		Logger::Print(CjingVersion::GetHeaderString());
+		Logger::SetIsDisplayTime(true);
 #endif
 
 		// system event queue

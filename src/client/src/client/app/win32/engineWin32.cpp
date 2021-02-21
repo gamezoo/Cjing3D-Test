@@ -6,7 +6,7 @@
 #include "core\plugin\pluginManager.h"
 #include "core\plugin\modulePulgin.h"
 #include "core\filesystem\filesystem_physfs.h"
-#include "core\jobsystem\jobsystem.h"
+#include "core\concurrency\jobsystem.h"
 #include "core\scripts\luaContext.h"
 #include "core\helper\profiler.h"
 #include "core\helper\buildConfig.h"
@@ -25,6 +25,8 @@ namespace Cjing3D::Win32
 		BaseFileSystem* mFileSystem = nullptr;
 		Win32::InputManagerWin32* mInputSystem = nullptr;
 		LuaContext* mLuaContext = nullptr;
+		File mLogFile;
+		FileLoggerSink mFileLoggerSink;
 	};
 
 	EngineWin32::EngineWin32(SharedPtr<GameWindowWin32> gameWindow, InitConfig& config) :
@@ -32,10 +34,18 @@ namespace Cjing3D::Win32
 	{
 		mImpl = CJING_NEW(EngineWin32Impl);
 		mImpl->mGameWindowWin32 = gameWindow;
+
+		mImpl->mLogFile = File("Cjing3D.log", FileFlags::DEFAULT_WRITE);
+		if (mImpl->mLogFile.IsValid()) {
+			mImpl->mFileLoggerSink.SetLogFile(mImpl->mLogFile);
+		}
+		Logger::RegisterSink(mImpl->mFileLoggerSink);
 	}
 
 	EngineWin32::~EngineWin32()
 	{
+		Logger::UnregisterSink(mImpl->mFileLoggerSink);
+
 		CJING_SAFE_DELETE(mImpl);
 	}
 

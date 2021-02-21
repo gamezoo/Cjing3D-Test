@@ -3,7 +3,7 @@
 #include "core\common\definitions.h"
 #include "core\container\dynamicArray.h"
 #include "core\container\hashMap.h"
-#include "core\jobsystem\jobsystem.h"
+#include "core\concurrency\jobsystem.h"
 #include "core\helper\stringID.h"
 #include "core\helper\reflection.h"
 

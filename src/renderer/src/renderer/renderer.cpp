@@ -486,7 +486,7 @@ namespace Renderer
 	{
 		Debug::CheckAssertion(IsInitialized());
 		if (mImpl->mShaders[(U32)type] == nullptr) {
-			Debug::Warning("Failed to get shader:(shaderType) %d", (I32)type);
+			Logger::Warning("Failed to get shader:(shaderType) %d", (I32)type);
 		}
 		return mImpl->mShaders[(U32)type];
 	}

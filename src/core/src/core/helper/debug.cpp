@@ -1,5 +1,5 @@
 #include "debug.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 #include "core\helper\timer.h"
 #include "core\string\string.h"
 #include "core\common\version.h"
@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <fstream>
 #include <iostream>
+#include "log.h"
 
 namespace Cjing3D
 {
@@ -27,7 +28,7 @@ namespace Cjing3D
 		vsnprintf_s(mMsg, std::size(mMsg), format, args);
 		va_end(args);
 
-		Debug::Error(mMsg);
+		Logger::Error(mMsg);
 	}
 
 	Exception::Exception(const char * format, va_list args) :
@@ -35,7 +36,7 @@ namespace Cjing3D
 	{
 		vsnprintf_s(mMsg, std::size(mMsg), format, args);
 
-		Debug::Error(mMsg);
+		Logger::Error(mMsg);
 	}
 
 	Exception::~Exception() = default;
@@ -43,99 +44,6 @@ namespace Cjing3D
 	const char* Exception::what() const noexcept
 	{
 		return mMsg;
-	}
-
-	namespace Logger
-	{
-		namespace {
-			const String32 generalLogFileName = "log.txt";
-			std::ofstream loggerFile;
-
-			struct LogContext
-			{
-				static const int BUFFER_SIZE = 64 * 1024;
-				StaticArray<char, BUFFER_SIZE> buffer_ = {};
-			};
-			thread_local LogContext mLogContext;
-
-			LogContext* GetLogContext() { return &mLogContext; }
-
-			std::ofstream& GetLoggerFile()
-			{
-				if (!loggerFile.is_open())
-					loggerFile.open(generalLogFileName);
-				return loggerFile;
-			}
-
-			Concurrency::Mutex mPrintMutex;
-
-			void PrintImpl(const char* msg, const char* prefix = nullptr, std::ostream& out = std::cout)
-			{
-				Concurrency::ScopedMutex lock(mPrintMutex);
-				auto timeStr = Timer::GetSystemTimeString();
-				out << timeStr;
-				if (prefix != nullptr) {
-					out << " " << prefix;
-				}
-				out << " " << msg << std::endl;
-			}
-		}
-
-		void Info(const char* msg, ...)
-		{
-			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_GREEN);
-			va_list args;
-			va_start(args, msg);
-			Logger::LogArgs(msg, args, "[Info]");
-			va_end(args);
-			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_WHITE);
-		}
-
-		void LogArgs(const char* msg, va_list args, const char* prefix)
-		{
-			LogContext* logContext = GetLogContext();
-			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), msg, args);
-			PrintImpl(logContext->buffer_.data(), prefix);
-
-#ifdef CJING_LOG_WITH_FILE
-			PrintImpl(logContext->buffer_.data(), prefix, GetLoggerFile());
-#endif
-		}
-
-		void Log(const char* msg, ...)
-		{
-			LogContext* logContext = GetLogContext();
-			va_list args;
-			va_start(args, msg);
-			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), msg, args);
-			va_end(args);
-			PrintImpl(logContext->buffer_.data(), nullptr);
-
-#ifdef CJING_LOG_WITH_FILE
-			PrintImpl(logContext->buffer_.data(), nullptr, GetLoggerFile());
-#endif
-		}
-
-		void LogWithPrefix(const char* prefix, const char* msg, ...)
-		{
-			LogContext* logContext = GetLogContext();
-			va_list args;
-			va_start(args, msg);
-			vsprintf_s(logContext->buffer_.data(), logContext->buffer_.size(), msg, args);
-			va_end(args);
-			PrintImpl(logContext->buffer_.data(), prefix);
-
-#ifdef CJING_LOG_WITH_FILE
-			PrintImpl(logContext->buffer_.data(), prefix, GetLoggerFile());
-#endif
-		}
-
-		void PrintConsoleHeader()
-		{
-			std::cout << "Cjing3D Version " << CjingVersion::GetVersionString() << std::endl;
-			std::cout << "Copyright (c) 2019-2020 by ZZZY" << std::endl;
-			std::cout << std::endl;
-		}
 	}
 
 	namespace Debug {
@@ -152,6 +60,11 @@ namespace Cjing3D
 		void SetDieOnError(bool t)
 		{
 			DieOnError = t;
+		}
+
+		bool IsDieOnError()
+		{
+			return DieOnError;
 		}
 
 		void SetPopBoxOnDie(bool t)
@@ -172,32 +85,6 @@ namespace Cjing3D
 		bool IsDebugConsoleEnable()
 		{
 			return ShowDebugConsole;
-		}
-
-		void Warning(const char* format, ...)
-		{
-			Concurrency::ScopedMutex lock(mMutex);
-			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_YELLOW);
-			va_list args;
-			va_start(args, format);
-			Logger::LogArgs(format, args, "[Warning]");
-			va_end(args);
-			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_WHITE);
-		}
-
-		void Error(const char* format, ...)
-		{
-			Concurrency::ScopedMutex lock(mMutex);
-			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_RED);
-			va_list args;
-			va_start(args, format);
-			Logger::LogArgs(format, args, "[Error]");
-			va_end(args);
-
-			if (DieOnError) {
-				abort();
-			}
-			Platform::SetLoggerConsoleFontColor(Platform::CONSOLE_FONT_WHITE);
 		}
 
 		void CheckAssertion(bool asertion)
@@ -268,6 +155,11 @@ namespace Cjing3D
 #endif
 		}
 
+		void DebugOuput(const char* msg)
+		{
+			Platform::DebugOutput(msg);
+		}
+
 		void Die(const char* format, ...)
 		{
 			Concurrency::ScopedMutex lock(mMutex);
@@ -284,9 +176,6 @@ namespace Cjing3D
 			if (AbortOnDie) {
 				std::abort();
 			}
-
-			Exception exception(buffer.c_str());
-			throw exception;
 		}
 
 	}

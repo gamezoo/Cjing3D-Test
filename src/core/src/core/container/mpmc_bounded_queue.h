@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 #include "core\memory\memory.h"
 
 /*  Multi-producer/multi-consumer bounded queue.

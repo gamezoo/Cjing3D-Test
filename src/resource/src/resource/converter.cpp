@@ -2,7 +2,7 @@
 #include "core\helper\debug.h"
 #include "core\helper\timer.h"
 #include "core\serialization\jsonArchive.h"
-#include "core\jobsystem\jobsystem.h"
+#include "core\concurrency\jobsystem.h"
 
 namespace Cjing3D
 {
@@ -37,7 +37,7 @@ namespace Cjing3D
 		MaxPathString dirPath;
 		if (!Path(destPath).SplitPath(dirPath.data(), dirPath.size()))
 		{
-			Debug::Warning("Invalid path:%s", destPath);
+			Logger::Warning("Invalid path:%s", destPath);
 			return false;
 		}
 		mFileSystem.CreateDir(dirPath.c_str());

@@ -3,7 +3,7 @@
 #include "core\helper\debug.h"
 #include "core\filesystem\filesystem_physfs.h"
 #include "core\container\hashMap.h"
-#include "core\jobsystem\taskJob.h"
+#include "core\concurrency\taskJob.h"
 #include "core\helper\timer.h"
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\plugin\pluginManager.h"
@@ -230,7 +230,7 @@ namespace ResourceManager
 		MaxPathString dirPath, fileName, ext;
 		if (!inPath.SplitPath(dirPath.data(), dirPath.size(), fileName.data(), fileName.size(), ext.data(), ext.size()))
 		{
-			Debug::Warning("Invalid path:%s", inPath.c_str());
+			Logger::Warning("Invalid path:%s", inPath.c_str());
 			return Path();
 		}
 
@@ -523,7 +523,7 @@ namespace ResourceManager
 		DynamicArray<char> buffer;
 		if (!mImpl->mFilesystem->ReadFile(mPath, buffer)) 
 		{
-			Debug::Warning("Failed to load resource \"%s\"", mPath);
+			Logger::Warning("Failed to load resource \"%s\"", mPath);
 			mResource.OnLoaded(false);
 			return;
 		}
@@ -540,7 +540,7 @@ namespace ResourceManager
 		}
 		if (!success)
 		{
-			Debug::Warning("Failed to load resource \"%s\"", mPath);
+			Logger::Warning("Failed to load resource \"%s\"", mPath);
 			mResource.OnLoaded(false);
 			return;
 		}
@@ -597,21 +597,21 @@ namespace ResourceManager
 
 		if (!mImpl->mFilesystem->IsFileExists(inPath.c_str())) 
 		{
-			Debug::Warning("Empty path:%s", inPath.c_str());
+			Logger::Warning("Empty path:%s", inPath.c_str());
 			return nullptr;
 		}
 
 		MaxPathString dirPath, fileName, ext;
 		if (!inPath.SplitPath(dirPath.data(), dirPath.size(), fileName.data(), fileName.size(), ext.data(), ext.size()))
 		{
-			Debug::Warning("Invalid path:%s", inPath.c_str());
+			Logger::Warning("Invalid path:%s", inPath.c_str());
 			return nullptr;
 		}
 
 		ResourceFactory* factory = mImpl->GetFactory(type);
 		if (factory == nullptr)
 		{
-			Debug::Warning("Invalid res type:%d", type.Type());
+			Logger::Warning("Invalid res type:%d", type.Type());
 			return nullptr;
 		}
 
@@ -640,6 +640,7 @@ namespace ResourceManager
 				{
 					ret->SetDesiredState(Resource::ResState::LOADED);
 					mImpl->AcquireResource(ret);	// for hook
+					Concurrency::AtomicIncrement(&mImpl->mPendingResJobs); // for hook
 					return ret;
 				}
 
@@ -679,6 +680,7 @@ namespace ResourceManager
 				{
 					ret->SetDesiredState(Resource::ResState::LOADED);
 					mImpl->AcquireResource(ret);	// for hook
+					Concurrency::AtomicIncrement(&mImpl->mPendingResJobs); // for hook
 					return ret;
 				}
 
@@ -700,7 +702,7 @@ namespace ResourceManager
 				else
 				{
 					mImpl->ReleaseResource(ret);
-					Debug::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
+					Logger::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
 					return nullptr;
 				}
 			}
@@ -764,7 +766,7 @@ namespace ResourceManager
 		ResourceFactory* factory = mImpl->GetFactory(type);
 		if (factory == nullptr)
 		{
-			Debug::Warning("Invalid res type:%d", type.Type());
+			Logger::Warning("Invalid res type:%d", type.Type());
 			return false;
 		}
 
@@ -852,10 +854,10 @@ namespace ResourceManager
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
 			{
 #ifdef _DEBUG
-				Debug::Warning("Resource load time out, try loading again");
+				Logger::Warning("Resource load time out, try loading again");
 				maxWaitTime *= 2;
 #else
-				Debug::Error("Resource load time out");
+				Logger::Error("Resource load time out");
 				break;
 #endif
 			}
@@ -877,10 +879,10 @@ namespace ResourceManager
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
 			{
 #ifdef _DEBUG
-				Debug::Warning("Resource load time out, try loading again");
+				Logger::Warning("Resource load time out, try loading again");
 				maxWaitTime *= 2;
 #else
-				Debug::Error("Resource load time out");
+				Logger::Error("Resource load time out");
 				break;
 #endif
 			}
@@ -893,14 +895,14 @@ namespace ResourceManager
 
 		if (!mImpl->mFilesystem->IsFileExists(path))
 		{
-			Debug::Warning("Empty path:%s", path);
+			Logger::Warning("Empty path:%s", path);
 			return AsyncResult::FAILURE;
 		}
 
 		File* file = CJING_NEW(File);
 		if (!mImpl->mFilesystem->OpenFile(path, *file, FileFlags::DEFAULT_READ)) 
 		{
-			Debug::Warning("File open failed, path:%s", path);
+			Logger::Warning("File open failed, path:%s", path);
 			return AsyncResult::FAILURE;
 		}
 
@@ -941,7 +943,7 @@ namespace ResourceManager
 		File* file = CJING_NEW(File);
 		if (!mImpl->mFilesystem->OpenFile(path, *file, FileFlags::DEFAULT_WRITE))
 		{
-			Debug::Warning("File write failed, path:%s", path);
+			Logger::Warning("File write failed, path:%s", path);
 			return AsyncResult::FAILURE;
 		}
 
@@ -981,13 +983,14 @@ namespace ResourceManager
 	void LoadHook::ContinueLoad(Resource* res, bool isImmediate)
 	{
 		Debug::CheckAssertion(res->IsEmpty());
+		Concurrency::AtomicDecrement(&mImpl->mPendingResJobs); // release from hook
 		mImpl->ReleaseResource(res);		// release from hook
 		res->SetDesiredState(Resource::ResState::EMPTY);
 
 		// load resource
 		ResourceFactory* factory = mImpl->GetFactory(res->GetType());
 		if (factory == nullptr) {
-			Debug::Warning("Invalid res type:%d", res->GetType().Type());
+			Logger::Warning("Invalid res type:%d", res->GetType().Type());
 			return;
 		}
 
@@ -1023,7 +1026,7 @@ namespace ResourceManager
 			else
 			{
 				mImpl->ReleaseResource(res);
-				Debug::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
+				Logger::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
 				return;
 			}
 		}

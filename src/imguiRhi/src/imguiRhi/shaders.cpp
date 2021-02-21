@@ -104,7 +104,7 @@ namespace ImGuiRHI
             "main", "vs_4_0", flag, 0, &byteCode, &errMsg);
         if (FAILED(hr))
         {
-            Debug::Warning(Span(
+            Logger::Warning(Span(
                 (const char*)errMsg->GetBufferPointer(),
                 errMsg->GetBufferSize()
             ).data());
@@ -123,7 +123,7 @@ namespace ImGuiRHI
             "main", "ps_4_0", flag, 0, &byteCode, &errMsg);
         if (FAILED(hr))
         {
-            Debug::Warning(Span(
+            Logger::Warning(Span(
                 (const char*)errMsg->GetBufferPointer(),
                 errMsg->GetBufferSize()
             ).data());

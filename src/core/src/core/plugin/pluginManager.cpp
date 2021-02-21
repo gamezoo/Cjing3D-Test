@@ -2,7 +2,7 @@
 #include "core\filesystem\path.h"
 #include "core\container\dynamicArray.h"
 #include "core\container\hashMap.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 #include "core\helper\debug.h"
 #include "core\platform\platform.h"
 #include "core\engine.h"
@@ -69,7 +69,7 @@ namespace Cjing3D
 				GetPluginFunc getPluginFunc = (GetPluginFunc)Platform::LibrarySymbol(handle, "GetPlugin");
 				if (!getPluginFunc)
 				{
-					Debug::Warning("Failed to load plugin libaray:%s", mPath.c_str());
+					Logger::Warning("Failed to load plugin libaray:%s", mPath.c_str());
 					Platform::LibraryClose(handle);
 					return false;
 				}
@@ -77,7 +77,7 @@ namespace Cjing3D
 				Plugin* plugin = getPluginFunc(mEngine);
 				if (plugin == nullptr)
 				{
-					Debug::Warning("Failed to load plugin libaray:%s", mPath.c_str());
+					Logger::Warning("Failed to load plugin libaray:%s", mPath.c_str());
 					Platform::LibraryClose(handle);
 					return false;
 				}
@@ -104,7 +104,7 @@ namespace Cjing3D
 				}
 				else
 				{
-					Debug::Warning("Failed to load plugin libaray:%s", mPath.c_str());
+					Logger::Warning("Failed to load plugin libaray:%s", mPath.c_str());
 					return false;
 				}
 			}

@@ -1,7 +1,7 @@
 #include "resource.h"
 #include "core\string\stringUtils.h"
 #include "core\helper\debug.h"
-#include "core\jobsystem\concurrency.h"
+#include "core\concurrency\concurrency.h"
 
 namespace  Cjing3D
 {

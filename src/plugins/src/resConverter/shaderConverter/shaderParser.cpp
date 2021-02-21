@@ -325,14 +325,14 @@ namespace Cjing3D
 		os << "[ShaderParse]" << filename << "(" << lineNum << "-" << lineOffset;
 		os << ") Error:" << errMsg << std::endl;
 
-		Debug::Error(os.str().c_str());
+		Logger::Error(os.str().c_str());
 	}
 	
 	bool ShaderParser::CheckReserved(ShaderAST::Token& token)
 	{
 		if (mReversedKeys.find(token.mValue) != nullptr)
 		{
-			Debug::Error("[ShaderParse] %s is reversed keyword.", token.mValue.c_str());
+			Logger::Error("[ShaderParse] %s is reversed keyword.", token.mValue.c_str());
 			return false;
 		}
 		return true;

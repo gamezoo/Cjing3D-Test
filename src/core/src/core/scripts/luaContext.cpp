@@ -36,7 +36,7 @@ void LuaContext::InitializeEnv(lua_State * l)
 {
 	if (!DoLuaString(l, globalLuaString))
 	{
-		Debug::Error("Failed to load lua initialzed scripts.");
+		Logger::Error("Failed to load lua initialzed scripts.");
 		return;
 	}
 
@@ -89,7 +89,7 @@ bool LuaContext::DoLuaFile(lua_State* l, const String& path)
 			String errMsg = String("In ") + path + ": " + lua_tostring(l, -1) + "\n";
 			luaL_traceback(l, l, NULL, 1);
 			errMsg += lua_tostring(l, -1);
-			Debug::Error(errMsg);
+			Logger::Error(errMsg);
 			lua_pop(l, 2);
 			return false;
 		}
@@ -118,7 +118,7 @@ bool LuaContext::LoadLuaFile(lua_State * l, const String & path)
 	//if (result != 0)
 	//{
 	//	const String& errMsg = lua_tostring(l, -1);
-	//	Debug::Warning(errMsg);
+	//	Logger::Warning(errMsg);
 	//	lua_pop(l, 1);
 	//	return false;
 	//}
