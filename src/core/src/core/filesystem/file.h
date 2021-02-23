@@ -39,6 +39,7 @@ namespace Cjing3D
 		virtual FileFlags GetFlags() const = 0;
 		virtual bool IsValid() const = 0;
 		virtual const char* GetPath() const = 0;
+		virtual void Close() = 0;
 	};
 
 	class FilePathResolver;
@@ -61,6 +62,7 @@ namespace Cjing3D
 		FileFlags GetFlags() const;
 		const char* GetPath() const;
 		bool IsValid() const;
+		void Close();
 		explicit operator bool() const { return IsValid(); }
 
 		static size_t EnumerateFiles(const char* path, const char* ext, FileInfo* fileInfos = nullptr);

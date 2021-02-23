@@ -72,6 +72,13 @@ namespace Cjing3D {
 		return Platform::GetLastModTime(fullpath.c_str());
 	}
 
+	bool FileSystemGeneric::MoveFile(const char* from, const char* to)
+	{
+		MaxPathString srcPath(GetBasePath(), from);
+		MaxPathString toPath(GetBasePath(), to);
+		return Platform::MoveFile(srcPath.c_str(), toPath.c_str());
+	}
+
 	bool FileSystemGeneric::ReadFile(const char* path, DynamicArray<char>& data)
 	{
 		MaxPathString fullpath(mBasePath, path);

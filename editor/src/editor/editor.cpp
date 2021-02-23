@@ -58,7 +58,9 @@ namespace Cjing3D
 
 		// widgets
 		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
+		RegisterWidget("AssertBrowser", CJING_MAKE_SHARED<EditorWidgetAssertBrowser>(*this));
 
+		// setup asserts
 		mAssertCompiler->SetupAsserts();
 	}
 

@@ -1,8 +1,11 @@
 #include "assetCompiler.h"
 #include "editor.h"
+#include "filesWatcher.h"
 #include "resource\resourceManager.h"
 #include "core\concurrency\concurrency.h"
 #include "core\container\mpmc_bounded_queue.h"
+#include "core\serialization\jsonArchive.h"
+#include "core\signal\connection.h"
 
 namespace Cjing3D
 {
@@ -13,6 +16,12 @@ namespace Cjing3D
 	{
 		Resource* mRes = nullptr;
 		Path mInPath;
+	};
+
+	struct ResourceItem
+	{
+		Path mResPath;
+		ResourceType mResType;
 	};
 
 	class AssertCompilerImpl;
@@ -31,6 +40,8 @@ namespace Cjing3D
 		GameEditor& mGameEditor;
 		BaseFileSystem& mFileSystem;
 		AssertCompilerHook mLoadHook;
+		FilesWatcher* mFilesWatcher = nullptr;
+		ScopedConnection mFileChangedConn;
 
 		Concurrency::Thread mCompileThread;
 		Concurrency::Semaphore mCompileSemaphore;
@@ -39,6 +50,8 @@ namespace Cjing3D
 		MPMCBoundedQueue<ResCompileTask> mToCompileTasks;
 		MPMCBoundedQueue<ResCompileTask> mCompiledTasks;
 		volatile I32 mPendingTasks = 0;
+
+		HashMap<U32, ResourceItem> mResources;
 
 		bool mIsExit = false;
 
@@ -50,6 +63,8 @@ namespace Cjing3D
 		ResourceManager::LoadHook::HookResult OnBeforeLoad(Resource* res);
 		void ProcessCompiledTasks();
 		void RecoredResources();
+		void OnFileChanged(const char* path);
+		void AddResource(ResourceType type, const char* path);
 	};
 
 	ResourceManager::LoadHook::HookResult AssertCompilerHook::OoBeforeLoad(Resource* res)
@@ -95,16 +110,26 @@ namespace Cjing3D
 		if (!mFileSystem.IsDirExists(COMPILED_PATH_NAME)) {
 			mFileSystem.CreateDir(COMPILED_PATH_NAME);
 		}
-
 		ResourceManager::SetCurrentLoadHook(&mLoadHook);
+
+		// files watcher
+		const char* path = mFileSystem.GetBasePath();
+		mFilesWatcher = CJING_NEW(FilesWatcher)(path);
+		mFileChangedConn = mFilesWatcher->GetSignal().Connect([&](const char* path) {
+			OnFileChanged(path);
+		});
+
 		Logger::Info("Assert compiler initialzied");
 	}
 
 	AssertCompilerImpl::~AssertCompilerImpl()
 	{
 		mIsExit = true;
-		ResourceManager::SetCurrentLoadHook(nullptr);
 
+		mFileChangedConn.Disconnect();
+		CJING_SAFE_DELETE(mFilesWatcher);
+
+		ResourceManager::SetCurrentLoadHook(nullptr);
 		mCompileSemaphore.Signal(1);
 		mCompileThread.Join();
 
@@ -159,7 +184,35 @@ namespace Cjing3D
 
 	void AssertCompilerImpl::RecoredResources()
 	{
+		File mOutputFile;
+		if (!mFileSystem.OpenFile("converter_output/tmp_list.txt", mOutputFile, FileFlags::DEFAULT_WRITE)) {
+			Logger::Error("Failed to save converter_output/_list.txt");
+		}
+		else
+		{
+			JsonArchive archive(ArchiveMode::ArchiveMode_Write);
+			archive.PushMap("resources", [&](JsonArchive& archive) {
+				for (const auto kvp : mResources) {
+					archive.WriteAndPush(String(kvp.second.mResPath.c_str()));
+				}
+			});
 
+			auto jsonString = archive.DumpJsonString();
+			mOutputFile.Write(jsonString.data(), jsonString.size());
+			mOutputFile.Close();
+
+			mFileSystem.DeleteFile("converter_output/_list.txt");
+			mFileSystem.MoveFile("converter_output/tmp_list.txt", "converter_output/_list.txt");
+		}
+	}
+
+	void AssertCompilerImpl::OnFileChanged(const char* path)
+	{
+	
+	}
+
+	void AssertCompilerImpl::AddResource(ResourceType type, const char* path)
+	{
 	}
 
 	/// //////////////////////////////////////////////////////////////////////////////////

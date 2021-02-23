@@ -77,6 +77,13 @@ namespace Cjing3D {
 			return mFile != nullptr;
 		}
 
+		void Close()override
+		{
+			if (mFile != nullptr) {
+				PHYSFS_close(mFile);
+			}
+		}
+
 		const char* GetPath() const override {
 			return "";
 		}
@@ -243,6 +250,13 @@ namespace Cjing3D {
 	U64 FileSystemPhysfs::GetLastModTime(const char* path)
 	{
 		return PHYSFS_getLastModTime(path);
+	}
+
+	bool FileSystemPhysfs::MoveFile(const char* from, const char* to)
+	{
+		MaxPathString srcPath(GetBasePath(), Path::PATH_SEPERATOR, from);
+		MaxPathString toPath(GetBasePath(), Path::PATH_SEPERATOR, to);
+		return Platform::MoveFile(srcPath.c_str(), toPath.c_str());
 	}
 
 	DynamicArray<const char*> FileSystemPhysfs::EnumerateFiles(const char* path)

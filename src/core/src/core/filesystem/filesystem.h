@@ -27,5 +27,6 @@ namespace Cjing3D
 		virtual bool DeleteFile(const char* path) = 0;
 		virtual bool OpenFile(const char* path, File& file, FileFlags flags) = 0;
 		virtual U64  GetLastModTime(const char* path) = 0;
+		virtual bool MoveFile(const char* from, const char* to) = 0;
 	};
 }

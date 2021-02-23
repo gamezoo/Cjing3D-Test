@@ -76,6 +76,10 @@ namespace Cjing3D
 			return mData != nullptr;
 		}
 
+		void Close()override
+		{
+		}
+
 		const char* GetPath() const override {
 			return "";
 		}
@@ -195,6 +199,15 @@ namespace Cjing3D
 			return mHandle != INVALID_HANDLE_VALUE;
 		}
 
+		void Close()override
+		{
+			if (mHandle != INVALID_HANDLE_VALUE)
+			{
+				::FlushFileBuffers(mHandle);
+				::CloseHandle(mHandle);
+			}
+		}
+
 		const char* GetPath() const override {
 #ifdef DEBUG
 			return mPath.c_str();
@@ -278,6 +291,11 @@ namespace Cjing3D
 	bool File::IsValid() const
 	{
 		return mFileImpl->IsValid();
+	}
+
+	void File::Close()
+	{
+		mFileImpl->Close();
 	}
 
 	size_t File::EnumerateFiles(const char* path, const char* ext, FileInfo* fileInfos)

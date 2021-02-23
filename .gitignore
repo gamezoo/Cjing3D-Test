@@ -41,3 +41,4 @@ src/imguiRhi/lib
 /editor/src/app/note.h
 assets/imgui.ini
 tools/cjing_build/scripts/jsc/
+assets/Cjing3D.log

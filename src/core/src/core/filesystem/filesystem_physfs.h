@@ -23,6 +23,7 @@ namespace Cjing3D
 		virtual bool DeleteFile(const char* path);
 		virtual bool OpenFile(const char* path, File& file, FileFlags flags);
 		virtual U64  GetLastModTime(const char* path);
+		virtual bool MoveFile(const char* from, const char* to);
 
 		DynamicArray<const char*> EnumerateFiles(const char* path);
 	private:
