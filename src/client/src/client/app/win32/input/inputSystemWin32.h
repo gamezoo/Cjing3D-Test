@@ -2,7 +2,7 @@
 
 #include "core\platform\platform.h"
 #include "core\input\InputSystem.h"
-#include "client\app\systemEvent.h"
+#include "core\platform\events.h"
 #include "client\app\win32\gameWindowWin32.h"
 
 namespace Cjing3D::Win32

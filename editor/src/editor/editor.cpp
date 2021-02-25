@@ -1,7 +1,7 @@
 #include "editor.h"
 #include "imguiRhi\manager.h"
 #include "core\signal\eventQueue.h"
-#include "client\app\systemEvent.h"
+#include "core\platform\events.h"
 
 namespace Cjing3D
 {
@@ -42,23 +42,28 @@ namespace Cjing3D
 		// load shader lazy after assert compiler initialzed
 		Renderer::LoadAllShaders();
 
-		// imguiRhi
+		// imgui
 		ImGuiConfigFlags configFlags =
 			ImGuiConfigFlags_NavEnableKeyboard |
 			ImGuiConfigFlags_DockingEnable |
 			ImGuiConfigFlags_ViewportsEnable;
-		ImGuiRHI::Manager::Initialize(configFlags);
+		ImGuiRHI::Manager::Initialize(configFlags, mEngine->GetGameWindow()->GetWindowHandle());
 
 		mEventConnection = mEngine->GetEventQueue()->Connect([this](const Event& event) {
 			HandleSystemMessage(event);
 		});
 
+		// set render path
 		mRenderer = CJING_NEW(GameEditorRenderer);
 		SetRenderPath(mRenderer);
 
 		// widgets
 		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
 		RegisterWidget("AssertBrowser", CJING_MAKE_SHARED<EditorWidgetAssertBrowser>(*this));
+		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
+		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));
+		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this));
+		RegisterWidget("EntityList", CJING_MAKE_SHARED<EditorWidgetEntityList>(*this));
 
 		// setup asserts
 		mAssertCompiler->SetupAsserts();
@@ -88,8 +93,6 @@ namespace Cjing3D
 		// update 
 		mAssertCompiler->Update(deltaTime);
 
-
-
 		/////////////////////////////////////////////////////////////////////////
 		// update gui
 		U32x2 resolution = GPU::GetResolution();
@@ -103,9 +106,11 @@ namespace Cjing3D
 		// show custom widgets
 		for (auto& widget : mWidgets)
 		{
-			if (widget != nullptr && widget->Begin())
+			if (widget != nullptr)
 			{
-				widget->Update(deltaTime);
+				if (widget->Begin()) {
+					widget->Update(deltaTime);
+				}
 				widget->End();
 			}
 		}
@@ -145,10 +150,15 @@ namespace Cjing3D
 		return mWidgets[*index];
 	}
 
+	AssertCompiler& GameEditor::GetAssertCompiler()
+	{
+		return *mAssertCompiler;
+	}
+
 	void GameEditor::DockingBegin()
 	{
 		// full screen without window
-		ImGuiWindowFlags windowFlags =
+		ImGuiWindowFlags flags =
 			ImGuiWindowFlags_MenuBar |
 			ImGuiWindowFlags_NoDocking |
 			ImGuiWindowFlags_NoTitleBar |
@@ -163,6 +173,8 @@ namespace Cjing3D
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::SetNextWindowBgAlpha(0.0f);
 
+		bool viewportsEnable = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable;
+
 		F32 dockingOffsetY = 0.0f;
 		dockingOffsetY += GetWidget("MenuBar")->GetHeight();
 
@@ -171,29 +183,13 @@ namespace Cjing3D
 		ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - dockingOffsetY));
 		ImGui::SetNextWindowViewport(viewport->ID);
 
-		static const char* dockingName = "CjingDocking";
-		mIsDockingBegin = ImGui::Begin(dockingName, nullptr, windowFlags);
+		static const char* dockingName = "MainDocking";
+		mIsDockingBegin = ImGui::Begin(dockingName, nullptr, flags);
 		ImGui::PopStyleVar(3);
 
 		if (mIsDockingBegin)
 		{
 			ImGuiID mainWindow = ImGui::GetID(dockingName);
-			if (!ImGui::DockBuilderGetNode(mainWindow))
-			{
-				// reset
-				ImGui::DockBuilderRemoveNode(mainWindow);
-				ImGui::DockBuilderAddNode(mainWindow, ImGuiDockNodeFlags_None);
-				ImGui::DockBuilderSetNodeSize(mainWindow, viewport->Size);
-
-				ImGuiID dockMainID = mainWindow;
-				// split node
-				ImGuiID dockLeft = ImGui::DockBuilderSplitNode(dockMainID, ImGuiDir_Left, 0.2f, nullptr, &dockMainID);
-				ImGuiID dockRight = ImGui::DockBuilderSplitNode(dockMainID, ImGuiDir_Right, 0.2f, nullptr, &dockMainID);
-
-				// build window
-				ImGui::DockBuilderFinish(dockMainID);
-			}
-
 			ImGui::DockSpace(mainWindow, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 		}
 	}

@@ -52,6 +52,7 @@ namespace Cjing3D
 		volatile I32 mPendingTasks = 0;
 
 		HashMap<U32, ResourceItem> mResources;
+		Signal<void()> OnListChanged;
 
 		bool mIsExit = false;
 
@@ -115,7 +116,7 @@ namespace Cjing3D
 		// files watcher
 		const char* path = mFileSystem.GetBasePath();
 		mFilesWatcher = CJING_NEW(FilesWatcher)(path);
-		mFileChangedConn = mFilesWatcher->GetSignal().Connect([&](const char* path) {
+		mFileChangedConn = mFilesWatcher->GetOnFilesChanged().Connect([&](const char* path) {
 			OnFileChanged(path);
 		});
 
@@ -236,5 +237,10 @@ namespace Cjing3D
 	{
 		// process compiled tasks
 		mImpl->ProcessCompiledTasks();
+	}
+
+	Signal<void()>& AssertCompiler::GetOnListChanged()
+	{
+		return mImpl->OnListChanged;
 	}
 }

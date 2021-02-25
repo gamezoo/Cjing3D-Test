@@ -1,20 +1,21 @@
-#include "platform.h"
-#include "core\memory\memory.h"
-#include "core\helper\debug.h"
-#include "core\string\string.h"
-#include "core\string\stringUtils.h"
-
-#ifdef CJING3D_PLATFORM_WIN32
-#include <ShlObj.h>
-#endif
-
-namespace Cjing3D {
-namespace Platform {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // PLATFORM WIN32
 ////////////////////////////////////////////////////////////////////////////////////////
 #ifdef CJING3D_PLATFORM_WIN32
+
+#include "core\platform\platform.h"
+#include "core\platform\events.h"
+#include "core\memory\memory.h"
+#include "core\helper\debug.h"
+#include "core\string\string.h"
+#include "core\string\stringUtils.h"
+#include "core\signal\eventQueue.h"
+
+#include <ShlObj.h>
+
+namespace Cjing3D {
+namespace Platform {
 
 	static void WCharToChar(Span<char> out, const WCHAR* in)
 	{
@@ -80,6 +81,8 @@ namespace Platform {
 			HCURSOR mSizeNWSE;
 			HCURSOR mTextInput;
 		} mCursors;
+
+		EventQueue mEventQueue;
 	};
 	static PlatformImpl mImpl;
 
@@ -295,6 +298,113 @@ namespace Platform {
 		else {
 			while (ShowCursor(isVisible) >= 0);
 		}
+	}
+
+	WindowType CreateSimpleWindow(const WindowInitArgs& args)
+	{
+		auto WndProc = [](HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+			switch (Msg)
+			{
+			case WM_MOVE:
+			{
+				WindowMoveEvent e;
+				e.mWindow = hWnd;
+				e.mMoveX = (I32)LOWORD(lParam);
+				e.mMoveY = (I32)HIWORD(lParam);
+				mImpl.mEventQueue.Push<ViewResizeEvent>(e);
+			}
+			return 0;
+			case WM_SIZE:
+			{
+				ViewResizeEvent e;
+				e.mWindow = hWnd;
+				e.width = LOWORD(lParam);
+				e.height = HIWORD(lParam);
+				mImpl.mEventQueue.Push<ViewResizeEvent>(e);
+			}
+			return 0;
+			case WM_CLOSE:
+			{
+				WindowCloseEvent e;
+				e.mWindow = hWnd;
+				mImpl.mEventQueue.Push<WindowCloseEvent>();
+			}
+			return 0;
+			}
+			return ::DefWindowProc(hWnd, Msg, wParam, lParam);
+		};
+
+		WNDCLASSEX wcex;
+		wcex.cbSize = sizeof(WNDCLASSEX);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
+		wcex.lpfnWndProc = WndProc;
+		wcex.cbClsExtra = 0;
+		wcex.cbWndExtra = 0;
+		wcex.hInstance = GetModuleHandle(NULL);
+		wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+		wcex.hCursor = NULL;
+		wcex.hbrBackground = NULL;
+		wcex.lpszMenuName = nullptr;
+		wcex.lpszClassName = L"cjing_window";
+		wcex.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
+
+		if (!::RegisterClassEx(&wcex)) {
+			Debug::CheckAssertion(false);
+		}
+
+		DWORD style = args.mFlags & WindowInitArgs::NO_DECORATION ? WS_POPUP : WS_OVERLAPPEDWINDOW;
+		DWORD ext_style = args.mFlags & WindowInitArgs::NO_TASKBAR_ICON ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
+		WPathString wname(args.mName);
+		const HWND hwnd = ::CreateWindowEx(
+			ext_style,
+			L"cjing_window",
+			wname,
+			style,
+			CW_USEDEFAULT,
+			CW_USEDEFAULT,
+			CW_USEDEFAULT,
+			CW_USEDEFAULT,
+			(HWND)args.mParent,
+			NULL,
+			wcex.hInstance,
+			NULL);
+		Debug::CheckAssertion(hwnd);
+
+		::ShowWindow(hwnd, SW_SHOW);
+		::UpdateWindow(hwnd);
+
+		return hwnd;
+	}
+
+	void DestroySimpleWindow(WindowType window)
+	{
+		::DestroyWindow(window);
+	}
+
+	void SetSimpleWindowRect(WindowType window, const WindowRect& rect)
+	{
+		MoveWindow((HWND)window, rect.mLeft, rect.mTop, rect.mRight - rect.mLeft, rect.mBottom - rect.mTop, TRUE);
+	}
+
+	WindowRect GetSimpleWindowRect(WindowType window)
+	{
+		RECT rect;
+		BOOL status = GetClientRect((HWND)window, &rect);
+		return { rect.left, rect.top, rect.right, rect.bottom };
+	}
+
+	Connection ConnectSimpleWindowEvents(Function<void(const Event& event)> func)
+	{
+		return mImpl.mEventQueue.Connect(func);
+	}
+
+	WindowPoint ToScreen(WindowType window, I32 x, I32 y)
+	{
+		POINT p;
+		p.x = x;
+		p.y = y;
+		::ClientToScreen((HWND)window, &p);
+		return { p.x, p.y };
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////

@@ -25,8 +25,8 @@ namespace Cjing3D
 		F32  GetHeight()const { return mHeight; }
 
 	protected:
-		virtual void PreBegin() {}
-		virtual void PostBegin() {}
+		virtual bool PreBegin() { return true; }
+		virtual bool PostBegin() { return true; }
 
 	protected:
 		GameEditor& mEditor;
@@ -59,7 +59,34 @@ namespace Cjing3D
 	{
 	public:
 		EditorWidgetAssertBrowser(GameEditor& editor);
+		void Update(F32 deltaTime)override;
+	};
 
+	class EditorWidgetLog : public EditorWidget
+	{
+	public:
+		EditorWidgetLog(GameEditor& editor);
+		void Update(F32 deltaTime)override;
+	};
+
+	class EditorWidgetSetting : public EditorWidget
+	{
+	public:
+		EditorWidgetSetting(GameEditor& editor);
+		void Update(F32 deltaTime)override;
+	};
+
+	class EditorWidgetEntityInspector : public EditorWidget
+	{
+	public:
+		EditorWidgetEntityInspector(GameEditor& editor);
+		void Update(F32 deltaTime)override;
+	};
+
+	class EditorWidgetEntityList : public EditorWidget
+	{
+	public:
+		EditorWidgetEntityList(GameEditor& editor);
 		void Update(F32 deltaTime)override;
 	};
 }

@@ -3,6 +3,7 @@
 #include "core\common\common.h"
 #include "math\geometry.h"
 #include "core\string\utf8String.h"
+#include "core\platform\platform.h"
 
 namespace Cjing3D {
 
@@ -21,7 +22,7 @@ namespace Cjing3D {
 			mIsExiting = isExiting;
 		}
 
-		virtual void* GetWindowHandle() const = 0;
+		virtual Platform::WindowType GetWindowHandle() const = 0;
 		virtual bool IsWindowActive() const = 0;
 		virtual bool IsFullScreen()const = 0;
 		virtual UTF8String GetWindowTitle()const = 0;

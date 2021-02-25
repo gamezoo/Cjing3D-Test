@@ -11,6 +11,8 @@
 #include "core\common\definitions.h"
 #include "core\container\span.h"
 #include "core\filesystem\file.h"
+#include "core\signal\event.h"
+#include "core\signal\connection.h"
 
 #include <functional>
 
@@ -19,8 +21,10 @@ namespace Platform {
 
 #ifdef CJING3D_PLATFORM_WIN32
 	using WindowType = HWND;
+	static const HWND INVALID_WINDOW = NULL;
 #else 
 	using WindowType = int;
+	static const int INVALID_WINDOW = 0;
 #endif 
 
 	struct WindowRect
@@ -29,6 +33,12 @@ namespace Platform {
 		I32 mTop = 0;
 		I32 mRight = 0;
 		I32 mBottom = 0;
+	};
+
+	struct WindowPoint
+	{
+		I32 mPosX = 0;
+		I32 mPosY = 0;
 	};
 
 	enum CursorType
@@ -70,6 +80,23 @@ namespace Platform {
 	WindowRect GetClientBounds(WindowType window);
 	void SetMouseCursorType(CursorType cursorType);
 	void SetMouseCursorVisible(bool isVisible);
+
+	struct WindowInitArgs {
+		enum Flags {
+			NO_DECORATION = 1 << 0,
+			NO_TASKBAR_ICON = 1 << 1
+		};
+		const char* mName = "";
+		bool mFullscreen = false;
+		U32  mFlags = 0;
+		void* mParent = nullptr;
+	};
+	WindowType CreateSimpleWindow(const WindowInitArgs& args);
+	void DestroySimpleWindow(WindowType window);
+	void SetSimpleWindowRect(WindowType window, const WindowRect& rect);
+	WindowRect GetSimpleWindowRect(WindowType window);
+	Connection ConnectSimpleWindowEvents(Function<void(const Event& event)> func);
+	WindowPoint ToScreen(WindowType window, I32 x, I32 y);
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// File 

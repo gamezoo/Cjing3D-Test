@@ -1,5 +1,5 @@
 #include "engineWin32.h"
-#include "client\app\systemEvent.h"
+#include "core\platform\events.h"
 #include "client\app\win32\gameWindowWin32.h"
 #include "client\app\win32\input\inputSystemWin32.h"
 #include "core\platform\platform.h"

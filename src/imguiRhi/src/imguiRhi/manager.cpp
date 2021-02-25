@@ -4,6 +4,7 @@
 #include "core\input\InputSystem.h"
 #include "core\platform\platform.h"
 #include "core\signal\eventQueue.h"
+#include "core\platform\events.h"
 #include "gpu\gpu.h"
 #include "gpu\commandList.h"
 #include "shaders.h"
@@ -41,6 +42,9 @@ namespace ImGuiRHI
 
 		I32 mImGuiKeyMap[ImGuiKey_COUNT];
 		StaticString<4096> mInputText;
+
+		Connection mSystemEventsConn;
+		DynamicArray<Platform::WindowType> mToRemovedWindows;
 
 		void InitializeBindingSetRes()
 		{
@@ -197,9 +201,103 @@ namespace ImGuiRHI
 			}
 			return true;
 		}
+
+		void HandleSystemMessage(const Event& systemEvent)
+		{
+			if (systemEvent.Is<WindowCloseEvent>())
+			{
+				const WindowCloseEvent* ent = systemEvent.As<WindowCloseEvent>();
+				ImGuiViewport* vp = ImGui::FindViewportByPlatformHandle(ent->mWindow);
+				if (vp != nullptr) {
+					vp->PlatformRequestClose = true;
+				}
+			}
+		}
+
+		void InitPlatformIO(Platform::WindowType mainWindow)
+		{
+			ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+			platformIO.Renderer_CreateWindow = [](ImGuiViewport* vp) {
+				if (!vp) return;
+
+				Platform::WindowInitArgs args;
+				args.mFlags = 
+					Platform::WindowInitArgs::NO_DECORATION | 
+					Platform::WindowInitArgs::NO_TASKBAR_ICON;
+				args.mParent = ImGui::FindViewportByID(vp->ParentViewportId) ? 
+					ImGui::FindViewportByID(vp->ParentViewportId)->PlatformHandle : Platform::INVALID_WINDOW;
+				args.mName = "child";
+
+				vp->PlatformHandle = Platform::CreateSimpleWindow(args);
+			};
+			platformIO.Renderer_DestroyWindow = [](ImGuiViewport* vp) {
+				if (!vp) return;
+
+				vp->PlatformHandle = nullptr;
+				vp->PlatformUserData = nullptr;
+
+				const Platform::WindowType h = (Platform::WindowType)vp->PlatformHandle;
+				ImGuiViewport* mvp = ImGui::GetMainViewport();
+				if (mvp->PlatformHandle == h) {
+					return;
+				}
+				mToRemovedWindows.push(h);
+			};
+			platformIO.Platform_SetWindowPos = [](ImGuiViewport* vp, ImVec2 pos) {
+				const Platform::WindowType h = (Platform::WindowType)vp->PlatformHandle;
+				Platform::WindowRect r = Platform::GetSimpleWindowRect(h);
+				I32 width = r.mRight - r.mLeft;
+				I32 height = r.mBottom - r.mTop;
+				r.mLeft = I32(pos.x);
+				r.mTop = I32(pos.y);
+				r.mRight = r.mLeft + width;
+				r.mBottom = r.mTop + height;
+				Platform::SetSimpleWindowRect(h, r);
+			};
+			platformIO.Renderer_SetWindowSize = [](ImGuiViewport* vp, ImVec2 size) {
+				const Platform::WindowType h = (Platform::WindowType)vp->PlatformHandle;
+				Platform::WindowRect r = Platform::GetSimpleWindowRect(h);
+				r.mRight = r.mLeft + int(size.x);
+				r.mBottom = r.mTop + int(size.y);
+				Platform::SetSimpleWindowRect(h, r);
+			};
+			platformIO.Platform_GetWindowPos = [](ImGuiViewport* vp) -> ImVec2 {
+				const Platform::WindowType h = (Platform::WindowType)vp->PlatformHandle;
+				const Platform::WindowRect r = Platform::GetSimpleWindowRect(h);
+				const auto p = Platform::ToScreen(h, r.mLeft, r.mTop);
+				return { (float)p.mPosX, (float)p.mPosY };
+
+			};
+			platformIO.Platform_GetWindowSize = [](ImGuiViewport* vp) -> ImVec2 {
+				const Platform::WindowType h = (Platform::WindowType)vp->PlatformHandle;
+				const Platform::WindowRect r = Platform::GetSimpleWindowRect(h);
+				return { (float)(r.mRight - r.mLeft), (float)(r.mBottom - r.mTop) };
+			};
+
+			ImGuiViewport* mvp = ImGui::GetMainViewport();
+			mvp->PlatformHandle = mainWindow;
+			mvp->DpiScale = 1;
+			mvp->PlatformUserData = (void*)1;
+
+			mSystemEventsConn = Platform::ConnectSimpleWindowEvents(HandleSystemMessage);
+		}
+
+		void ProcessRemovedWindows()
+		{
+			for (const auto window : mToRemovedWindows) {
+				Platform::DestroySimpleWindow(window);
+			}
+			mToRemovedWindows.clear();
+		}
+
+		void UnintPlatformIO()
+		{
+			mSystemEventsConn.Disconnect();
+		}
+
 	}
 
-	void Manager::Initialize(ImGuiConfigFlags configFlags)
+	void Manager::Initialize(ImGuiConfigFlags configFlags, Platform::WindowType mainWindow)
 	{
 		Debug::CheckAssertion(!IsInitialized());
 		Debug::CheckAssertion(GPU::IsInitialized());
@@ -217,6 +315,7 @@ namespace ImGuiRHI
 		}
 
 		InitializeRHI();
+		InitPlatformIO(mainWindow);
 
 		// keyboard mapping
 		mImGuiKeyMap[ImGuiKey_Tab] = (I32)KeyCode::Tab;
@@ -252,9 +351,13 @@ namespace ImGuiRHI
 	{
 		Debug::CheckAssertion(IsInitialized());
 
+		UnintPlatformIO();
 		UninitializeRHI();
 
 		ImGui::DestroyContext();
+
+		ProcessRemovedWindows();
+		mToRemovedWindows.free();
 
 		Logger::Info("ImGui uninitialized");
 		mIsInitialized = false;

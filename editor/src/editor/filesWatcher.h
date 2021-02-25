@@ -11,7 +11,7 @@ namespace Cjing3D
 		FilesWatcher(const char* path);
 		~FilesWatcher();
 
-		Signal<void(const char*)>& GetSignal();
+		Signal<void(const char*)>& GetOnFilesChanged();
 
 	private:
 		class FilesWatcherImpl* mImpl = nullptr;

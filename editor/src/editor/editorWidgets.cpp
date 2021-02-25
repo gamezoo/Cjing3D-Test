@@ -14,37 +14,36 @@ namespace Cjing3D
 
 	bool EditorWidget::Begin()
 	{
-		if (mIsBegun) {
+		if ( mIsBegun || !mIsVisible) {
 			return false;
 		}
 
-		if (!mIsVisible) {
-			return false;
-		}
 		if (!mIsWindow) {
 			return true;
 		}
-
-
-		PreBegin();
-
+		
 		if (mPos[0] != -1.0f && mPos[1] != -1.0f) {
 			ImGui::SetNextWindowPos(ImVec2(mPos[0], mPos[1]));
 		}
-
 		if (mSize[0] != -1.0f && mSize[1] != -1.0f) {
 			ImGui::SetNextWindowSize(ImVec2(mSize[0], mSize[1]));
+		}
+
+		mWindow = ImGui::GetCurrentWindow();
+		mHeight = ImGui::GetWindowHeight();
+		mIsBegun = true;
+
+		if (!PreBegin()) {
+			return false;
 		}
 
 		if (!ImGui::Begin(mTitleName.c_str(), &mIsVisible, mWidgetFlags)) {
 			return false;
 		}
 
-		mIsBegun = true;
-		mWindow = ImGui::GetCurrentWindow();
-		mHeight = ImGui::GetWindowHeight();
-
-		PostBegin();
+		if (!PostBegin()) {
+			return false;
+		}
 
 		return true;
 	}
@@ -61,6 +60,7 @@ namespace Cjing3D
 		ImGui::PopStyleVar(mPushedStyleVar);
 		mPushedStyleVar = 0;
 	}
+
 	EditorWidgetMenu::EditorWidgetMenu(GameEditor& editor) :
 		EditorWidget(editor)
 	{
@@ -74,6 +74,33 @@ namespace Cjing3D
 		{
 			if (ImGui::BeginMenu("File"))
 			{
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Edit"))
+			{
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Entity"))
+			{
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("View"))
+			{
+				if(ImGui::MenuItem("Assert browser", nullptr, mEditor.GetWidget("AssertBrowser")->IsVisible())) {
+					mEditor.GetWidget("AssertBrowser")->SetVisible(true);
+				};
+				if (ImGui::MenuItem("Log", nullptr, mEditor.GetWidget("Log")->IsVisible())) {
+					mEditor.GetWidget("Log")->SetVisible(true);
+				};
+				if (ImGui::MenuItem("Setting", nullptr, mEditor.GetWidget("Setting")->IsVisible())) {
+					mEditor.GetWidget("Setting")->SetVisible(true);
+				};
+				if (ImGui::MenuItem("Entity List", nullptr, mEditor.GetWidget("EntityList")->IsVisible())) {
+					mEditor.GetWidget("EntityList")->SetVisible(true);
+				};
+				if (ImGui::MenuItem("Entity Inspector", nullptr, mEditor.GetWidget("Inspector")->IsVisible())) {
+					mEditor.GetWidget("Inspector")->SetVisible(true);
+				};
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Help"))
@@ -121,10 +148,60 @@ namespace Cjing3D
 		EditorWidget(editor)
 	{
 		mTitleName = "AssertBrowser";
-		mIsWindow = false;
+		mIsWindow = true;
+		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
 	}
 
 	void EditorWidgetAssertBrowser::Update(F32 deltaTime)
+	{
+
+	}
+	
+	EditorWidgetLog::EditorWidgetLog(GameEditor& editor) :
+		EditorWidget(editor)
+	{
+		mTitleName = "Log";
+		mIsWindow = true;
+		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
+	}
+
+	void EditorWidgetLog::Update(F32 deltaTime)
+	{
+	}
+
+	EditorWidgetSetting::EditorWidgetSetting(GameEditor& editor) :
+		EditorWidget(editor)
+	{
+		mTitleName = "Setting";
+		mIsWindow = true;
+		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
+	}
+
+	void EditorWidgetSetting::Update(F32 deltaTime)
+	{
+	}
+
+	EditorWidgetEntityInspector::EditorWidgetEntityInspector(GameEditor& editor) :
+		EditorWidget(editor)
+	{
+		mTitleName = "Inspector";
+		mIsWindow = true;
+		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
+	}
+
+	void EditorWidgetEntityInspector::Update(F32 deltaTime)
+	{
+	}
+
+	EditorWidgetEntityList::EditorWidgetEntityList(GameEditor& editor) :
+		EditorWidget(editor)
+	{
+		mTitleName = "Entity List";
+		mIsWindow = true;
+		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
+	}
+
+	void EditorWidgetEntityList::Update(F32 deltaTime)
 	{
 	}
 }

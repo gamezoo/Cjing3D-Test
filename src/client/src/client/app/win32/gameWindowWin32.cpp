@@ -2,7 +2,7 @@
 
 #include "gameWindowWin32.h"
 #include "core\initConfig.h"
-#include "client\app\systemEvent.h"
+#include "core\platform\events.h"
 #include "core\string\stringUtils.h"
 
 namespace Cjing3D::Win32 {
@@ -195,9 +195,9 @@ namespace Cjing3D::Win32 {
 		mHandlers.push(handler);
 	}
 
-	void* GameWindowWin32::GetWindowHandle() const
+	Platform::WindowType GameWindowWin32::GetWindowHandle() const
 	{
-		return (void*)GetHwnd();
+		return GetHwnd();
 	}
 
 	bool GameWindowWin32::IsWindowActive() const
@@ -302,12 +302,14 @@ namespace Cjing3D::Win32 {
 		case WM_DESTROY:
 			::PostQuitMessage(0);
 			if (window != nullptr) {
-				window->mEventQueue->Push<WindowCloseEvent>();
+				WindowCloseEvent e;
+				window->mEventQueue->Push<WindowCloseEvent>(e);
 			}
 			return 0;
 		case WM_CLOSE:
 			if (window != nullptr) {
-				window->mEventQueue->Push<WindowCloseEvent>();
+				WindowCloseEvent e;
+				window->mEventQueue->Push<WindowCloseEvent>(e);
 			}
 			return 0;
 		case WM_CHAR:
@@ -315,7 +317,9 @@ namespace Cjing3D::Win32 {
 			{
 				std::wstring text;
 				text += static_cast<wchar_t>(wParam);
-				window->mEventQueue->Push<InputTextEvent>(StringUtils::WStringToString(text));
+				InputTextEvent e;
+				e.mInputText = StringUtils::WStringToString(text);
+				window->mEventQueue->Push<InputTextEvent>(e);
 			}
 			return 0;
 		case WM_MOVE: 
@@ -346,9 +350,10 @@ namespace Cjing3D::Win32 {
 			{
 				if (window != nullptr)
 				{
-					U32 width = static_cast<U32>(lParam & 0xffff);
-					U32 height = static_cast<U32>((lParam >> 16) & 0xffff);
-					window->mEventQueue->Push<ViewResizeEvent>(width, height);
+					ViewResizeEvent e;
+					e.width = static_cast<U32>(lParam & 0xffff);
+					e.height = static_cast<U32>((lParam >> 16) & 0xffff);
+					window->mEventQueue->Push<ViewResizeEvent>(e);
 				}
 			}
 			return true;

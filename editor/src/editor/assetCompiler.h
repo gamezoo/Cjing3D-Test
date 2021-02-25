@@ -15,6 +15,8 @@ namespace Cjing3D
 		void SetupAsserts();
 		void Update(F32 deltaTime);
 
+		Signal<void()>& GetOnListChanged();
+
 	private:
 		class AssertCompilerImpl* mImpl = nullptr;
 	};

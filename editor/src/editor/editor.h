@@ -36,6 +36,8 @@ namespace Cjing3D
 		void RegisterWidget(const StringID& name, SharedPtr<EditorWidget> widget);
 		SharedPtr<EditorWidget> GetWidget(const StringID& name);
 
+		AssertCompiler& GetAssertCompiler();
+
 	private:
 		void DockingBegin();
 		void DockingEnd();

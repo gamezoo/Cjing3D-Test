@@ -152,7 +152,7 @@ namespace Cjing3D
 		CJING_SAFE_DELETE(mImpl);
 	}
 
-	Signal<void(const char*)>& FilesWatcher::GetSignal()
+	Signal<void(const char*)>& FilesWatcher::GetOnFilesChanged()
 	{
 		return mImpl->OnFileChanged;
 	}

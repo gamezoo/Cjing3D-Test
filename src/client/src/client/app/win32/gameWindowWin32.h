@@ -39,7 +39,7 @@ namespace Cjing3D::Win32 {
 		bool HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LRESULT&result);
 		void AddMessageHandler(WindowMessageHandler handler);
 
-		void* GetWindowHandle() const override;
+		Platform::WindowType GetWindowHandle() const override;
 		bool IsWindowActive() const override;
 		bool IsFullScreen()const override;
 		UTF8String GetWindowTitle()const override;
