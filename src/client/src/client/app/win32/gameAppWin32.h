@@ -23,8 +23,8 @@ namespace Cjing3D::Win32
 		GameAppWin32(HINSTANCE hInstance);
 		~GameAppWin32() = default;
 
-		using CreateGameFunc = std::function<SharedPtr<MainComponent>(const SharedPtr<Engine>)>;
-		void Run(InitConfig config, CreateGameFunc createGame = nullptr);
+		using CreateMainComponentFunc = std::function<SharedPtr<MainComponent>(const SharedPtr<Engine>)>;
+		void Run(InitConfig config, CreateMainComponentFunc mainCompCreateFunc = nullptr);
 
 	private:
 		HINSTANCE  mHinstance;

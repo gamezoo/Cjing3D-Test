@@ -2,6 +2,7 @@
 #include "imguiRhi\manager.h"
 #include "core\signal\eventQueue.h"
 #include "core\platform\events.h"
+#include "core\serialization\jsonArchive.h"
 
 namespace Cjing3D
 {
@@ -32,9 +33,25 @@ namespace Cjing3D
 	{
 	}
 
+	void GameEditor::PreInitialize()
+	{
+		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
+		RegisterWidget("AssertBrowser", CJING_MAKE_SHARED<EditorWidgetAssertBrowser>(*this));
+		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
+		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));
+		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this));
+		RegisterWidget("EntityList", CJING_MAKE_SHARED<EditorWidgetEntityList>(*this));
+	}
+
 	void GameEditor::Initialize()
 	{
 		MainComponent::Initialize();
+
+		// creat imgui context
+		ImGuiRHI::Manager::CreateContext();
+
+		// load editor settings
+		LoadEditorSetting();
 
 		// modulers
 		mAssertCompiler = CJING_MAKE_UNIQUE<AssertCompiler>(*this);
@@ -48,6 +65,11 @@ namespace Cjing3D
 			ImGuiConfigFlags_DockingEnable |
 			ImGuiConfigFlags_ViewportsEnable;
 		ImGuiRHI::Manager::Initialize(configFlags, mEngine->GetGameWindow()->GetWindowHandle());
+		
+		// load inifile from mem
+		ImGuiIO& io = ImGui::GetIO();
+		io.IniFilename = nullptr;
+		ImGui::LoadIniSettingsFromMemory(mSettings.mImGuiIni.c_str());
 
 		mEventConnection = mEngine->GetEventQueue()->Connect([this](const Event& event) {
 			HandleSystemMessage(event);
@@ -57,13 +79,10 @@ namespace Cjing3D
 		mRenderer = CJING_NEW(GameEditorRenderer);
 		SetRenderPath(mRenderer);
 
-		// widgets
-		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
-		RegisterWidget("AssertBrowser", CJING_MAKE_SHARED<EditorWidgetAssertBrowser>(*this));
-		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
-		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));
-		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this));
-		RegisterWidget("EntityList", CJING_MAKE_SHARED<EditorWidgetEntityList>(*this));
+		// init widgets
+		for (auto widget : mWidgets) {
+			widget->Initialize();
+		}
 
 		// setup asserts
 		mAssertCompiler->SetupAsserts();
@@ -71,6 +90,8 @@ namespace Cjing3D
 
 	void GameEditor::Uninitialize()
 	{
+		SaveEditorSetting();
+
 		for (auto widget : mWidgets) {
 			widget->Uninitialize();
 		}
@@ -128,6 +149,41 @@ namespace Cjing3D
 
 	void GameEditor::HandleSystemMessage(const Event& systemEvent)
 	{
+	}
+
+	void GameEditor::RequestExit()
+	{
+		if (!IsUniverseChanged()) 
+		{
+			GetEngine()->RequestExit();
+			return;
+		}
+	}
+
+	void GameEditor::LoadEditorSetting()
+	{
+		Logger::Info("Loading editor settings...");
+
+		JsonArchive archive(ArchiveMode::ArchiveMode_Read, mEngine->GetFileSystem());
+		if (!mSettings.Load(archive)) {
+			Debug::Die("Failed to load editor settings");
+		}
+	}
+
+	void GameEditor::SaveEditorSetting()
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.WantSaveIniSettings) {
+			mSettings.mImGuiIni = ImGui::SaveIniSettingsToMemory();
+		}
+
+		JsonArchive archive(ArchiveMode::ArchiveMode_Write, mEngine->GetFileSystem());
+		mSettings.Save(archive);
+	}
+
+	bool GameEditor::IsUniverseChanged() const
+	{
+		return false;
 	}
 
 	void GameEditor::RegisterWidget(const StringID& name, SharedPtr<EditorWidget> widget)

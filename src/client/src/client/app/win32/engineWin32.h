@@ -19,6 +19,7 @@ namespace Cjing3D::Win32
 		void Uninitialize()override;
 		void Update(Universe& universe, F32 dt)override;
 		void FixedUpdate()override;
+		void RequestExit()override;
 
 		void SetSystemEventQueue(const SharedPtr<EventQueue>& eventQueue);
 		void HandleSystemMessage(const Event& systemEvent);

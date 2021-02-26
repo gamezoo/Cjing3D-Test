@@ -25,6 +25,7 @@ namespace Cjing3D
 		virtual void DoSystemEvents() = 0;
 		virtual void Update(Universe& universe, F32 dt) = 0;
 		virtual void FixedUpdate() = 0;
+		virtual void RequestExit() = 0;
 
 		virtual BaseFileSystem* GetFileSystem() = 0;
 		virtual InputManager* GetInputManager() = 0;

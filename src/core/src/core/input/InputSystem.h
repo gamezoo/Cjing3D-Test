@@ -19,6 +19,7 @@ public:
 	virtual void Initialize();
 	virtual void Update(F32 deltaTime);
 	virtual void Uninitialize();
+	virtual void Reset();
 
 	// keyboard
 	bool IsKeyDown(const KeyCode& key, U32 index = 0)const;

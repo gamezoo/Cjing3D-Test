@@ -44,6 +44,13 @@ namespace Cjing3D::Win32
 		mImpl->mMouse = nullptr;
 	}
 
+	void InputManagerWin32::Reset()
+	{
+		InputManager::Reset();
+
+		mImpl->mInputText.clear();
+	}
+
 	void InputManagerWin32::ProcessMouseEvent(const RAWMOUSE& mouse)
 	{
 		mImpl->mMouse->ProcessMouseEvent(mouse);

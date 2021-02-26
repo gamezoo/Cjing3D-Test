@@ -6,6 +6,7 @@
 #include "core\signal\connection.h"
 #include "assetCompiler.h"
 #include "editorWidgets.h"
+#include "settings.h"
 
 namespace Cjing3D
 {
@@ -28,14 +29,20 @@ namespace Cjing3D
 		GameEditor(const std::shared_ptr<Engine>& engine);
 		virtual ~GameEditor();
 
+		void PreInitialize()override;
 		void Initialize()override;
 		void Uninitialize()override;
 		void Update(F32 deltaTime)override;
 		void HandleSystemMessage(const Event& systemEvent);
+		void RequestExit();
+
+		void LoadEditorSetting();
+		void SaveEditorSetting();
+
+		bool IsUniverseChanged()const;
 
 		void RegisterWidget(const StringID& name, SharedPtr<EditorWidget> widget);
 		SharedPtr<EditorWidget> GetWidget(const StringID& name);
-
 		AssertCompiler& GetAssertCompiler();
 
 	private:
@@ -46,6 +53,7 @@ namespace Cjing3D
 		bool mIsShowDemo = false;
 		bool mIsDockingEnable = false;
 		bool mIsDockingBegin = false;
+		EditorSettings mSettings;
 
 		HashMap<StringID, I32> mWidgetMap;
 		DynamicArray<SharedPtr<EditorWidget>> mWidgets;

@@ -26,12 +26,13 @@ namespace Cjing3D::Win32
 	{
 	}
 
-	void GameAppWin32::Run(InitConfig config, CreateGameFunc createGame)
+	void GameAppWin32::Run(InitConfig config, CreateMainComponentFunc mainCompCreateFunc)
 	{
 		if (config.mTitle == nullptr) {
 			config.mTitle = (String("Cjing3D ") + CjingVersion::GetVersionString()).c_str();
 		}
 
+		Debug::SetAbortOnDie(true);
 #ifdef DEBUG
 		Debug::SetDebugConsoleEnable(true);
 		Debug::SetDieOnError(true);
@@ -67,18 +68,25 @@ namespace Cjing3D::Win32
 		// create game engine
 		auto engine = CJING_MAKE_SHARED<EngineWin32>(gameWindow, config);
 		engine->SetSystemEventQueue(eventQueue);
+		
+		// create main component and preInitialize before engine
+		SharedPtr<MainComponent> mainComponent = nullptr;
+		if (mainCompCreateFunc != nullptr)
+		{
+			Debug::CheckAssertion(mainCompCreateFunc != nullptr);
+			mainComponent = mainCompCreateFunc(engine);
+			if (mainComponent == nullptr) {
+				Debug::Die("Failed to create main component.");
+			}
+			mainComponent->PreInitialize();
+		}
+			
+		// initialize engine
 		engine->Initialize();
 
-		// create main component
-		SharedPtr<MainComponent> mainGame = nullptr;
-		if (createGame != nullptr)
-		{
-			Debug::CheckAssertion(createGame != nullptr);
-			mainGame = createGame(engine);
-			if (mainGame == nullptr) {
-				Debug::Die("Failed to create game.");
-			}
-			mainGame->Initialize();
+		// initialize main component
+		if (mainComponent != nullptr) {
+			mainComponent->Initialize();
 		}
 
 		// run game
@@ -89,14 +97,14 @@ namespace Cjing3D::Win32
 			}
 			engine->DoSystemEvents();
 
-			if (mainGame != nullptr) {
-				mainGame->Tick();
+			if (mainComponent != nullptr) {
+				mainComponent->Tick();
 			}
 		}
 
 		// uninitialize
-		if (mainGame != nullptr) {
-			mainGame->Uninitialize();
+		if (mainComponent != nullptr) {
+			mainComponent->Uninitialize();
 		}
 
 		engine->Uninitialize();

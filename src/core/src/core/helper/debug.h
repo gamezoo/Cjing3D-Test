@@ -9,9 +9,6 @@
 
 namespace Cjing3D {
 
-// 是否将log信息写入到文件中
-#define CJING_LOG_WITH_FILE
-
 	class Exception : public std::exception
 	{
 	public:

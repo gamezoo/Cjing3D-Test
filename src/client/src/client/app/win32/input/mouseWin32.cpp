@@ -22,10 +22,11 @@ namespace Cjing3D::Win32
 		}
 
 		// mouse wheel
-		if (mouse.usButtonFlags & RI_MOUSE_WHEEL) 
+		const short wheelDelta = *(SHORT*)(&mouse.usButtonData);
+		if (wheelDelta)
 		{		
-			mPrevMouseState = mMouseState;
-			mMouseState.mMouseWheelDelta = *(SHORT*)(&mouse.usButtonData);
+			mPrevMouseState.mMouseWheelDelta = mMouseState.mMouseWheelDelta;
+			mMouseState.mMouseWheelDelta = (F32)wheelDelta / WHEEL_DELTA;
 		}
 
 		// mouse button

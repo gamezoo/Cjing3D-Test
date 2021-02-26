@@ -168,6 +168,9 @@ namespace Cjing3D::Win32
 
 	void EngineWin32::Update(Universe& universe, F32 dt)
 	{
+		// update input system
+		mImpl->mInputSystem->Update(dt);
+
 		// update universe
 		universe.Update(dt);
 
@@ -185,12 +188,15 @@ namespace Cjing3D::Win32
 		for (ModulerPlugin* plugin : mModulerPlugins) {
 			plugin->Update(dt);
 		}
-		// update input system
-		mImpl->mInputSystem->Update(dt);
 	}
 
 	void EngineWin32::FixedUpdate()
 	{
+	}
+
+	void EngineWin32::RequestExit()
+	{
+		mImpl->mGameWindowWin32->SetIsExiting(true);
 	}
 
 	void EngineWin32::SetSystemEventQueue(const SharedPtr<EventQueue>& eventQueue)
@@ -226,12 +232,12 @@ namespace Cjing3D::Win32
 		else if (systemEvent.Is<ViewResizeEvent>())
 		{
 			const ViewResizeEvent* event = systemEvent.As<ViewResizeEvent>();
-
 		}
 	}
 
 	void EngineWin32::DoSystemEvents()
 	{
+		mImpl->mInputSystem->Reset();
 		mImpl->mSystemEventQueue->FireEvents();
 	}
 

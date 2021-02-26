@@ -13,6 +13,7 @@ namespace Cjing3D
 		MainComponent(const SharedPtr<Engine>& engine);
 		virtual ~MainComponent();
 
+		virtual void PreInitialize() {}
 		virtual void Initialize();
 		virtual void Tick();
 		virtual void Uninitialize();

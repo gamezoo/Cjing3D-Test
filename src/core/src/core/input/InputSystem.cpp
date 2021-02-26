@@ -88,6 +88,11 @@ namespace Cjing3D
 		mInputKeys.clear();
 	}
 
+	void InputManager::Reset()
+	{
+		GetMouse()->Reset();
+	}
+
 	bool InputManager::IsKeyPressed(const KeyCode& key, U32 index)
 	{
 		if (!IsKeyDown(key, index)) {

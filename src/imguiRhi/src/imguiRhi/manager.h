@@ -18,6 +18,7 @@ namespace Cjing3D
 	{
 		namespace Manager
 		{
+			void CreateContext();
 			void Initialize(ImGuiConfigFlags configFlags, Platform::WindowType mainWindow);
 			void Uninitialize();
 			bool IsInitialized();

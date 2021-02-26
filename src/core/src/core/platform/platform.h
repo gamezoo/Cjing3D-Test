@@ -74,6 +74,7 @@ namespace Platform {
 	bool ShellExecuteOpenAndWait(const char* path, const char* args);
 	void CallSystem(const char* cmd);
 	I32  GetDPI();
+	void CopyToClipBoard(const char* txt);
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// window

@@ -37,7 +37,7 @@ namespace Cjing3D
 		JsonArchive(const String& path, ArchiveMode mode, BaseFileSystem* fileSystem = nullptr);
 		~JsonArchive();
 
-		void OpenJson(const char* path);
+		bool OpenJson(const char* path);
 		void SetPath(const char* path) override;
 		bool Save(const String& path) override;
 

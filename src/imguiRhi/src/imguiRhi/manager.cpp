@@ -297,6 +297,11 @@ namespace ImGuiRHI
 
 	}
 
+	void Manager::CreateContext()
+	{
+		ImGui::CreateContext();
+	}
+
 	void Manager::Initialize(ImGuiConfigFlags configFlags, Platform::WindowType mainWindow)
 	{
 		Debug::CheckAssertion(!IsInitialized());

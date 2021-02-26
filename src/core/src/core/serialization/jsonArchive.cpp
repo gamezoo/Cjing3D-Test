@@ -47,19 +47,21 @@ namespace Cjing3D
 		}
 	}
 
-	void JsonArchive::OpenJson(const char* path)
+	bool JsonArchive::OpenJson(const char* path)
 	{
 		if (!Load(path)) {
-			return;
+			return false;
 		}
 		try
 		{
 			mRootJson = nlohmann::json::parse(mDataBuffer, mDataBuffer + mDataSize);
+			return true;
 		}
 		catch (const std::exception& e)
 		{
 			Logger::Warning("Fail to open json file:%s, %s", path, e.what());
 			Close();
+			return false;
 		}
 	}
 

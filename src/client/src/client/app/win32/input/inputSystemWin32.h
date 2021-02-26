@@ -15,6 +15,7 @@ namespace Cjing3D::Win32
 
 		void Initialize(GameWindowWin32& gameWindow);
 		void Uninitialize()override;
+		void Reset()override;
 
 		void ProcessMouseEvent(const RAWMOUSE& mouse);
 		void ProcessKeyboardEvent(const RAWKEYBOARD& keyboard);

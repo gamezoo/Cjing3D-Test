@@ -257,6 +257,28 @@ namespace Platform {
 		return GetDeviceCaps(hdc, LOGPIXELSX);
 	}
 
+	void CopyToClipBoard(const char* txt)
+	{
+		if (!::OpenClipboard(NULL)) {
+			return;
+		}
+
+		size_t len = StringLength(txt);	
+		// alloc global mem
+		HGLOBAL memHandle = ::GlobalAlloc(GMEM_MOVEABLE, len * sizeof(char));
+		if (!memHandle) {
+			return;
+		}
+		char* mem = (char*)::GlobalLock(memHandle);
+		CopyString(Span(mem, len), txt);
+		::GlobalUnlock(memHandle);
+
+		// set clipboard
+		::EmptyClipboard();
+		::SetClipboardData(CF_TEXT, memHandle);
+		::CloseClipboard();
+	}
+
 	bool ShellExecuteCmdAndWait(const char* path, const char* args)
 	{
 		return false;
