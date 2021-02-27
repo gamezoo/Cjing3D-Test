@@ -233,6 +233,7 @@ namespace Cjing3D
 		{
 			auto* renderPass = rendrPassInst.mRenderPass->mImpl;
 			auto& frameBindingSetDesc = renderPass->mFrameBindingSetDesc;
+			frameBindingSetDesc.mAttachments.reserve(renderPass->mRTVCount + 1);
 
 			// rtvs
 			for (int i = 0; i < renderPass->mRTVCount; i++)

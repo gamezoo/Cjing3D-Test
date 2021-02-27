@@ -4,6 +4,11 @@
 #include "core\platform\events.h"
 #include "core\serialization\jsonArchive.h"
 
+#include "widgets\assertBrowser.h"
+#include "widgets\widgetLog.h"
+#include "widgets\widgetMenu.h"
+#include "widgets\widgetSettings.h"
+
 namespace Cjing3D
 {
 	void GameEditorRenderer::Start()

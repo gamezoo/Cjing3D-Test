@@ -18,12 +18,6 @@ namespace Cjing3D
 		Path mInPath;
 	};
 
-	struct ResourceItem
-	{
-		Path mResPath;
-		ResourceType mResType;
-	};
-
 	class AssertCompilerImpl;
 	struct AssertCompilerHook : public ResourceManager::LoadHook
 	{
@@ -51,7 +45,7 @@ namespace Cjing3D
 		MPMCBoundedQueue<ResCompileTask> mCompiledTasks;
 		volatile I32 mPendingTasks = 0;
 
-		HashMap<U32, ResourceItem> mResources;
+		HashMap<U32, AssertCompiler::ResourceItem> mResources;
 		Signal<void()> OnListChanged;
 
 		bool mIsExit = false;
@@ -242,5 +236,16 @@ namespace Cjing3D
 	Signal<void()>& AssertCompiler::GetOnListChanged()
 	{
 		return mImpl->OnListChanged;
+	}
+
+	const HashMap<U32, AssertCompiler::ResourceItem>& AssertCompiler::MapResources()const
+	{
+		mImpl->mRWLock.BeginWrite();
+		return mImpl->mResources;
+	}
+
+	void AssertCompiler::UnmapResources()
+	{
+		mImpl->mRWLock.EndWrite();
 	}
 }

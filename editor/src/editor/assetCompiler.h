@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource\resourceManager.h"
+#include "core\container\hashMap.h"
 
 namespace Cjing3D
 {
@@ -16,6 +17,15 @@ namespace Cjing3D
 		void Update(F32 deltaTime);
 
 		Signal<void()>& GetOnListChanged();
+		
+		struct ResourceItem
+		{
+			Path mResPath;
+			Path mResDir;
+			ResourceType mResType;
+		};
+		const HashMap<U32, ResourceItem>& MapResources()const;
+		void UnmapResources();
 
 	private:
 		class AssertCompilerImpl* mImpl = nullptr;

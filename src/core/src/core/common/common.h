@@ -10,6 +10,7 @@
 #include "core\helper\stringID.h"
 #include "core\memory\memory.h"
 #include "core\container\span.h"
+#include "core\container\algorithm.h"
 #include "core\helper\debug.h"
 #include "core\helper\log.h"
 #include "math\vec_facade.h"

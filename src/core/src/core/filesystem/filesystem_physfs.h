@@ -25,7 +25,7 @@ namespace Cjing3D
 		virtual U64  GetLastModTime(const char* path);
 		virtual bool MoveFile(const char* from, const char* to);
 
-		DynamicArray<const char*> EnumerateFiles(const char* path);
+		DynamicArray<String> EnumerateFiles(const char* path, int mask = EnumrateMode_ALL)override;
 	private:
 		MaxPathString mBasePath;
 	};

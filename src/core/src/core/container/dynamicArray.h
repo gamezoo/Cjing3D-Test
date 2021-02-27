@@ -16,8 +16,7 @@ namespace Cjing3D
 		void Grow()
 		{
 			U32 newCapacity = mCapacity == 0 ? 4 : mCapacity * 2;
-			mData = (T*)CJING_ALLOCATOR_REMALLOC_ALIGN(mAllocator, mData, newCapacity * sizeof(T), alignof(T));
-			mCapacity = newCapacity;
+			reserve(newCapacity);
 		}
 
 		void CallDestructors(T* begin, T* end)
@@ -26,6 +25,45 @@ namespace Cjing3D
 				begin->~T();
 			}
 		}
+
+		void UninitialiedMove(T* dst, T* src, U32 count)
+		{
+			for (U32 i = count - 1; i < count; i--) {
+				new (dst + i) T(static_cast<T&&>(src[i]));
+			}
+		}
+
+		void resizeImpl(U32 capacity)
+		{
+			U32 copySize = capacity < mSize ? capacity : mSize;
+			T* newData = nullptr;
+			if (capacity > 0)
+			{
+				if constexpr (__is_trivially_copyable(T)) {
+					newData = (T*)CJING_ALLOCATOR_REMALLOC_ALIGN(mAllocator, mData, capacity * sizeof(T), alignof(T));
+				}
+				else
+				{
+					T* newData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, capacity * sizeof(T), alignof(T));
+					UninitialiedMove(newData, mData, copySize);
+					CallDestructors(mData, mData + copySize);
+				}
+			}
+
+			if (copySize < mSize)
+			{
+				if constexpr (!__is_trivially_copyable(T)) 
+				{
+					CallDestructors(mData + copySize, mData + mSize);
+					CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
+				}
+			}
+
+			mData = newData;
+			mSize = copySize;
+			mCapacity = capacity;
+		}
+
 
 	public:
 		DynamicArray() = default;
@@ -41,7 +79,11 @@ namespace Cjing3D
 
 		DynamicArray(const DynamicArray& rhs)
 		{
-			*this = rhs;
+			resizeImpl(rhs.mSize);
+			mSize = rhs.mSize;
+			for (U32 i = 0; i < mSize; ++i) {
+				new((char*)(mData + i)) T(rhs.mData[i]);
+			}
 		}
 
 		DynamicArray(DynamicArray&& rhs)
@@ -51,24 +93,15 @@ namespace Cjing3D
 
 		void operator= (const DynamicArray& rhs)
 		{
-			if (this != &rhs)
-			{
-				if (mCapacity > 0)
-				{
-					CallDestructors(mData, mData + mSize);
-					CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
-					mData = nullptr;
-				}
+			if (rhs.mSize != mSize) {
+				resizeImpl(rhs.mSize);
+			}
 
-				if (rhs.mCapacity > 0) {
-					mData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, rhs.mCapacity * sizeof(T), alignof(T));
-				}		
-				mCapacity = rhs.mCapacity;
-				mSize = rhs.mSize;
+			CallDestructors(mData, mData + mSize);
 
-				for (U32 i = 0; i < mSize; ++i) {
-					new((char*)(mData + i)) T(rhs.mData[i]);
-				}
+			mSize = rhs.mSize;
+			for (U32 i = 0; i < mSize; ++i) {
+				new((char*)(mData + i)) T(rhs.mData[i]);
 			}
 		}
 
@@ -151,6 +184,14 @@ namespace Cjing3D
 				}
 			}
 			return -1;
+		}
+
+		void Fill(const T& value)
+		{
+			CallDestructors(mData, mData + mSize);
+			for (U32 i = 0; i < mSize; ++i) {
+				new((char*)(mData + i)) T(value);
+			}
 		}
 
 		template <typename R>
@@ -372,10 +413,17 @@ namespace Cjing3D
 		{
 			if (capacity > mCapacity)
 			{
-				T* newData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, capacity * sizeof(T), alignof(T));
-				Memory::Memcpy(newData, mData, sizeof(T) * mSize);
-				CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
-				mData = newData;
+				if constexpr (__is_trivially_copyable(T)) {
+					mData = (T*)CJING_ALLOCATOR_REMALLOC_ALIGN(mAllocator, mData, capacity * sizeof(T), alignof(T));
+				}
+				else
+				{
+					T* newData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, capacity * sizeof(T), alignof(T));
+					UninitialiedMove(newData, mData, mSize);
+					CallDestructors(mData, mData + mSize);
+					CJING_ALLOCATOR_FREE_ALIGN(mAllocator, mData);
+					mData = newData;
+				}
 				mCapacity = capacity;
 			}
 		}

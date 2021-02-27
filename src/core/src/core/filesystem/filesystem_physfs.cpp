@@ -259,12 +259,22 @@ namespace Cjing3D {
 		return Platform::MoveFile(srcPath.c_str(), toPath.c_str());
 	}
 
-	DynamicArray<const char*> FileSystemPhysfs::EnumerateFiles(const char* path)
+	DynamicArray<String> FileSystemPhysfs::EnumerateFiles(const char* path, int mask)
 	{
-		DynamicArray<const char*> ret;
-		char** rc = PHYSFS_enumerateFiles(path);
-		for (char** i = rc; *i != NULL; i++) {
-			ret.push(*i);
+		DynamicArray<String> ret;
+		char** rc = EqualString(path, ".") ? PHYSFS_enumerateFiles("") : PHYSFS_enumerateFiles(path);
+		for (char** i = rc; *i != NULL; i++) 
+		{
+			if (mask & EnumrateMode_DIRECTORY && PHYSFS_isDirectory(*i))
+			{
+				ret.push(*i);
+				continue;
+			}
+			if (mask & EnumrateMode_FILE && !PHYSFS_isDirectory(*i))
+			{
+				ret.push(*i);
+				continue;
+			}
 		}
 		PHYSFS_freeList(rc);
 		return ret;

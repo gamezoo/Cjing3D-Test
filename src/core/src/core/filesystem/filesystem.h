@@ -7,6 +7,13 @@
 
 namespace Cjing3D
 {
+	enum EnumrateMode
+	{
+		EnumrateMode_FILE = 1 << 0,
+		EnumrateMode_DIRECTORY = 1 << 1,
+		EnumrateMode_ALL = EnumrateMode_FILE | EnumrateMode_DIRECTORY
+	};
+
 	/// //////////////////////////////////////////////////////////////////////////////////////////////////
 	/// BaseFileSystem
 	class BaseFileSystem
@@ -28,5 +35,6 @@ namespace Cjing3D
 		virtual bool OpenFile(const char* path, File& file, FileFlags flags) = 0;
 		virtual U64  GetLastModTime(const char* path) = 0;
 		virtual bool MoveFile(const char* from, const char* to) = 0;
+		virtual DynamicArray<String> EnumerateFiles(const char* path, int mask = EnumrateMode_ALL) = 0;
 	};
 }

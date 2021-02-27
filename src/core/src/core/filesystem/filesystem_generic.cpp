@@ -79,6 +79,34 @@ namespace Cjing3D {
 		return Platform::MoveFile(srcPath.c_str(), toPath.c_str());
 	}
 
+	DynamicArray<String> FileSystemGeneric::EnumerateFiles(const char* path, int mask)
+	{
+		DynamicArray<String> paths;
+		size_t fileCount = File::EnumerateFiles(path, nullptr);
+		if (fileCount > 0)
+		{
+			DynamicArray<FileInfo> fileInfos;
+			fileInfos.resize(fileCount);
+			paths.reserve(fileCount);
+
+			File::EnumerateFiles(path, nullptr, fileInfos.data());
+			for (const auto& fileInfo : fileInfos) 
+			{
+				if (mask & EnumrateMode_DIRECTORY && fileInfo.mIsDirectory)
+				{
+					paths.push(fileInfo.mFilename);
+					continue;
+				}
+				if (mask & EnumrateMode_FILE && !fileInfo.mIsDirectory)
+				{
+					paths.push(fileInfo.mFilename);
+					continue;
+				}
+			}
+		}
+		return paths;
+	}
+
 	bool FileSystemGeneric::ReadFile(const char* path, DynamicArray<char>& data)
 	{
 		MaxPathString fullpath(mBasePath, path);
