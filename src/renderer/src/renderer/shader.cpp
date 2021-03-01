@@ -67,6 +67,11 @@ namespace Cjing3D
 			return -1;
 		}
 
+		virtual void RegisterExtensions()
+		{
+			ResourceManager::RegisterExtension("jsf", Shader::ResType);
+		}
+
 		virtual Resource* CreateResource()
 		{
 			Shader* shader = CJING_NEW(Shader);

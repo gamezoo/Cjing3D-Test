@@ -118,6 +118,7 @@ namespace Cjing3D
 		virtual bool LoadResource(Resource* resource, const char*name, File& file) = 0;
 		virtual bool DestroyResource(Resource* resource) = 0;
 		virtual bool IsNeedConvert()const = 0;
+		virtual void RegisterExtensions() = 0;
 	};
 
 #define DECLARE_RESOURCE(CLASS_NAME, NAME)                                                      \

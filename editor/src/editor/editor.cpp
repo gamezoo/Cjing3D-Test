@@ -4,7 +4,7 @@
 #include "core\platform\events.h"
 #include "core\serialization\jsonArchive.h"
 
-#include "widgets\assertBrowser.h"
+#include "widgets\assetBrowser.h"
 #include "widgets\widgetLog.h"
 #include "widgets\widgetMenu.h"
 #include "widgets\widgetSettings.h"
@@ -41,7 +41,7 @@ namespace Cjing3D
 	void GameEditor::PreInitialize()
 	{
 		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
-		RegisterWidget("AssertBrowser", CJING_MAKE_SHARED<EditorWidgetAssertBrowser>(*this));
+		RegisterWidget("AssetBrowser", CJING_MAKE_SHARED<EditorWidgetAssetBrowser>(*this));
 		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
 		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));
 		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this));
@@ -59,9 +59,9 @@ namespace Cjing3D
 		LoadEditorSetting();
 
 		// modulers
-		mAssertCompiler = CJING_MAKE_UNIQUE<AssertCompiler>(*this);
+		mAssetCompiler = CJING_MAKE_UNIQUE<AssetCompiler>(*this);
 
-		// load shader lazy after assert compiler initialzed
+		// load shader lazy after asset compiler initialzed
 		Renderer::LoadAllShaders();
 
 		// imgui
@@ -89,8 +89,8 @@ namespace Cjing3D
 			widget->Initialize();
 		}
 
-		// setup asserts
-		mAssertCompiler->SetupAsserts();
+		// setup assets
+		mAssetCompiler->SetupAssets();
 	}
 
 	void GameEditor::Uninitialize()
@@ -105,7 +105,7 @@ namespace Cjing3D
 		SetRenderPath(nullptr);
 		CJING_DELETE(mRenderer);
 
-		mAssertCompiler.Reset();
+		mAssetCompiler.Reset();
 
 		ImGuiRHI::Manager::Uninitialize();
 		MainComponent::Uninitialize();
@@ -117,7 +117,7 @@ namespace Cjing3D
 
 		/////////////////////////////////////////////////////////////////////////
 		// update 
-		mAssertCompiler->Update(deltaTime);
+		mAssetCompiler->Update(deltaTime);
 
 		/////////////////////////////////////////////////////////////////////////
 		// update gui
@@ -211,9 +211,9 @@ namespace Cjing3D
 		return mWidgets[*index];
 	}
 
-	AssertCompiler& GameEditor::GetAssertCompiler()
+	AssetCompiler& GameEditor::GetAssetCompiler()
 	{
-		return *mAssertCompiler;
+		return *mAssetCompiler;
 	}
 
 	void GameEditor::DockingBegin()

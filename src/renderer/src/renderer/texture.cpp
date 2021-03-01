@@ -6,6 +6,11 @@ namespace Cjing3D
 	class TextureFactory : public ResourceFactory
 	{
 	public:
+		virtual void RegisterExtensions()
+		{
+			ResourceManager::RegisterExtension("png", Texture::ResType);
+		}
+
 		virtual Resource* CreateResource()
 		{
 			Texture* texture = CJING_NEW(Texture);

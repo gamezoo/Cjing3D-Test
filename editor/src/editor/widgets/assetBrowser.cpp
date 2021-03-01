@@ -1,19 +1,19 @@
-#include "assertBrowser.h"
+#include "assetBrowser.h"
 #include "assetCompiler.h"
 #include "editor.h"
 #include "imguiRhi\imguiEx.h"
 
 namespace Cjing3D
 {
-	EditorWidgetAssertBrowser::EditorWidgetAssertBrowser(GameEditor& editor) :
+	EditorWidgetAssetBrowser::EditorWidgetAssetBrowser(GameEditor& editor) :
 		EditorWidget(editor)
 	{
-		mTitleName = "AssertBrowser";
+		mTitleName = "AssetBrowser";
 		mIsWindow = true;
 		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
 	}
 
-	void EditorWidgetAssertBrowser::Update(F32 deltaTime)
+	void EditorWidgetAssetBrowser::Update(F32 deltaTime)
 	{
 		if (mIsDirty) {
 			SetCurrentDir(mCurrentDir);
@@ -63,46 +63,46 @@ namespace Cjing3D
 
 	}
 
-	void EditorWidgetAssertBrowser::SetCurrentDir(const char* path)
+	void EditorWidgetAssetBrowser::SetCurrentDir(const char* path)
 	{
 		mIsDirty = false;
 		mCurrentSubDirs.clear();
-		mAssertFileInfos.clear();
+		mAssetFileInfos.clear();
 
 		auto fileSystem = mEditor.GetEngine()->GetFileSystem();
 		Path::FormatPath(path, mCurrentDir.toSpan());
 		auto dirs = fileSystem->EnumerateFiles(mCurrentDir, EnumrateMode_DIRECTORY);
 		for (const auto dir : dirs)
 		{
-			if (dir[0] != '.' && !EqualString(dir, COMPILED_PATH_NAME)) {
+			if (dir[0] != '.') {
 				mCurrentSubDirs.push(dir);
 			}
 		}
 
 		// map compiled resources and push resources from current directory
-		auto& assertCompiler = mEditor.GetAssertCompiler();
-		auto& resources = assertCompiler.MapResources();
+		auto& assetCompiler = mEditor.GetAssetCompiler();
+		auto& resources = assetCompiler.MapResources();
 
 		U32 dirHash = Path(path).GetHash();
 		for (const auto& kvp : resources)
 		{
 			auto& item = kvp.second;
-			if (item.mResDir.GetHash() != dirHash) {
+			if (item.mResDirHash != dirHash) {
 				continue;
 			}
 
-			auto& assertFileInfo = mAssertFileInfos.emplace();
-			assertFileInfo.mFilePath = item.mResPath.c_str();
+			auto& assetFileInfo = mAssetFileInfos.emplace();
+			assetFileInfo.mFilePath = item.mResPath.c_str();
 		}
 		// sort by filename
-		std::sort(mAssertFileInfos.begin(), mAssertFileInfos.end(),
-			[](const AssertFileInfo& a, const AssertFileInfo& b) {
+		std::sort(mAssetFileInfos.begin(), mAssetFileInfos.end(),
+			[](const AssetFileInfo& a, const AssetFileInfo& b) {
 				return strcmp(a.mFilePath.c_str(), b.mFilePath.c_str());
 			});
-		assertCompiler.UnmapResources();
+		assetCompiler.UnmapResources();
 	}
 
-	void EditorWidgetAssertBrowser::ShowFileList()
+	void EditorWidgetAssetBrowser::ShowFileList()
 	{
 	}
 }

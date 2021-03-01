@@ -44,7 +44,7 @@ namespace Cjing3D
 				}
 				else
 				{
-					T* newData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, capacity * sizeof(T), alignof(T));
+					newData = (T*)CJING_ALLOCATOR_MALLOC_ALIGN(mAllocator, capacity * sizeof(T), alignof(T));
 					UninitialiedMove(newData, mData, copySize);
 					CallDestructors(mData, mData + copySize);
 				}

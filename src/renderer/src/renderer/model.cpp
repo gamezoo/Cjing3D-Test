@@ -6,6 +6,12 @@ namespace Cjing3D
 	class ModelFactory : public ResourceFactory
 	{
 	public:
+		virtual void RegisterExtensions()
+		{
+			ResourceManager::RegisterExtension("obj", Model::ResType);
+			ResourceManager::RegisterExtension("fbx", Model::ResType);
+		}
+
 		virtual Resource* CreateResource()
 		{
 			Model* model = CJING_NEW(Model);

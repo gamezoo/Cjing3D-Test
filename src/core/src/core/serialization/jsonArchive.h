@@ -6,6 +6,7 @@
 #include "math\maths.h"
 #include "json\json.hpp"
 #include "core\container\dynamicArray.h"
+#include "core\filesystem\path.h"
 
 #include <stack>
 #include <string>
@@ -340,6 +341,28 @@ namespace Cjing3D
 					return;
 				}
 				*currentJson = nlohmann::json(obj);
+			}
+		};
+
+		template<>
+		struct ArchiveTypeNormalMapping<Path>
+		{
+			static void Unserialize(Path& obj, JsonArchive& archive)
+			{
+				nlohmann::json* currentJson = archive.GetCurrentJson();
+				if (currentJson == nullptr) {
+					return;
+				}
+				obj = currentJson->get<std::string>().c_str();
+			}
+
+			static void Serialize(const Path& obj, JsonArchive& archive)
+			{
+				nlohmann::json* currentJson = archive.GetCurrentJson();
+				if (currentJson == nullptr) {
+					return;
+				}
+				*currentJson = nlohmann::json(obj.c_str());
 			}
 		};
 

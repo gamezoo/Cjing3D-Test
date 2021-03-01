@@ -4,10 +4,10 @@
 
 namespace Cjing3D
 {
-	class EditorWidgetAssertBrowser : public EditorWidget
+	class EditorWidgetAssetBrowser : public EditorWidget
 	{
 	public:
-		EditorWidgetAssertBrowser(GameEditor& editor);
+		EditorWidgetAssetBrowser(GameEditor& editor);
 		void Update(F32 deltaTime)override;
 
 		void SetCurrentDir(const char* path);
@@ -20,10 +20,10 @@ namespace Cjing3D
 		bool mIsDirty = true;
 		DynamicArray<MaxPathString> mCurrentSubDirs;
 
-		struct AssertFileInfo
+		struct AssetFileInfo
 		{
 			MaxPathString mFilePath;
 		};
-		DynamicArray<AssertFileInfo> mAssertFileInfos;
+		DynamicArray<AssetFileInfo> mAssetFileInfos;
 	};
 }

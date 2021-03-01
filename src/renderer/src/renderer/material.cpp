@@ -6,6 +6,11 @@ namespace Cjing3D
 	class MaterialFactory : public ResourceFactory
 	{
 	public:
+		virtual void RegisterExtensions()
+		{
+			ResourceManager::RegisterExtension("mat", Material::ResType);
+		}
+
 		virtual Resource* CreateResource()
 		{
 			Material* material = CJING_NEW(Material);

@@ -7,27 +7,28 @@ namespace Cjing3D
 {
 	class GameEditor;
 
-	class AssertCompiler
+	class AssetCompiler
 	{
 	public:
-		AssertCompiler(GameEditor& gameEditor);
-		~AssertCompiler();
+		AssetCompiler(GameEditor& gameEditor);
+		~AssetCompiler();
 
-		void SetupAsserts();
+		void SetupAssets();
 		void Update(F32 deltaTime);
+		void CompileResources();
 
 		Signal<void()>& GetOnListChanged();
 		
 		struct ResourceItem
 		{
 			Path mResPath;
-			Path mResDir;
+			U32 mResDirHash;
 			ResourceType mResType;
 		};
 		const HashMap<U32, ResourceItem>& MapResources()const;
 		void UnmapResources();
 
 	private:
-		class AssertCompilerImpl* mImpl = nullptr;
+		class AssetCompilerImpl* mImpl = nullptr;
 	};
 }

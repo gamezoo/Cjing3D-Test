@@ -9,6 +9,7 @@
 #include "core\plugin\pluginManager.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\platform\platform.h"
+#include "core\string\stringUtils.h"
 
 namespace Cjing3D
 {
@@ -51,6 +52,7 @@ namespace ResourceManager
 		FactoryTable mResourceFactoires;
 		ResourceTypeTable mResourceTypeTable;
 		DynamicArray<Resource*> mReleasedResources;
+		HashMap<U32, ResourceType> mRegisteredExt;
 
 		Concurrency::RWLock mRWLock;
 		BaseFileSystem* mFilesystem = nullptr;
@@ -235,7 +237,7 @@ namespace ResourceManager
 		}
 
 		MaxPathString convertedPath, convertedFileName;
-		sprintf_s(convertedPath.data(), convertedPath.size(), "converter_output");
+		sprintf_s(convertedPath.data(), convertedPath.size(), COMPILED_PATH_NAME);
 		sprintf_s(convertedFileName.data(), convertedFileName.size(), "%s.%s.converted", fileName.data(), ext.data());
 
 		// converted full path
@@ -390,7 +392,7 @@ namespace ResourceManager
 	class ResourceConvertJob : public JobSystem::TaskJob
 	{
 	public:
-		ResourceConvertJob(Resource& resource, const ResourceType& resType, const char* srcPath, const char* convertedPath);
+		ResourceConvertJob(Resource* resource, const ResourceType& resType, const char* srcPath, const char* convertedPath);
 		virtual ~ResourceConvertJob();
 
 		void SetLoadJob(ResourceLoadJob* job) { mResLoadJob = job; }
@@ -399,7 +401,7 @@ namespace ResourceManager
 		void OnCompleted()override;
 
 	private:
-		Resource& mResource;
+		Resource* mResource;
 		ResourceType mResType;
 		String mSrcPath;
 		String mConvertedPath;
@@ -411,7 +413,7 @@ namespace ResourceManager
 		static const I32 MaxConvertTimes = 3;
 	};
 
-	ResourceConvertJob::ResourceConvertJob(Resource& resource, const ResourceType& resType, const char* srcPath, const char* convertedPath) :
+	ResourceConvertJob::ResourceConvertJob(Resource* resource, const ResourceType& resType, const char* srcPath, const char* convertedPath) :
 		JobSystem::TaskJob("ResourceConvertJob"),
 		mResource(resource),
 		mResType(resType),
@@ -421,13 +423,17 @@ namespace ResourceManager
 		mConversionRet(false)
 	{
 		Concurrency::AtomicIncrement(&mImpl->mPendingResJobs);
-		Debug::CheckAssertion(mResource.SetConverting(true));
+		if (mResource != nullptr) {
+			Debug::CheckAssertion(mResource->SetConverting(true));
+		}
 	}
 
 	ResourceConvertJob::~ResourceConvertJob()
 	{
 		Concurrency::AtomicDecrement(&mImpl->mPendingResJobs);
-		mResource.SetConverting(false);
+		if (mResource != nullptr) {
+			mResource->SetConverting(false);
+		}
 	}
 
 	void ResourceConvertJob::OnWork(I32 param)
@@ -472,7 +478,9 @@ namespace ResourceManager
 			}
 			else
 			{
-				mResource.OnLoaded(false);
+				if (mResource != nullptr) {
+					mResource->OnLoaded(false);
+				}
 			}
 		}
 
@@ -579,6 +587,7 @@ namespace ResourceManager
 		if (!IsInitialized()) {
 			return;
 		}
+		factory->RegisterExtensions();
 		mImpl->mResourceFactoires.insert(type.Type(), factory);
 	}
 
@@ -710,7 +719,12 @@ namespace ResourceManager
 		}                                                                                           
 	}
 
-	bool CheckResourceNeedConverter(const Path& inPath, Path* outPath)
+	Path GetResourceConvertedPath(const Path& inPath)
+	{
+		return mImpl->GetResourceConvertedPath(inPath);
+	}
+
+	bool CheckResourceNeedConvert(const Path& inPath, Path* outPath)
 	{
 		// converted full path
 		Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
@@ -771,7 +785,7 @@ namespace ResourceManager
 		}
 
 		Path convertedPath;
-		if (!CheckResourceNeedConverter(inPath, &convertedPath)) {
+		if (!CheckResourceNeedConvert(inPath, &convertedPath)) {
 			return true;
 		}
 	
@@ -784,7 +798,7 @@ namespace ResourceManager
 			mImpl->mFilesystem->CreateDir(dirPath.c_str());
 		}
 
-		auto* convertJob = CJING_NEW(ResourceConvertJob)(*resource, type, inPath.c_str(), convertedPath.c_str());
+		auto* convertJob = CJING_NEW(ResourceConvertJob)(resource, type, inPath.c_str(), convertedPath.c_str());
 		convertJob->SetIsImmediate(isImmediate);
 		if (isImmediate) {
 			convertJob->RunTaskImmediate(0);
@@ -887,6 +901,22 @@ namespace ResourceManager
 #endif
 			}
 		}
+	}
+
+	void RegisterExtension(const char* ext, ResourceType type)
+	{
+		mImpl->mRegisteredExt.insert(StringUtils::StringToHash(ext), type);
+	}
+
+	ResourceType GetResourceType(const char* path)
+	{
+		MaxPathString ext;
+		Path::GetPathExtension(Span(path, StringLength(path)), ext.toSpan());
+		auto it = mImpl->mRegisteredExt.find(StringUtils::StringToHash(ext.c_str()));
+		if (it != nullptr) {
+			return *it;
+		}
+		return ResourceType::INVALID_TYPE;
 	}
 
 	AsyncResult ReadFileData(const char* path, char*& buffer, size_t& size, AsyncHandle* asyncHanlde)

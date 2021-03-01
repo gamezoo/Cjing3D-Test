@@ -6,8 +6,9 @@ namespace Cjing3D
 {
 	class BaseFileSystem;
 
-	static const char* COMPILED_PATH_NAME = "converter_output";
-	static const char* COMPILED_PATH_LIST = "converter_output/assetList.txt";
+	static const char* COMPILED_PATH_NAME = ".assets";
+	static const char* COMPILED_PATH_LIST = ".assets/_list.txt";
+	static const char* TEMP_COMPILED_PATH_LIST = ".assets/tmp_list.txt";
 
 	namespace ResourceManager
 	{
@@ -18,8 +19,14 @@ namespace Cjing3D
 		void UnregisterFactory(ResourceType type);
 
 		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate);
-		bool CheckResourceNeedConverter(const Path& inPath, Path* outPath = nullptr);
+
+		// TODO; move the part about converter to editor's assertCompiler
+		Path GetResourceConvertedPath(const Path& inPath);
+		bool CheckResourceNeedConvert(const Path& inPath, Path* outPath = nullptr);
 		bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate = false);
+
+		void RegisterExtension(const char* ext, ResourceType type);
+		ResourceType GetResourceType(const char* ext);
 
 		template<typename T>
 		T* LoadResource(const Path& inPath)
@@ -40,6 +47,8 @@ namespace Cjing3D
 		void ProcessReleasedResources();
 		void WaitForResource(Resource* resource);
 		void WaitAll();
+
+		ResourceType GetResourceType(const char* path);
 
 		enum AsyncResult
 		{

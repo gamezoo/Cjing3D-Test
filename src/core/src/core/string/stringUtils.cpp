@@ -150,6 +150,18 @@ namespace StringUtils
 #endif
 	}
 
+	bool StartsWithPrefix(const char* str, const char* prefix)
+	{
+		const char* lhs = str;
+		const char* rhs = prefix;
+		while (*rhs && *lhs && *lhs == *rhs)
+		{
+			++lhs;
+			++rhs;
+		}
+		return *rhs == 0;
+	}
+
 	String ReplaceString(const String& str, const String& src, const String& dst)
 	{
 		if (src == dst) {

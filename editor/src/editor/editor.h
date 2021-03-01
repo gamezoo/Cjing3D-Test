@@ -43,7 +43,7 @@ namespace Cjing3D
 
 		void RegisterWidget(const StringID& name, SharedPtr<EditorWidget> widget);
 		SharedPtr<EditorWidget> GetWidget(const StringID& name);
-		AssertCompiler& GetAssertCompiler();
+		AssetCompiler& GetAssetCompiler();
 
 	private:
 		void DockingBegin();
@@ -60,6 +60,6 @@ namespace Cjing3D
 
 		GameEditorRenderer* mRenderer = nullptr;
 		ScopedConnection mEventConnection;
-		UniquePtr<AssertCompiler> mAssertCompiler;
+		UniquePtr<AssetCompiler> mAssetCompiler;
 	};
 }

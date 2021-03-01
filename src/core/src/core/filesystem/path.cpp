@@ -181,10 +181,10 @@ Path::Path() :
 {
 }
 
-Path::Path(const char* path):
-	mPath(path),
-	mHash(StringUtils::StringToHash(path))
+Path::Path(const char* path)
 {
+	Path::FormatPath(path, mPath.toSpan());
+	mHash = StringUtils::StringToHash(mPath);
 }
 
 Path::Path(const Path& rhs) :
@@ -202,8 +202,8 @@ Path& Path::operator=(const Path& rhs)
 
 Path& Path::operator=(const char* rhs)
 {
-	mPath = rhs;
-	mHash = StringUtils::StringToHash(rhs);
+	Path::FormatPath(rhs, mPath.toSpan());
+	mHash = StringUtils::StringToHash(mPath);
 	return *this;
 }
 
@@ -310,6 +310,7 @@ void Path::AppendPath(const Path& path)
 		mPath.append(PATH_SEPERATOR);
 	}
 	mPath.append(path.mPath);
+	mHash = StringUtils::StringToHash(mPath.c_str());
 }
 
 void Path::AppendPath(const char* path)
@@ -335,6 +336,7 @@ void Path::AppendPath(const char* path)
 		mPath.append(PATH_SEPERATOR);
 	}
 	mPath.append(path);
+	mHash = StringUtils::StringToHash(mPath.c_str());
 }
 
 void Path::Normalize()
