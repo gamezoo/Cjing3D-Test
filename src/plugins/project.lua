@@ -9,7 +9,7 @@ group "plugins"
 -- plugin shader converter
 create_plugin(
     "resConverter",
-    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME },
+    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME, PROJECT_IMGUI },
     function()
         -- includes
         includedirs {

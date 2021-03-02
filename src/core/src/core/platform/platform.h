@@ -75,6 +75,7 @@ namespace Platform {
 	void CallSystem(const char* cmd);
 	I32  GetDPI();
 	void CopyToClipBoard(const char* txt);
+	bool OpenExplorer(const char* path);
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// window

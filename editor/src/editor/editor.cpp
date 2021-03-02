@@ -13,17 +13,17 @@ namespace Cjing3D
 {
 	void GameEditorRenderer::Start()
 	{
-		RenderGraphPath3D::Start();
+		RenderGraphPath2D::Start();
 	}
 
 	void GameEditorRenderer::Stop()
 	{
-		RenderGraphPath3D::Stop();
+		RenderGraphPath2D::Stop();
 	}
 
 	void GameEditorRenderer::UpdatePipelines()
 	{
-		RenderGraphPath3D::UpdatePipelines();
+		RenderGraphPath2D::UpdatePipelines();
 
 		mImGuiPipeline.Setup(mMainGraph);
 	}
@@ -184,6 +184,7 @@ namespace Cjing3D
 
 		JsonArchive archive(ArchiveMode::ArchiveMode_Write, mEngine->GetFileSystem());
 		mSettings.Save(archive);
+		Logger::Info("Editor settings saved");
 	}
 
 	bool GameEditor::IsUniverseChanged() const

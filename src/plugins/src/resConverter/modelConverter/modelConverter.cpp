@@ -53,6 +53,10 @@ namespace Cjing3D
 		return true;
 	}
 
+	void ModelResConverter::OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)
+	{
+	}
+
 	bool ModelResConverter::SupportsFileExt(const char* ext)
 	{
 		return mImporters.find(ext) != nullptr;

@@ -12,6 +12,7 @@ namespace Cjing3D
 		ResConverter();
 		~ResConverter();
 
+		void OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)override;
 		void AddConverter(const ResourceType& type, IResConverter* converter);
 		bool SupportsType(const char* ext, const ResourceType& type)override;
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override;

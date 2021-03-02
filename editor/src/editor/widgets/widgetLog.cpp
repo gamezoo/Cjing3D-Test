@@ -56,7 +56,24 @@ namespace Cjing3D
 					continue;
 				}
 
+				switch (msg.mLevel)
+				{
+				case LogLevel::LVL_DEV:
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+					break;
+				case LogLevel::LVL_INFO:
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+					break;
+				case LogLevel::LVL_WARNING:
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+					break;
+				case LogLevel::LVL_ERROR:
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+					break;
+				}
+
 				ImGui::TextUnformatted(msg.mMessage.c_str());
+				ImGui::PopStyleColor();
 			}
 
 			if (mScrollToBottom) {

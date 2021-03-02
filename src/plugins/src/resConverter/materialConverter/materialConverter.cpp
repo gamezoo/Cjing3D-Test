@@ -33,7 +33,11 @@ namespace Cjing3D
 		return true;
 	}
 
-    bool MaterialResConverter::SupportsType(const char* ext, const ResourceType& type)
+	void MaterialResConverter::OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)
+	{
+	}
+
+	bool MaterialResConverter::SupportsType(const char* ext, const ResourceType& type)
 	{
 		return type == ResourceType("Material") && EqualString(ext, "jmat");
 	}

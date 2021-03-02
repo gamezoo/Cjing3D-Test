@@ -11,6 +11,7 @@ namespace Cjing3D
 {
 	Concurrency::Mutex mMutex;
 	std::ofstream loggerFile;
+	bool mIsExit = false;
 
 	MemoryTracker::MemoryTracker()
 	{
@@ -81,6 +82,11 @@ namespace Cjing3D
 			return;
 		}
 
+#ifdef DEBUG
+		if (mIsExit) {
+			Debug::CheckAssertion(false);
+		}
+#endif
 		Concurrency::ScopedMutex lock(mMutex);
 		auto it = mAllocNodeMap.find(ptr);
 		if (it == mAllocNodeMap.end())
@@ -130,6 +136,8 @@ namespace Cjing3D
 			loggerFile << os.str();
 			loggerFile.close();
 		}
+
+		mIsExit = true;
 	}
 
 	MemoryTracker& MemoryTracker::Get()

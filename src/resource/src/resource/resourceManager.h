@@ -5,6 +5,7 @@
 namespace Cjing3D
 {
 	class BaseFileSystem;
+	class ResConverterPlugin;
 
 	static const char* COMPILED_PATH_NAME = ".assets";
 	static const char* COMPILED_PATH_LIST = ".assets/_list.txt";
@@ -17,16 +18,9 @@ namespace Cjing3D
 		bool IsInitialized();
 		void RegisterFactory(ResourceType type, ResourceFactory* factory);
 		void UnregisterFactory(ResourceType type);
+		DynamicArray<ResConverterPlugin*>& GetPlugins();
 
-		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate);
-
-		// TODO; move the part about converter to editor's assertCompiler
-		Path GetResourceConvertedPath(const Path& inPath);
-		bool CheckResourceNeedConvert(const Path& inPath, Path* outPath = nullptr);
-		bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate = false);
-
-		void RegisterExtension(const char* ext, ResourceType type);
-		ResourceType GetResourceType(const char* ext);
+		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate = false);
 
 		template<typename T>
 		T* LoadResource(const Path& inPath)
@@ -40,6 +34,13 @@ namespace Cjing3D
 			return static_cast<T*>(LoadResource(T::ResType, inPath, true));
 		}
 
+		// TODO; move the part about converter to editor's assertCompiler
+		Path GetResourceConvertedPath(const Path& inPath);
+		bool CheckResourceNeedConvert(const Path& inPath, Path* outPath = nullptr);
+		bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate = false);
+		ResourceType GetResourceType(const char* path);
+		void RegisterExtension(const char* ext, ResourceType type);
+
 		void ReloadResource(Resource* resource);
 		void AcquireResource(Resource* resource);
 		bool ReleaseResource(Resource** resource);
@@ -47,8 +48,6 @@ namespace Cjing3D
 		void ProcessReleasedResources();
 		void WaitForResource(Resource* resource);
 		void WaitAll();
-
-		ResourceType GetResourceType(const char* path);
 
 		enum AsyncResult
 		{

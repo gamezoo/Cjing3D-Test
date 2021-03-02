@@ -15,6 +15,10 @@ namespace Cjing3D
 
 	bool EditorWidget::Begin()
 	{
+		if (!PreBegin()) {
+			return false;
+		}
+
 		if ( mIsBegun || !mIsVisible) {
 			return false;
 		}
@@ -23,6 +27,12 @@ namespace Cjing3D
 			return true;
 		}
 		
+		if (mIsFocusRequested) 
+		{
+			mIsFocusRequested = false;
+			ImGui::SetNextWindowFocus();
+		}
+
 		if (mPos[0] != -1.0f && mPos[1] != -1.0f) {
 			ImGui::SetNextWindowPos(ImVec2(mPos[0], mPos[1]));
 		}
@@ -33,10 +43,6 @@ namespace Cjing3D
 		mWindow = ImGui::GetCurrentWindow();
 		mHeight = ImGui::GetWindowHeight();
 		mIsBegun = true;
-
-		if (!PreBegin()) {
-			return false;
-		}
 
 		if (!ImGui::Begin(mTitleName.c_str(), &mIsVisible, mWidgetFlags)) {
 			return false;

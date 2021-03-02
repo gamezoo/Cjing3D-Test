@@ -27,6 +27,7 @@ namespace Cjing3D
 		bool IsVisible()const { return mIsVisible; }
 		void SetVisible(bool isVisible) { mIsVisible = isVisible; }
 		F32  GetHeight()const { return mHeight; }
+		void RequestFocus() { mIsFocusRequested = true; }
 
 	protected:
 		virtual bool PreBegin() { return true; }
@@ -38,6 +39,7 @@ namespace Cjing3D
 		bool mIsVisible = true;
 		bool mIsBegun = false;
 		bool mIsWindow = true;
+		bool mIsFocusRequested = false;
 		I32 mWidgetFlags = 0;
 		F32x2 mPos = F32x2(-1.0f, -1.0f);
 		F32x2 mSize = F32x2(-1.0f, -1.0f);

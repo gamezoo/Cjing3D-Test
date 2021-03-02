@@ -62,6 +62,8 @@ namespace Cjing3D
 		void SetPath(const Path& path) { mPath = path; }
 		Path GetConvertedPath()const { return mConvertedPath; }
 		void SetConvertedPath(const Path& path) { mConvertedPath = path; }
+		I32  GetCompiledSize()const { return mCompiledSize; }
+		void SetCompiledSize(I32 size) { mCompiledSize = size; }
 
 		virtual ResourceType GetType()const = 0;
 
@@ -102,6 +104,7 @@ namespace Cjing3D
 		DynamicArray<String> mSourceFiles;
 		ResState mState;
 		ResState mDesiredState;
+		I32 mCompiledSize = 0;
 
 		ConnectionMap mConnectionMap;
 	};

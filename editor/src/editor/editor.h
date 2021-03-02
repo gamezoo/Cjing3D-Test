@@ -12,7 +12,7 @@ namespace Cjing3D
 {
 	class Event;
 
-	class GameEditorRenderer : public RenderGraphPath3D
+	class GameEditorRenderer : public RenderGraphPath2D
 	{
 	public:
 		void Start()override;

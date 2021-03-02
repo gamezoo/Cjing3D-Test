@@ -279,9 +279,11 @@ namespace Platform {
 		::CloseClipboard();
 	}
 
-	bool ShellExecuteCmdAndWait(const char* path, const char* args)
+	bool OpenExplorer(const char* path)
 	{
-		return false;
+		const WPathString wPath(path);
+		const uintptr_t ret = (uintptr_t)::ShellExecute(NULL, L"explore", wPath, NULL, NULL, SW_SHOWNORMAL);
+		return ret >= 32;
 	}
 
 	WindowRect GetClientBounds(WindowType window)

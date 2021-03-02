@@ -40,6 +40,7 @@ namespace Cjing3D
 			return it != nullptr ? *it : nullptr;
 		}
 
+		void OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)override;
 		bool SupportsFileExt(const char* ext);
 		bool SupportsType(const char* ext, const ResourceType& type)override;
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override;

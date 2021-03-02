@@ -47,6 +47,14 @@ public:
 	void Normalize();
 	bool IsAbsolutePath()const;
 
+	Span<char> toSpan() {
+		return mPath.toSpan();
+	}
+
+	Span<const char> toSpan()const {
+		return mPath.toSpan();
+	}
+
 	bool operator==(const Path& rhs) const;
 	bool operator!=(const Path& rhs) const;
 

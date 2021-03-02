@@ -57,6 +57,7 @@ namespace Cjing3D
 	public:
 		virtual ~IResConverter() {}
 
+		virtual void OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res) = 0;
 		virtual bool SupportsType(const char* ext, const ResourceType& type) = 0;
 		virtual bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) = 0;
 	};

@@ -33,6 +33,9 @@ namespace Cjing3D
 	{
 		MaxPathString dirPath;
 		Path::GetPathParentPath(path, dirPath.toSpan());
+		if (dirPath.length() > 0 && dirPath.back() == '\\' || dirPath.back() == '/') {
+			dirPath.data()[dirPath.length() - 1] = '\0';
+		}
 		return StringUtils::StringToHash(dirPath.c_str());
 	}
 

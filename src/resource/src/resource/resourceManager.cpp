@@ -544,6 +544,7 @@ namespace ResourceManager
 			if (!sources.empty()) {
 				mResource.SetSourceFiles(sources);
 			}
+			mResource.SetCompiledSize(file.Size());
 			mResource.OnLoaded(true);
 		}
 		if (!success)
@@ -597,6 +598,12 @@ namespace ResourceManager
 			return;
 		}
 		mImpl->mResourceFactoires.erase(type.Type());
+	}
+
+	DynamicArray<ResConverterPlugin*>& GetPlugins()
+	{
+		Debug::CheckAssertion(IsInitialized());
+		return mImpl->mConverterPlugins;
 	}
 
 	Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate)

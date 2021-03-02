@@ -32,8 +32,8 @@ namespace Cjing3D
 			}
 			if (ImGui::BeginMenu("View"))
 			{
-				if (ImGui::MenuItem("Assert browser", nullptr, mEditor.GetWidget("AssertBrowser")->IsVisible())) {
-					mEditor.GetWidget("AssertBrowser")->SetVisible(true);
+				if (ImGui::MenuItem("Asset browser", nullptr, mEditor.GetWidget("AssetBrowser")->IsVisible())) {
+					mEditor.GetWidget("AssetBrowser")->SetVisible(true);
 				};
 				if (ImGui::MenuItem("Log", nullptr, mEditor.GetWidget("Log")->IsVisible())) {
 					mEditor.GetWidget("Log")->SetVisible(true);

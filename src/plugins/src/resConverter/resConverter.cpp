@@ -18,6 +18,14 @@ namespace Cjing3D
 		mResConverters.clear();
 	}
 
+	void ResConverter::OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)
+	{
+		auto it = mResConverters.find(type.Type());
+		if (it) {
+			(*it)->OnEditorGUI(context, type, res);
+		}
+	}
+
 	void ResConverter::AddConverter(const ResourceType& type, IResConverter* converter)
 	{
 		auto it = mResConverters.find(type.Type());

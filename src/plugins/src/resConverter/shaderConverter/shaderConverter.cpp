@@ -1,6 +1,7 @@
 #include "shaderConverter.h"
 #include "shaderParser.h"
 #include "shaderMetadata.h"
+#include "shaderEditor.h"
 #include "core\memory\linearAllocator.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
@@ -582,6 +583,12 @@ namespace Cjing3D
 
 		CJING_SAFE_DELETE(file);
 		return true;
+	}
+
+	void ShaderResConverter::OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)
+	{
+		static ShaderEditor editor;
+		editor.OnEditorGUI(context, type, res);
 	}
 
 	bool ShaderResConverter::SupportsType(const char* ext, const ResourceType& type)

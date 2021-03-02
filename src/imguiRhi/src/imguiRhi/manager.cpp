@@ -150,6 +150,8 @@ namespace ImGuiRHI
 
 		void UninitializeRHI()
 		{
+			mInputLayout.mElements.free();
+
 			GPU::DestroyResource(mHandleBindingSet);
 			GPU::DestroyResource(mHandlePbs);
 			GPU::DestroyResource(mHandleVS);

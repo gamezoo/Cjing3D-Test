@@ -33,7 +33,11 @@ namespace Cjing3D
 		return true;
 	}
 
-    bool TextureResConverter::SupportsType(const char* ext, const ResourceType& type)
+	void TextureResConverter::OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)
+	{
+	}
+
+	bool TextureResConverter::SupportsType(const char* ext, const ResourceType& type)
 	{
 		return type == ResourceType("Texture");
 	}
