@@ -1,4 +1,4 @@
-#include "gameView.h"
+#include "sceneView.h"
 #include "gpu\gpu.h"
 #include "imguiRhi\imguiEx.h"
 #include "renderer\renderer.h"
@@ -9,7 +9,7 @@
 
 namespace Cjing3D
 {
-	class EditorWidgetGameViewImpl
+	class EditorWidgetSceneViewImpl
 	{
 	public:
 		UniquePtr<RenderPath> mRenderPath = nullptr;
@@ -29,13 +29,13 @@ namespace Cjing3D
 			texDesc.mHeight = (U32)size.y;
 			texDesc.mFormat = GPU::GetBackBufferFormat();
 			texDesc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;
-			GPU::ResHandle res = GPU::CreateTexture(&texDesc, nullptr, "rtGameView");
+			GPU::ResHandle res = GPU::CreateTexture(&texDesc, nullptr, "rtSceneView");
 			mGameTextrue.SetTexture(res, texDesc);
 
 			// frame binding set
 			GPU::FrameBindingSetDesc desc;
 			desc.mAttachments.push(GPU::BindingFrameAttachment::RenderTarget(mGameTextrue.GetHandle()));
-			mFrameBinding = GPU::CreateFrameBindingSet(&desc, "fbGameView");
+			mFrameBinding = GPU::CreateFrameBindingSet(&desc, "fbSceneView");
 		}
 
 		void Initialize()
@@ -75,13 +75,13 @@ namespace Cjing3D
 			mRenderPath->Render();
 
 			GPU::CommandList* cmd = GPU::CreateCommandlist();
-			if (auto binding = cmd->BindScopedFrameBindingSet(mFrameBinding)) 
+			if (auto binding = cmd->BindScopedFrameBindingSet(mFrameBinding))
 			{
 				cmd->EventBegin("GameCompose");
 				mRenderPath->Compose(*cmd);
 				cmd->EventEnd();
 			}
-			if (mGameTextrue.GetHandle())  {
+			if (mGameTextrue.GetHandle()) {
 				ImGui::Image((ImTextureID)mGameTextrue.GetHandlePtr(), size);
 			}
 			else {
@@ -91,32 +91,32 @@ namespace Cjing3D
 	};
 
 
-	EditorWidgetGameView::EditorWidgetGameView(GameEditor& editor) :
+	EditorWidgetSceneView::EditorWidgetSceneView(GameEditor& editor) :
 		EditorWidget(editor)
 	{
-		mTitleName = "GameView";
+		mTitleName = "SceneView";
 		mIsWindow = true;
-		mWidgetFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavInputs;
-		mImpl = CJING_NEW(EditorWidgetGameViewImpl);
+		mWidgetFlags = ImGuiWindowFlags_NoCollapse;
+		mImpl = CJING_NEW(EditorWidgetSceneViewImpl);
 	}
 
-	EditorWidgetGameView::~EditorWidgetGameView()
+	EditorWidgetSceneView::~EditorWidgetSceneView()
 	{
 		CJING_SAFE_DELETE(mImpl);
 	}
 
-	void EditorWidgetGameView::Initialize()
+	void EditorWidgetSceneView::Initialize()
 	{
 		mImpl->Initialize();
 	}
 
-	void EditorWidgetGameView::Uninitialize()
-	{
-		mImpl->Uninitialize();
-	}
-
-	void EditorWidgetGameView::Update(F32 deltaTime)
+	void EditorWidgetSceneView::Update(F32 deltaTime)
 	{
 		mImpl->Update(deltaTime);
+	}
+
+	void EditorWidgetSceneView::Uninitialize()
+	{
+		mImpl->Uninitialize();
 	}
 }

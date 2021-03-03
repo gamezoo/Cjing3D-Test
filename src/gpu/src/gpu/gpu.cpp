@@ -395,10 +395,11 @@ namespace GPU
 		return mImpl->AllocHandle(type);
 	}
 
-	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc)
+	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc, const char* name)
 	{
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_FRAME_BINDING_SET);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateFrameBindingSet(handle, desc));
+		SET_DEBUG_NAME(name);
 		return handle;
 	}
 

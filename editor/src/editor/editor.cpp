@@ -8,6 +8,8 @@
 #include "widgets\widgetLog.h"
 #include "widgets\widgetMenu.h"
 #include "widgets\widgetSettings.h"
+#include "widgets\gameView.h"
+#include "widgets\sceneView.h"
 
 namespace Cjing3D
 {
@@ -41,6 +43,8 @@ namespace Cjing3D
 	void GameEditor::PreInitialize()
 	{
 		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
+		RegisterWidget("GameView", CJING_MAKE_SHARED<EditorWidgetGameView>(*this));
+		RegisterWidget("SceneView", CJING_MAKE_SHARED<EditorWidgetSceneView>(*this));
 		RegisterWidget("AssetBrowser", CJING_MAKE_SHARED<EditorWidgetAssetBrowser>(*this));
 		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
 		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));

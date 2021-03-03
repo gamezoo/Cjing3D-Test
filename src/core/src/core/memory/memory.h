@@ -230,6 +230,9 @@ namespace Cjing3D
 		T* operator->()const {
 			return mPtr;
 		}
+		explicit operator bool()const {
+			return mPtr != nullptr;
+		}
 
 	private:
 		T* mPtr = nullptr;

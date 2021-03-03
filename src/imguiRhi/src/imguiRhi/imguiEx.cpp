@@ -39,17 +39,29 @@ namespace Cjing3D
 
 	void Cjing3D::ImGuiEx::VSplitter(const char* name, ImVec2& size)
 	{
-		ImVec2 screen_pos = ImGui::GetCursorScreenPos();
+		ImVec2 screenPos = ImGui::GetCursorScreenPos();
 		ImGui::InvisibleButton(name, ImVec2(3, -1));
-		ImVec2 end_pos(
-			screen_pos.x + ImGui::GetItemRectSize().x,
-			screen_pos.y + ImGui::GetItemRectSize().y);
+		ImVec2 endPos(
+			screenPos.x + ImGui::GetItemRectSize().x,
+			screenPos.y + ImGui::GetItemRectSize().y);
 
 		ImGuiWindow* win = ImGui::GetCurrentWindow();
 		ImVec4* colors = ImGui::GetStyle().Colors;
-		ImU32 color = ImGui::GetColorU32(ImGui::IsItemActive() || ImGui::IsItemHovered() ? 
-			colors[ImGuiCol_ButtonActive] : colors[ImGuiCol_Button]);
-		win->DrawList->AddRectFilled(screen_pos, end_pos, color);
+		ImU32 color = ImGui::GetColorU32(ImGui::IsItemActive() || ImGui::IsItemHovered() ? colors[ImGuiCol_ButtonActive] : colors[ImGuiCol_Button]);
+		win->DrawList->AddRectFilled(screenPos, endPos, color);
+	}
+
+	void ImGuiEx::Rect(F32 w, F32 h, ImU32 color)
+	{
+		ImGuiWindow* win = GetCurrentWindow();
+		ImVec2 screenPos = GetCursorScreenPos();
+		ImVec2 endPos(screenPos.x + w, screenPos.y + h);
+		ImRect rect(screenPos, endPos);
+		ItemSize(rect);
+		if (!ItemAdd(rect, 0)) {
+			return;
+		}
+		win->DrawList->AddRectFilled(screenPos, endPos, color);
 	}
 }
 

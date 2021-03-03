@@ -275,6 +275,24 @@ namespace GPU
 				mSubresourceIndex != rhs.mSubresourceIndex ||
 				mResource != rhs.mResource;
 		}
+
+		static BindingFrameAttachment RenderTarget(ResHandle res, LoadOperation loadOp = LOAD_DEFAULT)
+		{
+			BindingFrameAttachment attachment;
+			attachment.mType = RENDERTARGET;
+			attachment.mLoadOperator = loadOp;
+			attachment.mResource = res;
+			return attachment;
+		}
+
+		static BindingFrameAttachment DepthStencil(ResHandle res, LoadOperation loadOp = LOAD_DEFAULT)
+		{
+			BindingFrameAttachment attachment;
+			attachment.mType = DEPTH_STENCIL;
+			attachment.mLoadOperator = loadOp;
+			attachment.mResource = res;
+			return attachment;
+		}
 	};
 
 	struct FrameBindingSetDesc

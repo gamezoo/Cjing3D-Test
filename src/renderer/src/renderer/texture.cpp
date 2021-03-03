@@ -60,6 +60,14 @@ namespace Cjing3D
 	{
 	}
 
+	Texture::Texture(Texture&& rhs)
+	{
+		mHandle = rhs.mHandle;
+		mDesc = rhs.mDesc;
+		rhs.mHandle = GPU::ResHandle::INVALID_HANDLE;
+		rhs.mDesc = GPU::TextureDesc();
+	}
+
 	Texture::~Texture()
 	{
 		Clear();
@@ -79,5 +87,14 @@ namespace Cjing3D
 	{
 		mHandle = handle;
 		mDesc = desc;
+	}
+
+	Texture& Texture::operator=(Texture&& rhs)
+	{
+		mHandle = rhs.mHandle;
+		mDesc = rhs.mDesc;
+		rhs.mHandle = GPU::ResHandle::INVALID_HANDLE;
+		rhs.mDesc = GPU::TextureDesc();
+		return *this;
 	}
 }

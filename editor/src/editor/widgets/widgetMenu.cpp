@@ -47,6 +47,22 @@ namespace Cjing3D
 				if (ImGui::MenuItem("Entity Inspector", nullptr, mEditor.GetWidget("Inspector")->IsVisible())) {
 					mEditor.GetWidget("Inspector")->SetVisible(true);
 				};
+				if (ImGui::MenuItem("Game View", nullptr, mEditor.GetWidget("GameView")->IsVisible())) {
+					mEditor.GetWidget("GameView")->SetVisible(true);
+				};
+				if (ImGui::MenuItem("Scene View", nullptr, mEditor.GetWidget("SceneView")->IsVisible())) {
+					mEditor.GetWidget("SceneView")->SetVisible(true);
+				};
+				ImGui::EndMenu();
+			}
+			if (ImGui::BeginMenu("Test"))
+			{
+				if (ImGui::MenuItem("Run")) { 
+
+				}
+				if (ImGui::MenuItem("Run App")) {
+
+				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Help"))

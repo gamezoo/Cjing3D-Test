@@ -4,17 +4,17 @@
 
 namespace Cjing3D
 {
-	class EditorWidgetGameView : public EditorWidget
+	class EditorWidgetSceneView : public EditorWidget
 	{
 	public:
-		EditorWidgetGameView(GameEditor& editor);
-		~EditorWidgetGameView();
+		EditorWidgetSceneView(GameEditor& editor);
+		~EditorWidgetSceneView();
 
 		void Initialize()override;
 		void Update(F32 deltaTime)override;
 		void Uninitialize()override;
 
 	private:
-		class EditorWidgetGameViewImpl* mImpl = nullptr;
+		class EditorWidgetSceneViewImpl* mImpl = nullptr;
 	};
 }

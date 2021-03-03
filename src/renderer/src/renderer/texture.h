@@ -13,6 +13,7 @@ namespace Cjing3D
 
 		Texture();
 		Texture(GPU::ResHandle handle, const GPU::TextureDesc& desc);
+		Texture(Texture&& rhs);
 		~Texture();
 
 		bool IsLoaded()const {
@@ -25,9 +26,14 @@ namespace Cjing3D
 		GPU::ResHandle GetHandle()const {
 			return mHandle;
 		}
+		const GPU::ResHandle* GetHandlePtr()const {
+			return &mHandle;
+		}
 
 		void Clear();
 		void SetTexture(GPU::ResHandle handle, const GPU::TextureDesc& desc);
+
+		Texture& operator=(Texture&& rhs);
 
 	private:
 		friend class TextureFactory;

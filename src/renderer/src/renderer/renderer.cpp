@@ -2,6 +2,7 @@
 #include "renderScene.h"
 #include "renderImage.h"
 #include "renderGraph.h"
+#include "textureHelper.h"
 #include "resource\resourceManager.h"
 #include "core\platform\platform.h"
 #include "core\scene\universe.h"
@@ -384,6 +385,9 @@ namespace Renderer
 
 		// initialize renderImage
 		RenderImage::Initialize();
+
+		// initialize texture helper
+		TextureHelper::Initialize();
 	}
 
 	bool IsInitialized()
@@ -396,6 +400,9 @@ namespace Renderer
 		if (!IsInitialized()) {
 			return;                                                                                                                                                                                                                                                                                            
 		}
+
+		// uninitialize texture helper
+		TextureHelper::Uninitialize();
 
 		// uninitialize impl
 		CJING_SAFE_DELETE(mImpl);

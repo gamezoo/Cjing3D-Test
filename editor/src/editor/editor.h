@@ -11,6 +11,7 @@
 namespace Cjing3D
 {
 	class Event;
+	class EditorWidgetGameView;
 
 	class GameEditorRenderer : public RenderGraphPath2D
 	{

@@ -148,11 +148,26 @@ namespace Cjing3D
 			return pos != -1 ? &mValues[pos] : nullptr;
 		}
 
-		ValueT* insert(KeyT key, ValueT value)
+		ValueT* insert(KeyT key, const ValueT& value)
 		{
 			if (auto ret = find(key))
 			{
 				*ret = value;
+				return ret;
+			}
+
+			if ((++mSize) >= mCapacityThreshold) {
+				Grow();
+			}
+			return InsertImpl(HashKey(key), std::move(key), std::move(value));
+		}
+
+
+		ValueT* insert(KeyT key, ValueT&& value)
+		{
+			if (auto ret = find(key))
+			{
+				*ret = std::move(value);
 				return ret;
 			}
 
@@ -291,6 +306,51 @@ namespace Cjing3D
 		U32 ProbeDistanceHash(U32 hash, U32 index)
 		{
 			return (index - GetPosByHash(hash) + mCapacity) & mMask;
+		}
+
+		ValueT* InsertImpl(U32 hash, KeyT&& key, const ValueT& value)
+		{
+			U32 pos = GetPosByHash(hash);
+			U32 dist = 0;
+			ValueT* ret = nullptr;
+			while (true)
+			{
+				// 如果指定位置为空，则直接在该位置创建key和value
+				if (mHashTable[pos] == 0)
+				{
+					new (&mKeys[pos])  KeyT(std::move(key));
+					new (&mValues[pos]) ValueT(value);
+					mHashTable[pos] = hash;
+
+					if (ret == nullptr) {
+						ret = &mValues[pos];
+					}
+					return ret;
+				}
+				// 如果位置已被占用（冲突），则寻找下一个可用位置
+				else
+				{
+					// 如果当前elem的hash位置和实际位置的距离，小于dist
+					// 则将当前值和elem交换，继续去寻找elem的可用位置
+					// 这样可使所有elem的偏移尽可能小，较少循环次数
+					U32 curElemProbeDist = ProbeDistanceHash(mHashTable[pos], pos);
+					if (curElemProbeDist < dist)
+					{
+						std::swap(hash, mHashTable[pos]);
+						std::swap(key, mKeys[pos]);
+
+						mValues[pos] = value;
+						dist = curElemProbeDist;
+
+						if (ret == nullptr) {
+							ret = &mValues[pos];
+						}
+					}
+					pos = (pos + 1) & mMask;
+					dist++;
+				}
+			}
+			return ret;
 		}
 
 		ValueT* InsertImpl(U32 hash, KeyT&& key, ValueT&& value)

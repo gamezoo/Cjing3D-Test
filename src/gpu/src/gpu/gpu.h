@@ -31,7 +31,7 @@ namespace GPU
 	bool SubmitCommandList(Span<CommandList*> cmds);
 
 	ResHandle AllocateHandle(ResourceType type);
-	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc);
+	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc, const char* name = nullptr);
 	ResHandle CreateTexture(const TextureDesc* desc, const SubresourceData* initialData, const char* name = nullptr);
 	ResHandle CreateBuffer(const BufferDesc* desc, const SubresourceData* initialData, const char* name = nullptr);
 	ResHandle CreateShader(SHADERSTAGES stage, const void* bytecode, size_t length);
