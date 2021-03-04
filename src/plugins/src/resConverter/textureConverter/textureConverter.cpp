@@ -1,4 +1,5 @@
 #include "textureConverter.h"
+#include "image.h"
 #include "core\memory\linearAllocator.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
@@ -26,6 +27,11 @@ namespace Cjing3D
 			return false;
 		}
 		context.AddSource(src);
+
+		// load image from src file
+		MaxPathString ext;
+		Path::GetPathExtension(Span(src, StringLength(src)), ext.toSpan());
+		Image img = Image::Load(source.data(), source.size(), ext.c_str());
 
 
 		context.AddOutput(dest);

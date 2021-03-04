@@ -636,5 +636,10 @@ namespace GPU
 	{
 		return mImpl->mDevice->GetScreenSize();
 	}
+
+	U32 GetTextureSize(FORMAT fromat, I32 width, I32 height, I32 depth, I32 mipLevel)
+	{
+		return 0;
+	}
 }
 }
