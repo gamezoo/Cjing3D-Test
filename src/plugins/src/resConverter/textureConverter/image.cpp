@@ -54,6 +54,18 @@ namespace Cjing3D
 		}
 	}
 
+	void Image::Swap(Image& rhs)
+	{
+		std::swap(mTexType,  rhs.mTexType);
+		std::swap(mWidth,    rhs.mWidth);
+		std::swap(mHeight,   rhs.mHeight);
+		std::swap(mDepth,    rhs.mDepth);
+		std::swap(mMipLevel, rhs.mMipLevel);
+		std::swap(mFormat,   rhs.mFormat);
+		std::swap(mData,     rhs.mData);
+		std::swap(mDataFreeFunc, rhs.mDataFreeFunc);
+	}
+
 	Image Image::Load(const char* data, size_t length, const char* ext)
 	{
 		if (EqualString(ext, "DDS"))
@@ -79,22 +91,10 @@ namespace Cjing3D
 			{
 				return Image(GPU::TEXTURE_2D, GPU::FORMAT_R32G32B32A32_FLOAT, width, height, 1, 1, rgb,
 					[](U8* data) { stbi_image_free(data); }
-				); 
+				);
 			}
 		}
 
 		return Image();
-	}
-
-	void Image::Swap(Image& rhs)
-	{
-		std::swap(mTexType,  rhs.mTexType);
-		std::swap(mWidth,    rhs.mWidth);
-		std::swap(mHeight,   rhs.mHeight);
-		std::swap(mDepth,    rhs.mDepth);
-		std::swap(mMipLevel, rhs.mMipLevel);
-		std::swap(mFormat,   rhs.mFormat);
-		std::swap(mData,     rhs.mData);
-		std::swap(mDataFreeFunc, rhs.mDataFreeFunc);
 	}
 }

@@ -60,6 +60,7 @@ namespace GPU
 	bool IsFormatSupportStencil(FORMAT value);
 	U32x2 GetResolution();
 	F32x2 GetScreenSize();
-	U32 GetTextureSize(FORMAT fromat, I32 width, I32 height, I32 depth, I32 mipLevel);
+	FormatInfo GetFormatInfo(FORMAT format);
+	U32 GetTextureSize(FORMAT format, I32 width, I32 height, I32 depth, I32 mipLevel);
 }
 }

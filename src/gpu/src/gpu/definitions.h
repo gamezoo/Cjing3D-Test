@@ -634,5 +634,32 @@ namespace GPU {
 		}
 	};
 
+	struct FormatInfo
+	{
+		/// Block width.
+		I32 mBlockW = 0;
+		/// Block height.
+		I32 mBlockH = 0;
+		/// Number of bits in block.
+		I32 mBlockBits = 0;
+		/// Number of bits for red channel.
+		I32 mRBits = 0;
+		/// Number of bits for green channel.
+		I32 mGBits = 0;
+		/// Number of bits for blue channel.
+		I32 mBBits = 0;
+		/// Number of bits for alpha channel.
+		I32 mABits = 0;
+		/// Number of bits for depth.
+		I32 mDBits = 0;
+		/// Number of bits for stencil.
+		I32 mSBits = 0;
+		/// Number of padding bits.
+		I32 mXBits = 0;
+		/// Number of exponent bits.
+		I32 mEBits = 0;
+		/// Number of channels.
+		I32 mChannels = 0;
+	};
 }
 }

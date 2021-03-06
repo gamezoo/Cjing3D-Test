@@ -41,10 +41,16 @@ namespace Cjing3D
 
 	/// //////////////////////////////////////////////////////////////////////////////////
 	/// AssetCompilerImpl
+	struct ResUpdate
+	{
+		U32 mVersion = 0;
+	};
+
 	struct ResCompileTask
 	{
 		Resource* mRes = nullptr;
 		Path mInPath;
+		U32 mVersion = 0;
 	};
 
 	class AssetCompilerImpl;
@@ -72,7 +78,9 @@ namespace Cjing3D
 		Concurrency::RWLock mRWLock;
 		MPMCBoundedQueue<ResCompileTask> mToCompileTasks;
 		MPMCBoundedQueue<ResCompileTask> mCompiledTasks;
+		HashMap<U32, ResUpdate> mResUpdates;
 		volatile I32 mPendingTasks = 0;
+		Concurrency::SpinLock mResUpdateLock;
 
 		HashMap<U32, AssetCompiler::ResourceItem> mResources;
 		Signal<void()> OnListChanged;
@@ -266,9 +274,22 @@ namespace Cjing3D
 			return ResourceManager::LoadHook::IMMEDIATE;
 		}
 
+		// spin lock may is not a best way
+		U32 pathHash = inPath.GetHash();
+		mResUpdateLock.Lock();
+		auto it = mResUpdates.find(pathHash);
+		if (!it)
+		{
+			mResUpdates.insert(pathHash, ResUpdate());
+			it = mResUpdates.find(pathHash);
+		}
+		it->mVersion++;
+		mResUpdateLock.Unlock();
+
 		ResCompileTask task;
 		task.mRes = res;
 		task.mInPath = inPath;
+		task.mVersion = it->mVersion;
 		mToCompileTasks.Enqueue(task);
 
 		Concurrency::AtomicIncrement(&mPendingTasks);
@@ -286,7 +307,19 @@ namespace Cjing3D
 				break;
 			}
 
-			mLoadHook.ContinueLoad(compiledTask.mRes);
+			I32 version = 0;
+			mResUpdateLock.Lock();
+			auto it = mResUpdates.find(compiledTask.mInPath.GetHash());
+			version = it != nullptr ? it->mVersion : version;
+			mResUpdateLock.Unlock();
+
+			if (version != compiledTask.mVersion) {
+				continue;
+			}
+
+			if (compiledTask.mRes->WantLoad()) {
+				mLoadHook.ContinueLoad(compiledTask.mRes);
+			}
 		}
 	}
 

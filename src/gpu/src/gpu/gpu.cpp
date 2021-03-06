@@ -637,9 +637,218 @@ namespace GPU
 		return mImpl->mDevice->GetScreenSize();
 	}
 
-	U32 GetTextureSize(FORMAT fromat, I32 width, I32 height, I32 depth, I32 mipLevel)
+	FormatInfo GetFormatInfo(FORMAT format)
 	{
-		return 0;
+		FormatInfo info;
+		switch (format)
+		{
+		case FORMAT_R32G32B32A32_TYPELESS:
+		case FORMAT_R32G32B32A32_FLOAT:
+		case FORMAT_R32G32B32A32_UINT:
+		case FORMAT_R32G32B32A32_SINT:
+			info.mRBits = 32;
+			info.mGBits = 32;
+			info.mBBits = 32;
+			info.mABits = 32;
+			info.mChannels = 4;
+			break;
+		case FORMAT_R32G32B32_TYPELESS:
+		case FORMAT_R32G32B32_FLOAT:
+		case FORMAT_R32G32B32_UINT:
+		case FORMAT_R32G32B32_SINT:
+			info.mRBits = 32;
+			info.mGBits = 32;
+			info.mBBits = 32;
+			info.mChannels = 3;
+			break;
+		case FORMAT_R16G16B16A16_TYPELESS:
+		case FORMAT_R16G16B16A16_FLOAT:
+		case FORMAT_R16G16B16A16_UNORM:
+		case FORMAT_R16G16B16A16_UINT:
+		case FORMAT_R16G16B16A16_SNORM:
+		case FORMAT_R16G16B16A16_SINT:
+			info.mRBits = 16;
+			info.mGBits = 16;
+			info.mBBits = 16;
+			info.mABits = 16;
+			info.mChannels = 4;
+			break;
+		case FORMAT_R32G32_TYPELESS:
+		case FORMAT_R32G32_FLOAT:
+		case FORMAT_R32G32_UINT:
+		case FORMAT_R32G32_SINT:
+			info.mRBits = 32;
+			info.mGBits = 32;
+			info.mChannels = 2;
+			break;
+		case FORMAT_R10G10B10A2_UNORM:
+		case FORMAT_R10G10B10A2_UINT:
+			info.mRBits = 10;
+			info.mGBits = 10;
+			info.mBBits = 10;
+			info.mABits = 2;
+			info.mChannels = 4;
+			break;
+		case FORMAT_R11G11B10_FLOAT:
+			info.mRBits = 10;
+			info.mGBits = 10;
+			info.mBBits = 10;
+			info.mABits = 2;
+			info.mChannels = 4;
+			break;
+		case FORMAT_R8G8B8A8_UNORM:
+		case FORMAT_R8G8B8A8_UNORM_SRGB:
+		case FORMAT_R8G8B8A8_UINT:
+		case FORMAT_R8G8B8A8_SNORM:
+		case FORMAT_R8G8B8A8_SINT:
+		case FORMAT_B8G8R8A8_UNORM:
+		case FORMAT_B8G8R8A8_UNORM_SRGB:
+			info.mRBits = 8;
+			info.mGBits = 8;
+			info.mBBits = 8;
+			info.mABits = 8;
+			info.mChannels = 4;
+			break;
+		case FORMAT_R16G16_FLOAT:
+		case FORMAT_R16G16_UNORM:
+		case FORMAT_R16G16_UINT:
+		case FORMAT_R16G16_SNORM:
+		case FORMAT_R16G16_SINT:
+			info.mRBits = 16;
+			info.mGBits = 16;
+			info.mChannels = 2;
+			break;
+		case FORMAT_R32_TYPELESS:
+		case FORMAT_R32_FLOAT:
+		case FORMAT_R32_UINT:
+		case FORMAT_R32_SINT:
+			info.mRBits = 32;
+			info.mChannels = 1;
+			break;
+		case FORMAT_D32_FLOAT:
+			info.mDBits = 32;
+			info.mChannels = 1;
+			break;
+		case FORMAT_D24_UNORM_S8_UINT:
+			info.mDBits = 24;
+			info.mSBits = 8;
+			info.mChannels = 2;
+			break;
+		case FORMAT_R24G8_TYPELESS:
+			info.mRBits = 24;
+			info.mGBits = 8;
+			info.mChannels = 2;
+			break;
+		case FORMAT_R8G8_UNORM:
+		case FORMAT_R8G8_UINT:
+		case FORMAT_R8G8_SNORM:
+		case FORMAT_R8G8_SINT:
+			info.mRBits = 8;
+			info.mGBits = 8;
+			info.mChannels = 2;
+			break;
+		case FORMAT_R16_TYPELESS:
+		case FORMAT_R16_FLOAT:
+		case FORMAT_D16_UNORM:
+		case FORMAT_R16_UNORM:
+		case FORMAT_R16_UINT:
+		case FORMAT_R16_SNORM:
+		case FORMAT_R16_SINT:
+			info.mRBits = 16;
+			info.mChannels = 1;
+			break;
+		case FORMAT_R8_UNORM:
+		case FORMAT_R8_UINT:
+		case FORMAT_R8_SNORM:
+		case FORMAT_R8_SINT:
+			info.mRBits = 8;
+			info.mChannels = 1;
+			break;
+		default:
+			Logger::Error("Unsupport format:%d", format);
+			return FormatInfo();
+		}
+
+		info.mBlockBits += info.mRBits;
+		info.mBlockBits += info.mGBits;
+		info.mBlockBits += info.mBBits;
+		info.mBlockBits += info.mABits;
+		info.mBlockBits += info.mDBits;
+		info.mBlockBits += info.mSBits;
+		info.mBlockBits += info.mXBits;
+		info.mBlockBits += info.mEBits;
+
+		//if no block bits, must be a compressed format.
+		if (info.mBlockBits == 0)
+		{
+			switch (format)
+			{
+			case FORMAT_BC1_TYPELESS:
+			case FORMAT_BC1_UNORM:
+			case FORMAT_BC1_UNORM_SRGB:
+			case FORMAT_BC4_TYPELESS:
+			case FORMAT_BC4_UNORM:
+			case FORMAT_BC4_SNORM:
+				info.mBlockBits = 64;
+				info.mBlockW = 4;
+				info.mBlockH = 4;
+				break;
+			case FORMAT_BC2_TYPELESS:
+			case FORMAT_BC2_UNORM:
+			case FORMAT_BC2_UNORM_SRGB:
+			case FORMAT_BC3_TYPELESS:
+			case FORMAT_BC3_UNORM:
+			case FORMAT_BC3_UNORM_SRGB:
+			case FORMAT_BC5_TYPELESS:
+			case FORMAT_BC5_UNORM:
+			case FORMAT_BC5_SNORM:
+			case FORMAT_BC6H_TYPELESS:
+			case FORMAT_BC6H_UF16:
+			case FORMAT_BC6H_SF16:
+			case FORMAT_BC7_TYPELESS:
+			case FORMAT_BC7_UNORM:
+			case FORMAT_BC7_UNORM_SRGB:
+				info.mBlockBits = 128;
+				info.mBlockW = 4;
+				info.mBlockH = 4;
+				break;
+			default:
+				Logger::Error("Unsupport format:%d", format);
+				return FormatInfo();
+			}
+		}
+		else
+		{
+			info.mBlockW = 1;
+			info.mBlockH = 1;
+		}
+
+		// Just handle this one separately.
+		if (format == FORMAT_R1_UNORM)
+		{
+			info.mBlockW = 8;
+			info.mBlockBits = 8;
+		}
+
+		return info;
+	}
+
+	U32 GetTextureSize(FORMAT format, I32 width, I32 height, I32 depth, I32 mipLevel)
+	{
+		U32 size = 0;
+		for (I32 level = 0; level < mipLevel; level++)
+		{
+			FormatInfo formatInfo = GetFormatInfo(format);
+			I32 blockW = PotRoundUp(width, formatInfo.mBlockW) / formatInfo.mBlockW;
+			I32 blockH = PotRoundUp(height, formatInfo.mBlockH) / formatInfo.mBlockH;
+			I32 blockD = depth;
+
+			size += (formatInfo.mBlockBits * blockW * blockH * blockD) / 8;
+			width  = std::max(width / 2, 1);
+			height = std::max(height / 2, 1);
+			depth  = std::max(depth / 2, 1);
+		}
+		return size;
 	}
 }
 }
