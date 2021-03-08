@@ -66,6 +66,11 @@ namespace Cjing3D
 		std::swap(mDataFreeFunc, rhs.mDataFreeFunc);
 	}
 
+	void* Image::GetMipAddr(I32 mipLevel) const
+	{
+		return nullptr;
+	}
+
 	Image Image::Load(const char* data, size_t length, const char* ext)
 	{
 		if (EqualString(ext, "DDS"))

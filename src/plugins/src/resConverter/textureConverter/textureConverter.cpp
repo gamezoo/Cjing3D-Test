@@ -5,16 +5,20 @@
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
 
+#include "nvtt\include\nvtt.h"
+
 namespace Cjing3D
 {
 	void TextureMetaObject::Serialize(JsonArchive& archive)const
 	{
-
+		archive.Write("format", mFormat);
+		archive.Write("generateMipmap", mGenerateMiplevels);
 	}
 
 	void TextureMetaObject::Unserialize(JsonArchive& archive) 
 	{
-
+		archive.Read("format", mFormat);
+		archive.Read("generateMipmap", mGenerateMiplevels);
 	}
 
 	bool TextureResConverter::Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest)
@@ -32,7 +36,30 @@ namespace Cjing3D
 		MaxPathString ext;
 		Path::GetPathExtension(Span(src, StringLength(src)), ext.toSpan());
 		Image img = Image::Load(source.data(), source.size(), ext.c_str());
+		if (!img)
+		{
+			Logger::Warning("[TextureConverter] failed to load image:%s.", src);
+			return false;
+		}
 
+		if (img.GetFormat() == GPU::FORMAT_R8G8B8A8_UNORM)
+		{
+
+		}
+
+		// write texture
+		GPU::TextureDesc texDesc = {};
+
+		File file;
+		if (!fileSystem.OpenFile(dest, file, FileFlags::DEFAULT_WRITE))
+		{
+			Logger::Warning("[TextureConverter] failed to write dest file:%s.", dest);
+			return false;
+		}
+
+		file.Write(&texDesc, sizeof(texDesc));
+		U32 texSize = GPU::GetTextureSize(texDesc.mFormat, texDesc.mWidth, texDesc.mHeight, texDesc.mDepth, texDesc.mMipLevels); 
+		file.Write(img.GetMipData<U8>(0), texSize);
 
 		context.AddOutput(dest);
 		context.SetMetaData<TextureMetaObject>(data);

@@ -18,7 +18,8 @@ create_plugin(
 
         -- libdirs
         libdirs {  "../../3rdparty/fcpp/lib/" .. platform_dir }
-        
+        libdirs {  "../../3rdparty/nvtt/lib"}
+
         -- todo, better way?
         local shaderInterop_path = path.getabsolute("../renderer/src/renderer")
         defines { "SHADER_INTEROP_PATH=\"" .. shaderInterop_path .. "\""}
@@ -26,10 +27,12 @@ create_plugin(
         -- Debug config
         filter {"configurations:Debug"}
             links {"fcpp_d"}
+            links {"nvtt"}
 
         -- Release config
         filter {"configurations:Release"}
             links {"fcpp"}
+            links {"nvtt"}
     end 
 )
 

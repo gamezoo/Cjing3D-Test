@@ -2,6 +2,7 @@
 
 #include "resource\converter.h"
 #include "core\serialization\serializedObject.h"
+#include "gpu\gpu.h"
 
 namespace Cjing3D
 {
@@ -10,6 +11,9 @@ namespace Cjing3D
 	public:
 		virtual void Serialize(JsonArchive& archive)const;
 		virtual void Unserialize(JsonArchive& archive);
+
+		GPU::FORMAT mFormat = GPU::FORMAT_UNKNOWN;
+		bool mGenerateMiplevels = false;
 	};
 
 	class TextureResConverter : public IResConverter

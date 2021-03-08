@@ -16,6 +16,7 @@
         premake: "${cjing_build_dir}/premake/premake5.exe",
         pre_parser : "py -3 ../tools/pre_parser/pre_parser.py",
         shader_compiler : "py -3 ../tools/shader_compiler/shader_compiler.py",
+        ispc : "../tools/ispc/ispc.exe"
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -65,6 +66,11 @@
                 "cd ..\\3rdparty && .\\build_libs.cmd -win32"
             ]
         },  
+
+        // ispc compiler
+        //ispc : {
+        //    args : []
+        //}
 
         // shader compiler
         shaders : {

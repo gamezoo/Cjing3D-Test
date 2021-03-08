@@ -12,14 +12,25 @@ namespace Cjing3D
 
 		Image() = default;
 		Image(GPU::TEXTURE_TYPE texType, GPU::FORMAT format, I32 width, I32 height, I32 depth, I32 level, U8* data, DataFreeFunc freeFunc);
-		~Image();
-
 		Image(Image&& rhs);
 		Image& operator=(Image&& rhs);
-
-		static Image Load(const char* data, size_t length, const char * ext);
+		~Image();
 
 		void Swap(Image& rhs);
+		GPU::FORMAT GetFormat()const { return mFormat; }
+		void* GetMipAddr(I32 mipLevel) const;
+
+		template<typename T>
+		T* GetMipData(I32 mipLevel)
+		{
+			return reinterpret_cast<T*>(GetMipAddr(mipLevel));
+		}
+
+		explicit operator bool()const {
+			return mData != nullptr;
+		}
+
+		static Image Load(const char* data, size_t length, const char* ext);
 
 	private:
 		Image(const Image& rhs) = delete;
