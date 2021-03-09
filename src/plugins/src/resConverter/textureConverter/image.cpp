@@ -1,5 +1,9 @@
 #include "image.h"
-#include "stb\stb_image_include.h"
+
+// stb_image is already implemented in nvtt
+// #define STB_IMAGE_IMPLEMENTATION
+
+#include "stb\stb_image.h"
 
 namespace Cjing3D
 {
@@ -68,6 +72,27 @@ namespace Cjing3D
 
 	void* Image::GetMipAddr(I32 mipLevel) const
 	{
+		if (mipLevel > mMipLevel) {
+			return nullptr;
+		}
+
+		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(mFormat);
+		I32 blockW = (mWidth + formatInfo.mBlockW - 1)  / formatInfo.mBlockW;
+		I32 blockH = (mHeight + formatInfo.mBlockH - 1) / formatInfo.mBlockH;
+
+		U8* targetData = mData;
+		for (int i = 0; i < mMipLevel; i++)
+		{
+			if (i == mipLevel) {
+				return targetData;
+			}
+
+			const I64 numBlocks = blockW * blockH;
+			targetData += (numBlocks * formatInfo.mBlockBits) >> 3; // /8
+			blockW = std::max(blockW >> 1, 1);
+			blockH = std::max(blockH >> 1, 1);
+		}
+
 		return nullptr;
 	}
 

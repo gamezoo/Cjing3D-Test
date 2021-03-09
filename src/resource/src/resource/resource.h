@@ -57,7 +57,7 @@ namespace Cjing3D
 		bool IsLoaded()const { return mState == ResState::LOADED; }
 		bool IsEmpty()const  { return mState == ResState::EMPTY; }
 		bool IsNeedLoad()const { return IsEmpty() && mDesiredState == ResState::EMPTY; }
-		bool WantLoad()const { return mDesiredState != ResState::LOADED; }
+		bool WantLoad()const { return mDesiredState == ResState::LOADED; }
 
 		Path GetPath()const { return mPath; }
 		void SetPath(const Path& path) { mPath = path; }

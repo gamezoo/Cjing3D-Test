@@ -20,7 +20,8 @@ namespace Cjing3D
 		void AddSource(const char* path);
 		void AddOutput(const char* path);
 		bool Convert(IResConverter* converter, const ResourceType& resType, const char* srcPath, const char* destPath);
-	
+		void WriteMetaData(const char* path);
+
 		template<typename T>
 		void SetMetaData(const T& data)
 		{

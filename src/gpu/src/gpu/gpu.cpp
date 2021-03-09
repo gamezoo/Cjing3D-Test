@@ -833,6 +833,18 @@ namespace GPU
 		return info;
 	}
 
+	TextureLayoutInfo GetTextureLayoutInfo(FORMAT format, I32 width, I32 height)
+	{
+		FormatInfo formatInfo = GetFormatInfo(format);
+		I32 widthByBlock  = std::max(1, width / formatInfo.mBlockW);
+		I32 heightByBlock = std::max(1, height / formatInfo.mBlockH);
+
+		return {
+			widthByBlock * formatInfo.mBlockBits / 8,
+			widthByBlock * heightByBlock * formatInfo.mBlockBits / 8
+		};
+	}
+
 	U32 GetTextureSize(FORMAT format, I32 width, I32 height, I32 depth, I32 mipLevel)
 	{
 		U32 size = 0;

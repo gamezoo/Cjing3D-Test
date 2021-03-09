@@ -1,13 +1,16 @@
 #include "resConverter.h"
 #include "shaderConverter\shaderConverter.h"
 #include "modelConverter\modelConverter.h"
+#include "textureConverter\textureConverter.h"
+#include "materialConverter\materialConverter.h"
 
 namespace Cjing3D
 {
 	ResConverter::ResConverter()
 	{
-		AddConverter(ResourceType("Shader"), CJING_NEW(ShaderResConverter));
-		AddConverter(ResourceType("Model"),  CJING_NEW(ModelResConverter));
+		AddConverter(ResourceType("Shader"),  CJING_NEW(ShaderResConverter));
+		AddConverter(ResourceType("Model"),   CJING_NEW(ModelResConverter));
+		AddConverter(ResourceType("Texture"), CJING_NEW(TextureResConverter));
 	}
 
 	ResConverter::~ResConverter()
@@ -57,10 +60,10 @@ namespace Cjing3D
 	{
 		ResConverterPlugin* plugin = CJING_NEW(ResConverterPlugin);
 		plugin->CreateConverter = []() -> IResConverter* {
-			return CJING_NEW(ResConverter);
+			static ResConverter resConverter;
+			return &resConverter;
 		};
 		plugin->DestroyConverter = [](IResConverter*& converter) {
-			CJING_SAFE_DELETE(converter);
 			converter = nullptr;
 		};
 		return plugin;

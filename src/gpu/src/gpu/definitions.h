@@ -661,5 +661,11 @@ namespace GPU {
 		/// Number of channels.
 		I32 mChannels = 0;
 	};
+
+	struct TextureLayoutInfo
+	{
+		I32 mPitch = 0;
+		I32 mSlicePitch = 0;
+	};
 }
 }

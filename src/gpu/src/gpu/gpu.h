@@ -61,6 +61,7 @@ namespace GPU
 	U32x2 GetResolution();
 	F32x2 GetScreenSize();
 	FormatInfo GetFormatInfo(FORMAT format);
+	TextureLayoutInfo GetTextureLayoutInfo(FORMAT format, I32 width, I32 height);
 	U32 GetTextureSize(FORMAT format, I32 width, I32 height, I32 depth, I32 mipLevel);
 }
 }

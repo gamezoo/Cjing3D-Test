@@ -49,6 +49,14 @@ work_dir = nil
 build_editor = true
 build_app = false
 
+function setup_project_confgiurations()
+	configuration "Debug"
+		flags { "Symbols", "ReleaseRuntime" }
+
+    configuration {}
+        defines { "_ITERATOR_DEBUG_LEVEL=0", "STBI_NO_STDIO" }
+end 
+
 function setup_project_env_win32()
     platforms "x64"
     filter { "platforms:x64" }
@@ -66,6 +74,8 @@ function setup_project_env()
     elseif current_platform == "linux" then 
         setup_project_env_linux()
     end
+
+    setup_project_confgiurations()
 end
 
 function setup_project_definines()

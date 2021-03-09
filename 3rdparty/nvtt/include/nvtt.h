@@ -49,7 +49,7 @@
 #  define NVTT_API
 #endif
 
-#define NVTT_VERSION 20102
+#define NVTT_VERSION 20100
 
 #define NVTT_FORBID_COPY(Class) \
     private: \
@@ -312,6 +312,7 @@ namespace nvtt
         NVTT_API void setMipmapFilter(MipmapFilter filter);
         NVTT_API void setMipmapGeneration(bool enabled, int maxLevel = -1);
         NVTT_API void setKaiserParameters(float width, float alpha, float stretch);
+		NVTT_API void setAlphaCoverageMipScale(float alpha_ref, int channel);
 
         // Set normal map options.
         NVTT_API void setNormalMap(bool b);
@@ -463,8 +464,8 @@ namespace nvtt
         ToneMapper_Lightmap,
     };
 
-    // Transform the given x,y,z coordinates.
-    typedef void WarpFunction(float & x, float & y, float & z);
+    // Transform the given x,y coordinates.
+    typedef void WarpFunction(float & x, float & y, float & d);
 
 
     // A surface is one level of a 2D or 3D texture. (New in NVTT 2.1)
@@ -501,6 +502,7 @@ namespace nvtt
         NVTT_API void range(int channel, float * rangeMin, float * rangeMax, int alpha_channel = -1, float alpha_ref = 0.f) const;
 
         // Texture data.
+        NVTT_API bool load(const char * fileName, const unsigned char* mem, int size, bool * hasAlpha = 0);
         NVTT_API bool load(const char * fileName, bool * hasAlpha = 0);
         NVTT_API bool save(const char * fileName, bool hasAlpha = 0, bool hdr = 0) const;
         NVTT_API bool setImage(int w, int h, int d);
@@ -663,6 +665,11 @@ namespace nvtt
         NVTT_API CubeSurface cosinePowerFilter(int size, float cosinePower, EdgeFixup fixupMethod) const;
 
         NVTT_API CubeSurface fastResample(int size, EdgeFixup fixupMethod) const;
+
+        // Jai doesn't support non-pod structs as return types, so expose some other function to do the same, but operate in place:
+        NVTT_API void _irradianceFilter(int size, EdgeFixup fixupMethod);
+        NVTT_API void _cosinePowerFilter(int size, float cosinePower, EdgeFixup fixupMethod);
+        NVTT_API void _fastResample(int size, EdgeFixup fixupMethod);
 
         // Spherical Harmonics:
         NVTT_API void computeLuminanceIrradianceSH3(float sh[9]) const;

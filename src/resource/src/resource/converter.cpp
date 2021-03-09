@@ -90,4 +90,18 @@ namespace Cjing3D
 		mDeserializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Read, &mFileSystem);
 		obj.Unserialize(*mDeserializer);
 	}
+
+	void ResConverterContext::WriteMetaData(const char* path)
+	{
+		// try remove old metadata file
+		while (mFileSystem.IsFileExists(path))
+		{
+			mFileSystem.DeleteFile(path);
+			JobSystem::YieldCPU();
+		}
+
+		mSerializer->Write("sources", mSources);
+		mSerializer->Write("outputs", mOutputs);
+		mSerializer->Save(path);
+	}
 }

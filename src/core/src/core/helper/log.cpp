@@ -135,7 +135,7 @@ namespace Logger
 			prefix = "[Warning]";
 			break;
 		case LogLevel::LVL_ERROR:
-			prefix = "[Erro]";
+			prefix = "[Error]";
 			break;
 		}
 		return prefix;

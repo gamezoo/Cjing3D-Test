@@ -208,6 +208,11 @@ namespace Cjing3D
 			}
 		}
 
+		virtual void* GetAddress()const
+		{
+			return nullptr;
+		}
+
 		const char* GetPath() const override {
 #ifdef DEBUG
 			return mPath.c_str();

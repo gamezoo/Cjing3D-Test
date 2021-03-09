@@ -13,7 +13,7 @@ namespace Cjing3D
 		virtual void Unserialize(JsonArchive& archive);
 
 		GPU::FORMAT mFormat = GPU::FORMAT_UNKNOWN;
-		bool mGenerateMiplevels = false;
+		bool mGenerateMipmap = true;
 	};
 
 	class TextureResConverter : public IResConverter

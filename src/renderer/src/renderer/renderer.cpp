@@ -373,6 +373,7 @@ namespace Renderer
 
 		// register render res factories
 		Shader::RegisterFactory();
+		Texture::RegisterFactory();
 
 		// initialize impl
 		mImpl = CJING_NEW(RendererImpl);
@@ -409,6 +410,7 @@ namespace Renderer
 
 		// unregister render res factories
 		ResourceManager::ProcessReleasedResources();
+		Texture::UnregisterFactory();
 		Shader::UnregisterFactory();
 
 		// uninitialize gpu

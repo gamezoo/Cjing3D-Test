@@ -16,8 +16,12 @@ namespace Cjing3D
 		Image& operator=(Image&& rhs);
 		~Image();
 
-		void Swap(Image& rhs);
 		GPU::FORMAT GetFormat()const { return mFormat; }
+		I32 GetWidth()const { return mWidth; }
+		I32 GetHeight()const { return mHeight; }
+		I32 GetDepth()const { return mDepth; }
+
+		void  Swap(Image& rhs);
 		void* GetMipAddr(I32 mipLevel) const;
 
 		template<typename T>
