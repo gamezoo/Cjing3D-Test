@@ -12,7 +12,7 @@ namespace Cjing3D
 	class List
 	{
 	private:
-		ContainerAllocator mAllocator;
+		AllocatorT mAllocator;
 
 		struct ListImpl;
 		struct ListElement

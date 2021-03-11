@@ -303,9 +303,10 @@ namespace Cjing3D
 			return hash & mMask;
 		}
 
-		U32 ProbeDistanceHash(U32 hash, U32 index)
+		// 获取hash的期望位置和curPos的距离
+		U32 ProbeDistanceHash(U32 hash, U32 curPos)
 		{
-			return (index - GetPosByHash(hash) + mCapacity) & mMask;
+			return (curPos - GetPosByHash(hash) + mCapacity) & mMask;
 		}
 
 		ValueT* InsertImpl(U32 hash, KeyT&& key, const ValueT& value)
@@ -327,19 +328,26 @@ namespace Cjing3D
 					}
 					return ret;
 				}
-				// 如果位置已被占用（冲突），则寻找下一个可用位置
+				// 如果位置已被占用（冲突），使用线性开放式寻址寻找下一个可用位置
 				else
 				{
-					// 如果当前elem的hash位置和实际位置的距离，小于dist
-					// 则将当前值和elem交换，继续去寻找elem的可用位置
-					// 这样可使所有elem的偏移尽可能小，较少循环次数
+					// 获取当前已存在的对象的期望hashPos和pos的距离，如果这个距离小于dist，
+					// 交换已存在对象和elem,之后则寻找已存在对象的下一个可用位置.
+					// 目的是使得所有elem的位置偏移尽可能小，减少冲突次数
+
+					// TODO: Too many copy constructs
+					ValueT currentValue = value;
 					U32 curElemProbeDist = ProbeDistanceHash(mHashTable[pos], pos);
 					if (curElemProbeDist < dist)
 					{
 						std::swap(hash, mHashTable[pos]);
 						std::swap(key, mKeys[pos]);
 
-						mValues[pos] = value;
+						// std::swap(value, mValues[pos]
+						ValueT temp = mValues[pos];
+						mValues[pos] = currentValue;
+						currentValue = temp;
+
 						dist = curElemProbeDist;
 
 						if (ret == nullptr) {

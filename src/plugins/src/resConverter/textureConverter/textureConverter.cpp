@@ -8,11 +8,22 @@
 #include "imguiRhi\manager.h"
 #include "imguiRhi\imguiEx.h"
 #include "core\helper\enumTraits.h"
+#include "renderer\textureImpl.h"
 
 #include "nvtt\include\nvtt.h"
 
 namespace Cjing3D
 {
+	struct ImageErrorHandler : nvtt::ErrorHandler
+	{
+		virtual ~ImageErrorHandler() {}
+
+		void error(nvtt::Error e)override
+		{
+			Logger::Error(nvtt::errorString(e));
+		}
+	};
+
 	struct ImageOuputHander : nvtt::OutputHandler
 	{
 	private:
@@ -63,17 +74,10 @@ namespace Cjing3D
 			return false;
 		}
 
-		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(img.GetFormat());
-		bool hasAlpah = formatInfo.mABits > 0;
-
-		// setup nvtt
-		nvtt::Context nvttContext;
-		nvtt::InputOptions nvttInput;
-		nvttInput.setMipmapGeneration(metaData.mGenerateMipmap);
-		nvttInput.setAlphaMode(hasAlpah ? nvtt::AlphaMode_Transparency : nvtt::AlphaMode_None);
-		nvttInput.setNormalMap(false);
-		nvttInput.setTextureLayout(nvtt::TextureType_2D, img.GetWidth(), img.GetHeight(), img.GetDepth());
-		nvttInput.setMipmapData(img.GetMipData<U8>(0), img.GetWidth(), img.GetHeight());
+		///////////////////////////////////////////////////////////////////////////////////////////
+		// Converted file format:
+		// | texture desc
+		// | texture data
 
 		File file;
 		if (!fileSystem.OpenFile(dest, file, FileFlags::DEFAULT_WRITE))
@@ -82,32 +86,47 @@ namespace Cjing3D
 			return false;
 		}
 
-		// Converted file format:
-		// | texture desc
-		// | texture data
+		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(img.GetFormat());
+		bool hasAlpah = formatInfo.mABits > 0;
 
-		// 1. texture desc
+		// 1. texture general header
 		GPU::TextureDesc texDesc = {};
+		texDesc.mType = GPU::TEXTURE_2D;
 		texDesc.mWidth = std::max(formatInfo.mBlockW, img.GetWidth());
 		texDesc.mHeight = std::max(formatInfo.mBlockH, img.GetHeight());
 		texDesc.mDepth = img.GetDepth();
-		texDesc.mMipLevels = 1;
+		texDesc.mMipLevels = img.GetMipLevels();
 		texDesc.mArraySize = 1;
 		texDesc.mFormat = img.GetFormat();
 		texDesc.mUsage = GPU::USAGE_IMMUTABLE;
 		texDesc.mBindFlags = GPU::BIND_SHADER_RESOURCE;
 
-		file.Write(&texDesc, sizeof(texDesc));
+		TextureGeneralHeader header;
+		header.mDesc = texDesc;
+		CopyString(header.mFileType, "dds");
+		file.Write(&header, sizeof(TextureGeneralHeader));
 
 		// 2. image data
 		// setup nvtt options
+		nvtt::Context nvttContext;
+		nvtt::InputOptions nvttInput;
+		nvttInput.setMipmapGeneration(metaData.mGenerateMipmap);
+		nvttInput.setAlphaCoverageMipScale(metaData.mMipScale, formatInfo.mChannels == 4 ? 3 : 0);
+		nvttInput.setAlphaMode(hasAlpah ? nvtt::AlphaMode_Transparency : nvtt::AlphaMode_None);
+		nvttInput.setNormalMap(false);
+		nvttInput.setTextureLayout(nvtt::TextureType_2D, img.GetWidth(), img.GetHeight(), img.GetDepth());
+		nvttInput.setMipmapData(img.GetMipData<U8>(0), img.GetWidth(), img.GetHeight());
+
 		ImageOuputHander nvttOutputHandler(file);
+		ImageErrorHandler nvttErrorHandler;
 		nvtt::OutputOptions nvttOuput;
 		nvttOuput.setSrgbFlag(false);
+		nvttOuput.setContainer(nvtt::Container_DDS10);
+		nvttOuput.setErrorHandler(&nvttErrorHandler);
 		nvttOuput.setOutputHandler(&nvttOutputHandler);
 
 		nvtt::CompressionOptions compression;
-		compression.setFormat(hasAlpah ? nvtt::Format_DXT5 : nvtt::Format_DXT1);
+		compression.setFormat(hasAlpah ? nvtt::Format_BC7 : nvtt::Format_BC6);
 		compression.setQuality(nvtt::Quality_Normal);
 
 		if (!nvttContext.process(nvttInput, compression, nvttOuput))
@@ -139,15 +158,28 @@ namespace Cjing3D
 		// show texture preview
 		if (texture->GetHandle())
 		{
+			ImVec2 texture_size(200, 200);
+			if (texDesc.mWidth > texDesc.mHeight) {
+				texture_size.y = texture_size.x * texDesc.mHeight / texDesc.mWidth;
+			}
+			else {
+				texture_size.x = texture_size.y * texDesc.mWidth / texDesc.mHeight;
+			}
 
-		}
+			if (mTexture != texture->GetHandle()) {
+				mTexture = texture->GetHandle();
+			}
+			if (mTexture != GPU::ResHandle::INVALID_HANDLE) {
+				ImGui::Image((ImTextureID)&mTexture, texture_size);
+			}
 
-		Path fullPath(context.GetFileSystem().GetBasePath());
-		fullPath.AppendPath(res->GetPath());
-		if (ImGui::Button("Open externally"))
-		{
-			if (!Platform::ShellExecuteOpen(fullPath.c_str(), nullptr)) {
-				Logger::Warning("Failed to open %s in exeternal editor.", fullPath.c_str());
+			Path fullPath(context.GetFileSystem().GetBasePath());
+			fullPath.AppendPath(res->GetPath());
+			if (ImGui::Button("Open externally"))
+			{
+				if (!Platform::ShellExecuteOpen(fullPath.c_str(), nullptr)) {
+					Logger::Warning("Failed to open %s in exeternal editor.", fullPath.c_str());
+				}
 			}
 		}
 

@@ -20,6 +20,7 @@ namespace Cjing3D
 		I32 GetWidth()const { return mWidth; }
 		I32 GetHeight()const { return mHeight; }
 		I32 GetDepth()const { return mDepth; }
+		I32 GetMipLevels()const { return mMipLevel; }
 
 		void  Swap(Image& rhs);
 		void* GetMipAddr(I32 mipLevel) const;

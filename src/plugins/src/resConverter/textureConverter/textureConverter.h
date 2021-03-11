@@ -14,6 +14,7 @@ namespace Cjing3D
 
 		GPU::FORMAT mFormat = GPU::FORMAT_UNKNOWN;
 		bool mGenerateMipmap = true;
+		F32 mMipScale = -1.0f;
 	};
 
 	class TextureResConverter : public IResConverter
@@ -22,5 +23,8 @@ namespace Cjing3D
 		void OnEditorGUI(ResConverterContext& context, const ResourceType& type, Resource* res)override;
 		bool SupportsType(const char* ext, const ResourceType& type)override;
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override;
+	
+	private:
+		GPU::ResHandle mTexture;
 	};
 }

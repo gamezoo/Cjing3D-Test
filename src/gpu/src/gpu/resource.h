@@ -185,7 +185,7 @@ namespace GPU
 
 		ResourceWrite<T> Write(ResHandle handle)
 		{
-			Concurrency::ScopedReadLock lock(mLock);
+			Concurrency::ScopedWriteLock lock(mLock);
 			I32 index = handle.GetIndex();
 			Resource& res = GetResource(index);
 			return ResourceWrite<T>(res.mLock, res.mInst);

@@ -1019,6 +1019,9 @@ namespace ResourceManager
 
 	void LoadHook::ContinueLoad(Resource* res, bool isImmediate)
 	{
+		if (res->IsFaild()) {
+			return;
+		}
 		Debug::CheckAssertion(res->IsEmpty());
 		Concurrency::AtomicDecrement(&mImpl->mPendingResJobs); // release from hook
 		mImpl->ReleaseResource(res);		// release from hook
