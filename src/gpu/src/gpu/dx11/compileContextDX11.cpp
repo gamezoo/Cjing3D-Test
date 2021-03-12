@@ -400,7 +400,7 @@ namespace GPU
             HRESULT result = context.Map(buffer->mResource.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
             Debug::ThrowIfFailed(SUCCEEDED(result), "Failed to map buffer:%08x", result);
 
-            I32 dataSize = std::min(dataSize, (I32)desc.mByteWidth);
+            I32 dataSize = std::min(cmd->mSize, (I32)desc.mByteWidth);
             dataSize = dataSize >= 0 ? dataSize : (I32)desc.mByteWidth;
 
             Memory::Memcpy(mappedResource.pData, cmd->mData, dataSize);

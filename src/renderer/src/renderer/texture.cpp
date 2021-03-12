@@ -132,8 +132,11 @@ namespace Cjing3D
 			}
 
 			GPU::ResHandle ret = GPU::CreateTexture(&desc, initalData.data(), name);
-			if (ret != GPU::ResHandle::INVALID_HANDLE) {
+			if (ret != GPU::ResHandle::INVALID_HANDLE) 
+			{
+				GPU::FORMAT prevFormat = texDesc.mFormat;
 				texDesc = desc;
+				texDesc.mFormat = prevFormat;
 			}
 			CJING_SAFE_DELETE_ARR(texData, bytes);
 			return ret;

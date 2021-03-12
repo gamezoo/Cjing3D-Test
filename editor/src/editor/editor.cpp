@@ -10,6 +10,7 @@
 #include "widgets\widgetSettings.h"
 #include "widgets\gameView.h"
 #include "widgets\sceneView.h"
+#include "widgets\profiler.h"
 
 namespace Cjing3D
 {
@@ -46,10 +47,11 @@ namespace Cjing3D
 		RegisterWidget("GameView", CJING_MAKE_SHARED<EditorWidgetGameView>(*this));
 		RegisterWidget("SceneView", CJING_MAKE_SHARED<EditorWidgetSceneView>(*this));
 		RegisterWidget("AssetBrowser", CJING_MAKE_SHARED<EditorWidgetAssetBrowser>(*this));
-		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
 		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));
 		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this));
 		RegisterWidget("EntityList", CJING_MAKE_SHARED<EditorWidgetEntityList>(*this));
+		RegisterWidget("Profiler", CJING_MAKE_SHARED<EditorWidgetProfiler>(*this));
+		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
 	}
 
 	void GameEditor::Initialize()
