@@ -69,8 +69,13 @@ namespace Cjing3D
 			return mCapacity;
 		}
 
+		U8* GetBuffer() 
+		{
+			return mBuffer;
+		}
+
 	private:
-		uint8_t* mBuffer = nullptr;
+		U8* mBuffer = nullptr;
 		size_t mCapacity = 0;
 		size_t mOffset = 0;
 	};

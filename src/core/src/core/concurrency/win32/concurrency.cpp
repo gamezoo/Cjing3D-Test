@@ -1,16 +1,21 @@
-#include "concurrency.h"
+#ifdef CJING3D_PLATFORM_WIN32
+
+#include "core\concurrency\concurrency.h"
 #include "core\platform\platform.h"
 #include "core\helper\debug.h"
 #include "core\memory\memory.h"
 
-#ifdef CJING3D_PLATFORM_WIN32
 #include <array>
-#endif
 
 namespace Cjing3D
 {
 namespace Concurrency
 {
+	ThreadID GetCurrentThreadID()
+	{
+		return ::GetCurrentThreadId();
+	}
+
 	//////////////////////////////////////////////////////////////////////////
 	// system utils
 	//////////////////////////////////////////////////////////////////////////
@@ -75,7 +80,6 @@ namespace Concurrency
 		return 0;
 	}
 
-#ifdef CJING3D_PLATFORM_WIN32
 	//////////////////////////////////////////////////////////////////////////
 	// I32
 	//////////////////////////////////////////////////////////////////////////
@@ -252,11 +256,9 @@ namespace Concurrency
 		volatile I32 lockedCount_ = 0;
 	};
 
-#endif // CJING3D_PLATFORM_WIN32 
 
 	Thread::Thread(EntryPointFunc entryPointFunc, void* userData, I32 stackSize, std::string debugName)
 	{
-#ifdef CJING3D_PLATFORM_WIN32
 		mImpl = CJING_NEW(ThreadImpl);
 		mImpl->entryPointFunc_ = entryPointFunc;
 		mImpl->userData_ = userData;
@@ -264,7 +266,6 @@ namespace Concurrency
 
 #ifdef DEBUG
 		mImpl->debugName_ = debugName;
-#endif
 #endif
 	}
 
@@ -275,11 +276,9 @@ namespace Concurrency
 
 	Thread::~Thread()
 	{
-#ifdef CJING3D_PLATFORM_WIN32
 		if (mImpl != nullptr) {
 			Join();
 		}
-#endif
 	}
 
 	Thread& Thread::operator=(Thread&& rhs)
@@ -290,17 +289,14 @@ namespace Concurrency
 
 	void Thread::SetAffinity(U64 mask)
 	{
-#ifdef CJING3D_PLATFORM_WIN32
 		if (mImpl != nullptr) {
 			// Set thread affinity to physical cores
 			::SetThreadAffinityMask(mImpl->threadHandle_, mask);
 		}
-#endif
 	}
 
 	I32 Thread::Join()
 	{
-#ifdef CJING3D_PLATFORM_WIN32
 		if (mImpl != nullptr)
 		{
 			::WaitForSingleObject(mImpl->threadHandle_, INFINITE);
@@ -312,14 +308,11 @@ namespace Concurrency
 			return exitCode;
 		}
 		return 0;
-#endif
 	}
 
 	bool Thread::IsValid() const
 	{
-#ifdef CJING3D_PLATFORM_WIN32
 		return mImpl != nullptr;
-#endif
 	}
 
 	Mutex::Mutex()
@@ -367,7 +360,6 @@ namespace Concurrency
 		::LeaveCriticalSection(&mImpl->critSec_);
 	}
 
-#ifdef CJING3D_PLATFORM_WIN32
 	FLS::FLS()
 	{
 		mHandle = ::FlsAlloc(nullptr);
@@ -589,8 +581,6 @@ namespace Concurrency
 		::ReleaseSRWLockExclusive(&mImpl->mSRWLock);
 	}
 
-#endif
-
 	SpinLock::SpinLock()
 	{
 	}
@@ -618,3 +608,5 @@ namespace Concurrency
 	}
 }
 }
+
+#endif

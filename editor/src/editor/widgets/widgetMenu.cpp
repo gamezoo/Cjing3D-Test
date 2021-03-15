@@ -53,6 +53,9 @@ namespace Cjing3D
 				if (ImGui::MenuItem("Scene View", nullptr, mEditor.GetWidget("SceneView")->IsVisible())) {
 					mEditor.GetWidget("SceneView")->SetVisible(true);
 				};
+				if (ImGui::MenuItem("Profiler", nullptr, mEditor.GetWidget("Profiler")->IsVisible())) {
+					mEditor.GetWidget("Profiler")->SetVisible(true);
+				};	
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Test"))

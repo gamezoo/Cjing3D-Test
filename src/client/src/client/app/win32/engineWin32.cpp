@@ -58,6 +58,7 @@ namespace Cjing3D::Win32
 
 		// init profiler
 		Profiler::Initialize();
+		Profiler::SetCurrentThreadName("MainThread");
 
 		// init jobsystme
 		JobSystem::Initialize(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);

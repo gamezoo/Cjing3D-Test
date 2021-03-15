@@ -110,24 +110,27 @@ namespace Cjing3D
 		else {
 			// fixed update
 			const F32 dt = isLockFrameRate ? (1.0f / targetFrameRate) : deltaTime;
-			if (!mIsSkipFrame)
 			{
-				FixedUpdate();
-			}
-			else
-			{
-				mDeltaTimeAccumulator += dt;
-
-				// 某些情况会触发超时操作，此时需要重置计数
-				if (mDeltaTimeAccumulator > 8) {
-					mDeltaTimeAccumulator = 0;
-				}
-
-				const F32 targetRateInv = 1.0f / targetFrameRate;
-				while (mDeltaTimeAccumulator >= targetRateInv)
+				PROFILER_CPU_BLOCK("FixedUpdate");
+				if (!mIsSkipFrame)
 				{
 					FixedUpdate();
-					mDeltaTimeAccumulator -= targetRateInv;
+				}
+				else
+				{
+					mDeltaTimeAccumulator += dt;
+
+					// 某些情况会触发超时操作，此时需要重置计数
+					if (mDeltaTimeAccumulator > 8) {
+						mDeltaTimeAccumulator = 0;
+					}
+
+					const F32 targetRateInv = 1.0f / targetFrameRate;
+					while (mDeltaTimeAccumulator >= targetRateInv)
+					{
+						FixedUpdate();
+						mDeltaTimeAccumulator -= targetRateInv;
+					}
 				}
 			}
 
@@ -135,15 +138,19 @@ namespace Cjing3D
 			Render();
 		}
 
-		Compose();
+		GPU::CommandList* cmd = GPU::CreateCommandlist();
+		Renderer::PresentBegin(*cmd);
+		{
+			Compose(*cmd);
+		}
+		Profiler::EndFrame(); // Profiler需要在Present()前执行来保障GPU::Query正确记录
+		Renderer::PresentEnd();
 
 		Renderer::EndFrame();
-		Profiler::EndFrame();
 	}
 
 	void MainComponent::FixedUpdate()
 	{
-		PROFILER_CPU_BLOCK("FiexdUpdate");
 		mEngine->FixedUpdate();
 
 		if (mRenderPath != nullptr) {
@@ -154,6 +161,7 @@ namespace Cjing3D
 	void MainComponent::Update(F32 deltaTime)
 	{
 		PROFILER_CPU_BLOCK("Update");
+
 		mEngine->Update(*mUniverse, deltaTime);
 
 		if (mRenderPath != nullptr) {
@@ -163,24 +171,22 @@ namespace Cjing3D
 
 	void MainComponent::Render()
 	{
+		PROFILER_CPU_BLOCK("Render");
+
 		if (mRenderPath != nullptr) {
 			mRenderPath->Render();
 		}
 	}
 
-	void MainComponent::Compose()
+	void MainComponent::Compose(GPU::CommandList& cmd)
 	{
-		GPU::CommandList* cmd = GPU::CreateCommandlist();
-		Renderer::PresentBegin(*cmd);
-		{
-			if (mRenderPath != nullptr) 
-			{
-				cmd->EventBegin("Compose");
-				mRenderPath->Compose(*cmd);
-				cmd->EventEnd();
-			}
-		}
-		Renderer::PresentEnd();
-	}
+		PROFILER_CPU_BLOCK("Compose");
 
+		if (mRenderPath != nullptr)
+		{
+			cmd.EventBegin("Compose");
+			mRenderPath->Compose(cmd);
+			cmd.EventEnd();
+		}
+	}
 }

@@ -12,7 +12,6 @@ namespace Cjing3D
 
 		void Initialize()override;
 		void Update(F32 deltaTime)override;
-		void Uninitialize()override;
 
 	private:
 		class EditorWidgetProfilerImpl* mImpl = nullptr;

@@ -2,6 +2,7 @@
 
 #include "client\common\common.h"
 #include "core\engine.h"
+#include "gpu\gpu.h"
 
 namespace Cjing3D
 {
@@ -29,7 +30,7 @@ namespace Cjing3D
 		virtual void FixedUpdate();
 		virtual void Update(F32 deltaTime);
 		virtual void Render();
-		virtual void Compose();
+		virtual void Compose(GPU::CommandList& cmd);
 
 	protected:
 		bool mIsInitialized = false;

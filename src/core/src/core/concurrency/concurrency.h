@@ -15,6 +15,11 @@ namespace Cjing3D
 {
 namespace Concurrency
 {
+#ifdef CJING3D_PLATFORM_WIN32
+	using ThreadID = U32;
+#endif
+	ThreadID GetCurrentThreadID();
+
 	// system utils
 	void YieldCPU();
 	void Sleep(F32 seconds);
