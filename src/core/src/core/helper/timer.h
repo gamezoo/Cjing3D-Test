@@ -7,6 +7,7 @@ namespace Cjing3D {
 
 	using TimeStamp = F64;
 	using TimeInterval = F64;
+	using TimeRaw = U64;
 
 	struct EngineTime
 	{
@@ -37,6 +38,7 @@ namespace Cjing3D {
 
 		static String GetSystemTimeString();
 		static TimeStamp GetAbsoluteTime();
+		static TimeRaw GetAbsoluteRawTime();
 
 	private:
 		TimeStamp GetTotalTime()const;

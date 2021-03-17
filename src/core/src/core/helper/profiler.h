@@ -11,6 +11,21 @@ namespace Cjing3D
 
 namespace Profiler
 {
+	enum class ProfileType : U8
+	{
+		BEGIN_CPU,
+		END_CPU
+	};
+
+#pragma pack(1)
+	struct ProfileBlockHeader
+	{
+		U16 mSize;
+		ProfileType mType;
+		U64 mTime;
+	};
+#pragma pack()
+
 	void Initialize();
 	bool IsInitialied();
 	void Uninitilize();

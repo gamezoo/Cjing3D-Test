@@ -151,6 +151,19 @@ namespace Cjing3D {
 		return ret;
 	}
 
+	TimeRaw Timer::GetAbsoluteRawTime()
+	{
+		TimeRaw ret = 0;
+#ifdef CJING3D_PLATFORM_WIN32
+		LARGE_INTEGER li;
+		QueryPerformanceCounter(&li);
+		ret = li.QuadPart;
+#else
+
+#endif
+		return ret;
+	}
+
 	TimeStamp Timer::GetTotalTime() const
 	{
 #ifdef CJING3D_PLATFORM_WIN32

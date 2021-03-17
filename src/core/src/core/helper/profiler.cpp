@@ -17,22 +17,8 @@ namespace Profiler
 {
 	static const size_t THREAD_CONTEXT_BUFFER_SIZE = 1024 * 256;
 
-	enum class ProfileType
-	{
-		BEGIN_CPU,
-		END_CPU
-	};
-
 	/// ////////////////////////////////////////////////////////////////////////
 	/// Impl
-	template<typename T>
-	struct ProfileBlock
-	{
-		size_t mSize;
-		ProfileType mType;
-		F32 mTime;
-		T mValue;
-	};
 
 	struct ThreadLocalContext
 	{
@@ -92,11 +78,17 @@ namespace Profiler
 		template<typename T>
 		void RecordBlock(ThreadLocalContext& ctx, ProfileType type, const T& value)
 		{
-			ProfileBlock<T> newBlock;
+#pragma pack(1)
+			struct 
+			{
+				ProfileBlockHeader mHeader;
+				T mValue;
+			} newBlock;
+#pragma pack()
 			size_t blockSize = sizeof(newBlock);
-			newBlock.mSize = blockSize;
-			newBlock.mType = type;
-			newBlock.mTime = Timer::GetAbsoluteTime();
+			newBlock.mHeader.mSize = (U16)blockSize;
+			newBlock.mHeader.mType = type;
+			newBlock.mHeader.mTime = Timer::GetAbsoluteRawTime();
 			newBlock.mValue = value;
 
 			Concurrency::ScopedMutex lock(ctx.mMutex);
@@ -104,8 +96,10 @@ namespace Profiler
 			U8* mem = ctx.mAllocator.GetBuffer();
 			size_t capacity = ctx.mAllocator.GetCapacity();
 
-			while (blockSize + ctx.mBufEnd - ctx.mBufStart > capacity) {
-				ctx.mBufStart += mem[ctx.mBufStart % capacity];
+			while (blockSize + ctx.mBufEnd - ctx.mBufStart > capacity) 
+			{
+				const U16 size = (U16)mem[ctx.mBufStart % capacity];
+				ctx.mBufStart += size;
 			}
 
 			U32 end = ctx.mBufEnd % capacity;

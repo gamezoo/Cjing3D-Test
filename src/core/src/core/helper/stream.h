@@ -35,6 +35,12 @@ namespace Cjing3D
 				Memory::Memcpy(mBuffer, rhs.mBuffer, rhs.mCapacity);
 			}
 		}
+		~MemoryStream()
+		{
+			if (mBuffer) {
+				CJING_ALLOCATOR_FREE(mAllocator, mBuffer);
+			}
+		}
 		
 		void operator=(MemoryStream&& rhs)
 		{
@@ -86,7 +92,7 @@ namespace Cjing3D
 			Memory::Memcpy(tempBuf, mBuffer, mCapacity);
 			CJING_ALLOCATOR_FREE(mAllocator, mBuffer);
 			mBuffer = tempBuf;
-			mCapacity = mOffset;
+			mCapacity = capacity;
 		}
 
 		void Clear() {
@@ -110,7 +116,7 @@ namespace Cjing3D
 		void WriteString(const char* string)
 		{
 			if (string && string[0] != '\0') {
-				Write(string, StringLength(string));
+				Write(string, StringLength(string) + 1);
 			}
 			else {
 				Write((U32)0);
@@ -124,7 +130,7 @@ namespace Cjing3D
 			}
 
 			if (mOffset + size > mCapacity) {
-				Reserve(mCapacity * 2);
+				Reserve((mOffset + size) * 2);
 			}
 			Memory::Memcpy(mBuffer + mOffset, data, size);
 			mOffset += size;
@@ -135,6 +141,91 @@ namespace Cjing3D
 		void Write(const T& value)
 		{
 			Write(&value, sizeof(T));
+		}
+
+		template<>
+		void Write<bool>(const bool& value)
+		{
+			U8 v = value;
+			Write(&v, sizeof(v));
+		}
+
+		const U8* data()const {
+			return mBuffer;
+		}
+		U8* data() {
+			return mBuffer;
+		}
+
+		U32 Size()const {
+			return mOffset;
+		}
+	};
+
+	class InputMemoryStream
+	{
+	private:
+		const U8* mBuffer = nullptr;
+		U32 mSize = 0;
+		U32 mOffset = 0;
+
+	public:
+		explicit InputMemoryStream(const MemoryStream& stream) : 
+			mBuffer(stream.data()), mSize(stream.Size()) {}
+		InputMemoryStream(const U8* data, U32 size) :
+			mBuffer(data), mSize(size) {}
+
+		bool Read(void* data, U32 size)
+		{
+			if (mOffset + size > mSize) {
+				return false;
+			}
+			if (size > 0) {
+				Memory::Memcpy(data, mBuffer + mOffset, size);
+			}
+			mOffset += size;
+			return true;
+		}
+
+		bool Read(String& string)
+		{
+			string = ReadString();
+			return true;
+		}
+
+		const char* ReadString()
+		{
+			const char* ret = (const char*)mBuffer + mOffset;
+			const char* end = (const char*)mBuffer + mSize;
+			while (mOffset < mSize && mBuffer[mOffset]) {
+				++mOffset;
+			}
+			++mOffset;
+			return ret;
+		}
+
+		template<typename T> 
+		T Read() 
+		{
+			T v;
+			Read(&v, sizeof(T));
+			return v;
+		}
+
+		template<>
+		bool Read<bool>()
+		{
+			U8 v;
+			Read(&v, sizeof(v));
+			return v;
+		}
+
+		const U8* data()const {
+			return mBuffer;
+		}
+
+		U32 Offset()const {
+			return mOffset;
 		}
 	};
 }
