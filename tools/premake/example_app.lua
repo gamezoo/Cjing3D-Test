@@ -106,6 +106,9 @@ function create_example_app(project_name, source_directory, root_directory, app_
             end 
         end 
 
+        -- set engine dependencies
+        local engine_dependencies = default_engine_dependencies
+
         --------------------------------------------------------------
         -- Config
         targetdir (target_dir)
@@ -113,7 +116,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
         filter {"configurations:Debug"}
             targetname(project_name)
             defines { "DEBUG" }
-            setup_engine("Debug")
+            setup_engine("Debug", engine_dependencies)
             link_all_plugins(plugins, "Debug")
             link_all_extra_dependencies(extra_dependencies, "Debug")
 
@@ -121,7 +124,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
         filter {"configurations:Release"}
             targetname(project_name .. "_d")
             defines { "NDEBUG" }
-            setup_engine("Release")
+            setup_engine("Release", engine_dependencies)
             link_all_plugins(plugins, "Release")
             link_all_extra_dependencies(extra_dependencies, "Release")
 

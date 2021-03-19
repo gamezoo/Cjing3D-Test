@@ -28,6 +28,8 @@ src/gpu/build
 src/gpu/lib
 src/renderer/build
 src/renderer/lib
+src/network/build
+src/network/lib
 src/imguiRhi/build
 src/imguiRhi/lib
 3rdparty/lua/build

@@ -7,8 +7,9 @@ PROJECT_CLIENT_NAME     = "client"
 PROJECT_RESOURCE_NAME   = "resource"
 PROJECT_GPU_NAME        = "gpu"
 PROJECT_IMGUI           = "imguiRhi"
+PROJECT_NETWORK         = "network"
 
-all_project_table = 
+default_engine_dependencies = 
 {
     PROJECT_MATH_NAME,
     PROJECT_LUA_BINDER_NAME,
@@ -51,6 +52,10 @@ dependencies_mapping =
 
     [PROJECT_IMGUI] = { 
         PROJECT_RENDERER_NAME
+    },
+
+    [PROJECT_NETWORK] = { 
+        PROJECT_CORE_NAME
     },
 }
 
@@ -95,36 +100,26 @@ function setup_dependent_libs(project_name, config)
     end 
 end 
 
------------------------------------------------------------------------------
------------------------------------------------------------------------------
-
-function setup_all_dependencies()
-    for _, project_name in ipairs(all_project_table) do 
-        dependson { project_name }
-    end 
-end 
-
-function setup_engine_libs(config)
-    -- lib dirs
-    for _, project_name in ipairs(all_project_table) do 
-        libdirs {env_dir .. "src/" .. project_name .. "/lib/" .. config}
-    end 
-
-    -- lib links
-    for _, project_name in ipairs(all_project_table) do 
-        links {project_name}
-    end
-end 
-
-function setup_engine(config)
+function setup_engine(config, dependencies)
     -- include
-    for _, project_name in ipairs(all_project_table) do 
+    for _, project_name in ipairs(dependencies) do 
         includedirs {env_dir .. "src/" .. project_name .. "/src"}
     end 
 
     -- libs
-    setup_engine_libs(config)
+    -- lib dirs
+    for _, project_name in ipairs(dependencies) do 
+        libdirs {env_dir .. "src/" .. project_name .. "/lib/" .. config}
+    end 
+
+    -- lib links
+    for _, project_name in ipairs(dependencies) do 
+        links {project_name}
+    end
+    
 
     -- dependencies
-    setup_all_dependencies()
+    for _, project_name in ipairs(dependencies) do 
+        dependson { project_name }
+    end 
 end 
