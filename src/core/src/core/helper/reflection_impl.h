@@ -48,7 +48,7 @@ namespace Reflection
 
 		UID hashValue = 0;
 		while (*str != 0) {
-			hashValue = SDBMHash(hashValue, (unsigned char)*str++);
+			hashValue = SDBMHash((unsigned int)hashValue, (unsigned char)*str++);
 		}
 		return hashValue;
 	}

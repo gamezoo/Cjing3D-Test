@@ -12,7 +12,14 @@
 #include "core\string\stringUtils.h"
 #include "core\signal\eventQueue.h"
 
+#pragma warning(push)
+#pragma warning(disable : 4091)
 #include <ShlObj.h>
+#include <commdlg.h>
+#include <shellapi.h>
+#pragma warning(pop)
+
+#pragma warning(disable : 4996)
 
 namespace Cjing3D {
 namespace Platform {

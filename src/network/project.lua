@@ -40,7 +40,8 @@ project (PROJECT_NETWORK)
     includedirs {
         -- local
         SOURCE_DIR,
-        
+        -- asio
+        "../../3rdparty/asio/include", 
         -- 3rdParty
         "../../3rdparty", 
     }

@@ -37,9 +37,9 @@ src/imguiRhi/lib
 3rdparty/fcpp/build
 3rdparty/fcpp/lib
 3rdparty/bullet
-3rdparty/imgui
 3rdparty/optick
 3rdparty/config_user.jsc
+3rdparty/asio
 /editor/src/app/note.h
 assets/imgui.ini
 tools/cjing_build/scripts/jsc/
