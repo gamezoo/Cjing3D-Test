@@ -22,6 +22,18 @@ newoption
 
 newoption 
 {
+   trigger     = "net_lib",
+   value       = "dir",
+   description = "net io library",
+   allowed = 
+   {
+      { "asio",   "asio" },
+      { "zmq",    "zeromq" },
+   }
+}
+
+newoption 
+{
    trigger     = "platform_dir",
    value       = "dir",
    description = "platform specifc src folder",

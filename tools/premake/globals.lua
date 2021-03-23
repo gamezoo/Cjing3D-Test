@@ -43,6 +43,7 @@ renderer = ""
 platform_dir = ""
 sdk_version = ""
 env_dir = "../"
+net_lib = ""
 current_platform = "unknown"
 is_static_plugin = true
 work_dir = nil
@@ -85,6 +86,10 @@ function setup_project_definines()
         ("CJING3D_RENDERER_" .. string.upper(renderer)),
     }
 
+    if net_lib ~= "" then 
+        defines { "CJING3D_NETWORK_" .. string.upper(net_lib) }
+    end 
+
     if is_static_plugin then 
         defines { "STATIC_PLUGINS" }
     end 
@@ -126,6 +131,9 @@ function setup_env_from_options()
     if _OPTIONS["work_dir"] then
         work_dir = _OPTIONS["work_dir"]
     end 
+    if _OPTIONS["net_lib"] then 
+        net_lib = _OPTIONS["net_lib"]
+    end 
 end
 
 function setup_env_from_action()
@@ -137,6 +145,7 @@ function setup_env_from_action()
     print("[premake]:work_dir:", work_dir)
     print("[premake]:current_platform:", current_platform)
     print("[premake]:current renderer:", renderer and renderer or "NULL")
+    print("[premake]:current net lib:", net_lib and net_lib or "NULL")
 
     if is_static_plugin then 
         print("[premake]:static plugins")

@@ -5,7 +5,9 @@
 
 #include <assert.h>
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif // !NOMINMAX
 #undef min
 #undef max
 

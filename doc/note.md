@@ -1,32 +1,38 @@
 
 ***********************************************************************************
-Cjin3D Dev Log
-Current Version 0.2.0
-Next Version 0.2.1
+Cjin3D Dev Log  
+Current Version 0.2.0  
+Next Version 0.2.1  
 ***********************************************************************************
-CJING 0.1.0 see <a href="https://github.com/maoxiezhao/Cjing3D">[here]</a>
+Trello see <a href="https://trello.com/b/5aPPSjob/cjing3d">[here]</a>  
+CJING 0.1.0 see <a href="https://github.com/maoxiezhao/Cjing3D">[here]</a>  
 ***********************************************************************************
 
 ## Current Plans
-__0.2.1 :__ 
-####Renderer 
-1. main pipeline 
-   基础renderGraph构建      (ok)
-   基础RenderScene         
-      deferred pass       (TODO)
-      v0.1.0渲染重新实现   (TODO)
-   Texture converter       (ok)
-   Material converter     (TODO)
-   Model converter        (TODO)
+__0.2.1 :__   
+#### Renderer 
+1. main pipeline  
+   基础renderGraph构建      (ok)  
+   base RenderScene       (DOING)  
+      deferred pass       (DOING)  
+      v0.1.0渲染重新实现   (DOING)  
+   Texture converter       (ok)  
+   Material converter     (TODO)  
+   Model converter        (TODO)  
 
 #### editor
-  EntityList 
-  EntityInspector
-  GameView
-  SceneView
+  EntityList              (TODO)  
+  EntityInspector         (TODO)   
+  GameView                (TODO)  
+  SceneView               (TODO)  
+
+#### tools
+  XML Schema to C++ classes
 
 #### network
-  基于asio实现的简易架构
+  基于asio实现的简易架构   (DOING)  
+  TinyRPC实现             (TODO)  
+  Schema生成TypedMsg      (TODO)  
 
 ## Approximate Changelog
 __0.2.0 :__ 

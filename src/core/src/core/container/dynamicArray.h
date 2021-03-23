@@ -3,6 +3,8 @@
 #include "core\common\definitions.h"
 #include "core\memory\memory.h"
 
+#include <initializer_list>
+
 namespace Cjing3D
 {
 	template<typename T>
@@ -89,6 +91,15 @@ namespace Cjing3D
 		DynamicArray(DynamicArray&& rhs)
 		{
 			swap(rhs);
+		}
+
+		DynamicArray(std::initializer_list<T> _list)
+		{
+			resizeImpl(_list.size());
+			mSize = _list.size();
+			for (U32 i = 0; i < mSize; ++i) {
+				new((char*)(mData + i)) T(*(_list.begin() + i));
+			}
 		}
 
 		void operator= (const DynamicArray& rhs)
@@ -302,6 +313,18 @@ namespace Cjing3D
 			}
 			--mSize;
 			return it;
+		}
+
+		void erase(T* beginIt, T* endIt)
+		{
+			assert(beginIt >= begin() && beginIt < end());
+			assert(endIt >= begin() && endIt <= end());
+
+			CallDestructors(beginIt, endIt);
+			if (endIt - begin() < mSize - 1) {
+				Memory::Memcpy(beginIt, endIt + 1, sizeof(T) * (end() - endIt - 1));
+			}
+			mSize -= (U32)(endIt - beginIt);
 		}
 
 		void push(const T& value)
