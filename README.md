@@ -1,5 +1,5 @@
 # Cjing3D
-Cjing3D is an very junk C++ engine
+Cjing3D is a very junk C++ engine
 ####
 
 ### Platforms:
