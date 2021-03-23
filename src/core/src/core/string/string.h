@@ -23,6 +23,7 @@ namespace Cjing3D
 	int  ReverseFindChar(const char* str, const char c);
 	int  FindSubstring(const char* str, const char* substr, int pos);
 	int  ReverseFindSubstring(const char* str, const char* substr);
+	void ReverseString(char* str, size_t n);
 
 	template<size_t N>
 	bool CopyString(char(&destination)[N], const char* source)

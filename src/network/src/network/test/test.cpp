@@ -1,22 +1,46 @@
 #define CJING_NETWORK_TEST
 #ifdef CJING_NETWORK_TEST
 
-#pragma warning(disable : 4996)
-
-#ifdef CJING3D_PLATFORM_WIN32
-#define _WIN32_WINNT _WIN32_WINNT_WIN10
-#endif
-
-#define ASIO_STANDALONE
-#include "asio\include\asio.hpp"
-#include "asio\include\asio\ts\buffer.hpp"
-#include "asio\include\asio\ts\internet.hpp"
+#include "network\comm.h"
+#include "network\asio\networkASIO.h"
+#include "core\concurrency\concurrency.h"
 
 #include <iostream>
 
+using namespace Cjing3D;
+
+bool serverStarted = false;
+StdoutLoggerSink loggerSink;
+
 int main()
 {
-	std::cout << "Hello world!" << std::endl;
+	Logger::RegisterSink(loggerSink);
+
+	// server
+	Cjing3D::Concurrency::Thread serverThread([](void* data)->int {
+		Network::ServerInterfaceASIO server(60000);
+		server.Start();
+		serverStarted = true;
+		while (serverStarted) 
+		{
+			server.Update();
+			Cjing3D::Concurrency::Sleep(0.033);
+		}
+		return 0;
+	}, nullptr);
+
+	while (!serverStarted);
+
+	// client
+	Network::ClientInterfaceASIO client;
+	client.Connect("127.0.0.1", 60000);
+
+	system("pause");
+	client.Disconnect();
+
+	system("pause");
+	serverStarted = false;
+	//serverThread.Join();
 	return 0;
 }
 

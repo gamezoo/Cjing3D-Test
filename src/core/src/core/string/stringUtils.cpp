@@ -235,5 +235,129 @@ namespace StringUtils
 
 		return hashValue;
 	}
+
+	bool ToString(bool value, Span<char> output)
+	{
+		return value ? CopyString(output, "true") : CopyString(output, "false");
+	}
+
+	bool ToString(I32 value, Span<char> output)
+	{
+		char* c = output.begin();
+		size_t length = output.length();
+		if (length > 0)
+		{
+			// check sign
+			if (value < 0)
+			{
+				value = -value;
+				length--;
+				*output.begin() = '-';
+				c++;
+			}
+			return ToString((U32)value, Span(c, length));
+		}
+		return false;
+	}
+
+	bool ToString(U32 value, Span<char> output)
+	{
+		// use sprintf??
+		// sprintf_s(output.data(), output.length(), "%d", value);
+
+		char* c = output.begin();
+		size_t length = output.length();
+		if (length > 0)
+		{
+			// case 1: value = 0
+			if (value == 0)
+			{
+				if (length <= 1) {
+					return false;
+				}
+				*c = '0';
+				*(c + 1) = '\0';
+				return true;
+			}
+
+			// case 2: loop record each digit of the num
+			while (value > 0 && length > 1)
+			{
+				*c = value % 10 + '0';
+				value = value / 10;
+				--length;
+				++c;
+			}
+			if (length > 0)
+			{
+				// reverse the string
+				ReverseString(output.begin(), (int)(c - output.begin()));
+				*c = 0;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool ToString(I64 value, Span<char> output)
+	{
+		// use sprintf??
+		// sprintf_s(output.data(), output.length(), "%l", value);
+
+		char* c = output.begin();
+		size_t length = output.length();
+		if (length > 0)
+		{
+			// check sign
+			if (value < 0)
+			{
+				value = -value;
+				length--;
+				*output.begin() = '-';
+				c++;
+			}
+			return ToString((U64)value, Span(c, length));
+		}
+		return false;
+	}
+
+	bool ToString(U64 value, Span<char> output)
+	{
+		// use sprintf??
+		// sprintf_s(output.data(), output.length(), "%l", value);
+
+		char* c = output.begin();
+		size_t length = output.length();
+		if (length > 0)
+		{
+			// case 1: value = 0
+			if (value == 0)
+			{
+				if (length <= 1) {
+					return false;
+				}
+				*c = '0';
+				*(c + 1) = '\0';
+				return true;
+			}
+
+			// case 2: loop record each digit of the num
+			while (value > 0 && length > 1)
+			{
+				*c = value % 10 + '0';
+				value = value / 10;
+				--length;
+				++c;
+			}
+			if (length > 0)
+			{
+				// reverse the string
+				ReverseString(output.begin(), (int)(c - output.begin()));
+				*c = 0;
+				return true;
+			}
+		}
+		return false;
+	}
 }
 }

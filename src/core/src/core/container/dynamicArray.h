@@ -317,6 +317,10 @@ namespace Cjing3D
 
 		void erase(T* beginIt, T* endIt)
 		{
+			if (beginIt == endIt) {
+				return;
+			}
+
 			assert(beginIt >= begin() && beginIt < end());
 			assert(endIt >= begin() && endIt <= end());
 

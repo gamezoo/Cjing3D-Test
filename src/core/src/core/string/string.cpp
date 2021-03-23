@@ -133,6 +133,20 @@ namespace Cjing3D
 		return std::string(str).rfind(substr);
 	}
 
+	void ReverseString(char* str, size_t n)
+	{
+		char* beg = str;
+		char* end = str + n - 1;
+		while (beg < end)
+		{
+			char tmp = *beg;
+			*beg = *end;
+			*end = tmp;
+			++beg;
+			--end;
+		}
+	}
+
 	U32 HashFunc(U32 Input, const String& Data)
 	{
 		return SDBHash(Input, Data.data(), Data.size());
