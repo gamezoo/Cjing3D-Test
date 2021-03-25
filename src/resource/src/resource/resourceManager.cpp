@@ -49,11 +49,12 @@ namespace ResourceManager
 		static const I32 MAX_READ_TASKS = 128;
 		static const I32 MAX_WRITE_TASKS = 128;
 
+		// registered infos
 		FactoryTable mResourceFactoires;
 		ResourceTypeTable mResourceTypeTable;
-		DynamicArray<Resource*> mReleasedResources;
 		HashMap<U32, ResourceType> mRegisteredExt;
 
+		DynamicArray<Resource*> mReleasedResources;
 		Concurrency::RWLock mRWLock;
 		BaseFileSystem* mFilesystem = nullptr;
 
@@ -189,6 +190,8 @@ namespace ResourceManager
 			resTable = mResourceTypeTable.insert(type.Type(), ResourceTable());
 		}
 		resTable->insert(path.GetHash(), &resource);
+
+		// keep one ref count by the resTable
 		resource.AddRefCount();
 	}
 
@@ -229,6 +232,8 @@ namespace ResourceManager
 
 	Path ResourceManagerImpl::GetResourceConvertedPath(const Path& inPath)
 	{
+		// convertedPath format: inPath.converted
+
 		MaxPathString dirPath, fileName, ext;
 		if (!inPath.SplitPath(dirPath.data(), dirPath.size(), fileName.data(), fileName.size(), ext.data(), ext.size()))
 		{
@@ -257,6 +262,7 @@ namespace ResourceManager
 			Debug::CheckAssertion(oldResult == AsyncResult::PENDING);
 		}
 
+		// 每次最大读取MAX_READ_SIZE
 		char* dest = (char*)mAddr;
 		size_t remainingSize = mSize;
 		while (remainingSize > 0)
@@ -298,6 +304,7 @@ namespace ResourceManager
 			Debug::CheckAssertion(oldResult == AsyncResult::PENDING);
 		}
 
+		// 每次最大写入MAX_WRITE_SIZE
 		char* dest = (char*)mAddr;
 		size_t remainingSize = mSize;
 		while (remainingSize > 0)
@@ -384,7 +391,9 @@ namespace ResourceManager
 		ResourceFactory& mFactory;
 		Resource& mResource;
 		String mName;
+		// target path, maybe is ConvertedPath
 		String mPath;
+		// original path
 		String mOriginalPath;
 	};
 
@@ -440,6 +449,7 @@ namespace ResourceManager
 	{
 		Concurrency::AtomicIncrement(&mImpl->mConversionJobs);
 
+		// find avaiable convertes to convert the resource
 		MaxPathString mExt;
 		Path::GetPathExtension(Span(mSrcPath.c_str(), StringLength(mSrcPath)), mExt.toSpan());		
 		for (auto plugin : mImpl->mConverterPlugins)
@@ -447,13 +457,12 @@ namespace ResourceManager
 			auto converter = plugin->CreateConverter();
 			if (converter && converter->SupportsType(mExt.c_str(), mResType))
 			{
-				// convert src resource
 				ResConverterContext context(*mImpl->mFilesystem);
 				mConversionRet = context.Convert(converter, mResType, mSrcPath, mConvertedPath.c_str());
 			}
 			plugin->DestroyConverter(converter);
 
-			// 成功转换后则直接返回
+			// break if conversion succeeds
 			if (mConversionRet) {
 				break;
 			}
@@ -540,6 +549,7 @@ namespace ResourceManager
 		bool success = mFactory.LoadResource(&mResource, mName.c_str(), file);
 		if (success && !mResource.IsLoaded())
 		{
+			// try to load original path
 			auto sources = mImpl->LoadResSources(mOriginalPath);
 			if (!sources.empty()) {
 				mResource.SetSourceFiles(sources);
@@ -631,6 +641,8 @@ namespace ResourceManager
 			return nullptr;
 		}
 
+		// 如果当前类型不需要转换，则直接加载inPath，否则尝试加载Converted inPath
+		// 一般来说所有的资源都需要Conversion,这仅仅只是一个提供的选项
 		if (!factory->IsNeedConvert())
 		{
 			// acquire resource
@@ -647,9 +659,10 @@ namespace ResourceManager
 
 			if (ret->IsNeedLoad())
 			{
+				// if loadHook exists, do loadHook::OnBeforeLoad first
 				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
 				if (mImpl->mLoadHook != nullptr) {
-					hookRet = mImpl->mLoadHook->OoBeforeLoad(ret);
+					hookRet = mImpl->mLoadHook->OnBeforeLoad(ret);
 				}
 
 				if (hookRet == LoadHook::HookResult::DEFERRED)
@@ -689,7 +702,7 @@ namespace ResourceManager
 				// onBeforeLoad
 				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
 				if (mImpl->mLoadHook != nullptr) {
-					hookRet = mImpl->mLoadHook->OoBeforeLoad(ret);
+					hookRet = mImpl->mLoadHook->OnBeforeLoad(ret);
 				}
 
 				if (hookRet == LoadHook::HookResult::DEFERRED)

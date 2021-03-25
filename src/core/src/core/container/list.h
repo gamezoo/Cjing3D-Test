@@ -144,6 +144,33 @@ namespace Cjing3D
 			return newElem;
 		}
 
+		ListElement* push_back(T&& value)
+		{
+			if (!mImpl) {
+				mImpl = CJING_ALLOCATOR_NEW(mAllocator, ListImpl)(mAllocator);
+			}
+
+			ListElement* newElem = CJING_ALLOCATOR_NEW(mAllocator, ListElement);
+			newElem->mValue = std::move(value);
+			newElem->mPrev = mImpl->mLast;
+			newElem->mImpl = mImpl;
+
+			// set last ptr
+			if (mImpl->mLast) {
+				mImpl->mLast->mNext = newElem;
+			}
+			mImpl->mLast = newElem;
+
+			// set first ptr
+			if (!mImpl->mFirst) {
+				mImpl->mFirst = newElem;
+			}
+
+			mImpl->mSize++;
+
+			return newElem;
+		}
+
 		ListElement* push_front(const T& value)
 		{
 			if (!mImpl) {

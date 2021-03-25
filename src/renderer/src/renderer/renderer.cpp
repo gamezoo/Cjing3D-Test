@@ -208,11 +208,14 @@ namespace Renderer
 		RenderScene& scene = *mRenderScene;
 		auto transforms = scene.GetUniverse().GetComponents<Transform>(ECS::SceneReflection::GetComponentType("Transform"));
 
+		// RenderInstance:
+		// * worldMatrix(mMat0, mMat1, mMat2);
+		// * I32x4 mUserdata
+
 		// allocate all intances
 		I32 instanceSize = queue.mRenderBatches.size() * sizeof(RenderInstance);
 		GPU::GPUAllocation instanceAllocation = cmd.GPUAlloc(instanceSize);
 
-		// merge same batches into instancedBatches
 		struct InstancedBatch
 		{
 			U32 mMeshIndex = 0;
@@ -221,6 +224,7 @@ namespace Renderer
 		};
 		DynamicArray<InstancedBatch*> instancedBatches;
 
+		// 对于相邻且MeshIndex相同的ObjectRenderBatch会合并为一个InstancedBatch
 		I32 totalInstanceCount = 0;
 		I32 prevMeshIndex = ~0;
 		for (ObjectRenderBatch* renderBatch : queue.mRenderBatches)
@@ -239,6 +243,7 @@ namespace Renderer
 				instancedBatches.push(instancedBatch);
 			}
 
+			// 创建一个新的RenderInstance并添加到当前InstancedBatch中
 			InstancedBatch& currentBatch = *instancedBatches.back();
 			const ObjectComponent* object = scene.mObjects->GetComponentByIndex(objectIndex);
 			if (object == nullptr) {
@@ -259,6 +264,7 @@ namespace Renderer
 					continue;
 				}
 
+				// setup renderInstance from worldMatrix and object color
 				RenderInstance& renderInstance = ((RenderInstance*)instanceAllocation.mData)[totalInstanceCount];
 				renderInstance.Setup(worldMatrix, object->mColor);
 
@@ -282,6 +288,7 @@ namespace Renderer
 
 			cmd.BindIndexBuffer(GPU::Binding::IndexBuffer(mesh->mIndexBuffer, 0), mesh->GetIndexFormat());
 
+			// bind vertex buffer
 			DynamicArray<GPU::BindingBuffer> buffers;
 			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferPos,   0, sizeof(MeshComponent::VertexPos)));
 			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferTex,   0, sizeof(MeshComponent::VertexTex)));
@@ -289,6 +296,7 @@ namespace Renderer
 			buffers.push(GPU::Binding::VertexBuffer(instanceAllocation.mBuffer, batch->mInstanceOffset, sizeof(RenderInstance)));
 			cmd.BindVertexBuffer(Span(buffers.data(), buffers.size()), 0);
 
+			// render mesh subsets
 			for (const auto& subset : mesh->mSubsets)
 			{
 				if (subset.mIndexCount <= 0) {
@@ -522,6 +530,7 @@ namespace Renderer
 
 	void AddStaticSampler(const GPU::ResHandle& handle, I32 slot)
 	{
+		// add static global sampler
 		Concurrency::ScopedReadLock lock(mImpl->mLock);
 		if (!handle) {
 			return;

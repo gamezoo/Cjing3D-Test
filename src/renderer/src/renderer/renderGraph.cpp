@@ -55,6 +55,7 @@ namespace Cjing3D
 		DynamicArray<RenderPassInst*> mExecuteRenderPasses;
 		DynamicArray<GPU::CommandList*> mExecuteCmds;
 		Set<I32> mNeededResources;
+
 		// resource, build by setup
 		DynamicArray<ResourceInst> mResources;
 		DynamicArray<ResourceInst> mUsedResources;
@@ -614,6 +615,7 @@ namespace Cjing3D
 					return;
 				}
 
+				// execute render pass
 				RenderPassInst* renderPassInst = impl->mExecuteRenderPasses[param];
 				GPU::CommandList* cmd = impl->mExecuteCmds[param];
 				{
@@ -622,6 +624,7 @@ namespace Cjing3D
 					renderPassInst->mRenderPass->Execute(resources, *cmd);
 				}
 
+				// compile cmd
 				if (!cmd->GetCommands().empty())
 				{
 					if (!GPU::CompileCommandList(*cmd))
@@ -729,6 +732,7 @@ namespace Cjing3D
 					return;
 				}
 
+				// execute render pass
 				RenderPassInst* renderPassInst = impl->mExecuteRenderPasses[param];
 				GPU::CommandList* cmd = impl->mExecuteCmds[param];
 				{
@@ -737,6 +741,7 @@ namespace Cjing3D
 					renderPassInst->mRenderPass->Execute(resources, *cmd);
 				}
 
+				// compile cmds
 				if (!cmd->GetCommands().empty())
 				{
 					if (!GPU::CompileCommandList(*cmd))
@@ -754,6 +759,8 @@ namespace Cjing3D
 		if (mImpl->mCompileFailCount > 0) {
 			return false;
 		}
+
+		// 当前阶段先不提交cmds，此时cmds缓存在GPUManager中，后续提交或者Present时，会全部提交
 
 		return true;
 	}

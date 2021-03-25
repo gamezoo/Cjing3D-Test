@@ -50,6 +50,7 @@ namespace GPU
 		void SetResourceName(ResHandle resource, const char* name)override;
 		void SetResolution(const U32x2 size)override;
 
+		// add static sampler, it will be valid for the entire rendering passs
 		void AddStaticSampler(const StaticSampler& sampler)override;
 		GPUAllocation GPUAllcate(ResHandle handle, size_t size)override;
 		void Map(GPU::ResHandle res, GPUMapping& mapping)override;

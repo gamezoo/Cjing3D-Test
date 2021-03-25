@@ -24,9 +24,9 @@ namespace Concurrency
 		::YieldProcessor();
 	}
 
-	void Sleep(F32 seconds)
+	void Sleep(F32 millisecond)
 	{
-		::Sleep((DWORD)(seconds * 1000));
+		::Sleep((DWORD)(millisecond * 1000));
 	}
 
 	void Barrier()

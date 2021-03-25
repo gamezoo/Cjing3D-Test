@@ -1615,7 +1615,11 @@ namespace GPU
 
 	GPUAllocation GraphicsDeviceDx11::GPUAllcate(ResHandle handle, size_t size)
 	{
-		return GPUAllocation();
+		auto ptr = mCommandLists.Write(handle);
+		if (*ptr == nullptr) {
+			return GPUAllocation();
+		}
+		return (*ptr)->GPUAllocate(size);
 	}
 
 	void GraphicsDeviceDx11::Map(GPU::ResHandle res, GPUMapping& mapping)

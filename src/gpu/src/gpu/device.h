@@ -39,10 +39,11 @@ namespace GPU
 		
 		virtual void DestroyResource(ResHandle handle) = 0;
 		virtual void SetResourceName(ResHandle resource, const char* name) = 0;
-		virtual void AddStaticSampler(const StaticSampler& sampler) = 0;
 		virtual GPUAllocation GPUAllcate(ResHandle handle, size_t size) = 0;
 		virtual void Map(GPU::ResHandle res, GPUMapping& mapping) = 0;
 		virtual void Unmap(GPU::ResHandle res) = 0;
+		// add static sampler, it will be valid for the entire rendering pass
+		virtual void AddStaticSampler(const StaticSampler& sampler) = 0;
 
 		U32x2 GetResolution()const { return mResolution; }
 		U32 GetResolutionWidth()const { return mResolution.x(); }

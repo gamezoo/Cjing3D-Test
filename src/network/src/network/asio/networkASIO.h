@@ -8,21 +8,58 @@ namespace Cjing3D
 namespace Network
 {
     //////////////////////////////////////////////////////////////////////////
+    // IOContext
+    //////////////////////////////////////////////////////////////////////////
+    class IOContextASIO
+    {
+    public:
+        IOContextASIO();
+        ~IOContextASIO();
+        IOContextASIO(const IOContextASIO& rhs) = delete;
+        void operator=(const IOContextASIO& rhs) = delete;
+
+        bool Start();
+        void Stop();
+        void Wait();
+
+        asio::io_context& GetContext() {
+            return mContext;
+        }
+        asio::io_context::strand& GetStrand() {
+            return mStrand;
+        }
+        bool IsStoped()const {
+            return mIsStoped;
+        }
+
+    private:
+        asio::io_context mContext;
+        Concurrency::Thread mThreadContext;
+        asio::executor_work_guard<asio::io_context::executor_type>* mWork = nullptr;
+        bool mIsStoped = true;
+
+        // io_context::strand class provides the ability to post and 
+        // dispatch handlers with the guarantee that none of those handlers
+        // will execute concurrently.
+        asio::io_context::strand mStrand;
+    };
+
+    //////////////////////////////////////////////////////////////////////////
     // Connectoin
     //////////////////////////////////////////////////////////////////////////
     class ConnectionAsio : public Connection
     {
     public:
-        ConnectionAsio(asio::io_context& context, asio::ip::tcp::socket socket);
+        ConnectionAsio(IOContextASIO& context, asio::ip::tcp::socket socket);
         virtual ~ConnectionAsio();
 
-        void Update();
         void Disconnect()override;
         void Send()override;
         void Receive()override;
         bool IsConnected()const override;
 
         void ConnectToServer(const asio::ip::tcp::resolver::results_type& endPoints);
+        void PostAsyncRead();
 
         ConnectionStatus GetStatus()const override {
             return mStatus;
@@ -32,9 +69,9 @@ namespace Network
         }
 
     private:
-        asio::io_context& mContext;
+        IOContextASIO& mContext;
         asio::ip::tcp::socket mSocket;
-        ConnectionStatus mStatus;
+        volatile ConnectionStatus mStatus;
         bool mIsDirty = false;
     };
 
@@ -52,8 +89,7 @@ namespace Network
         bool IsConnected()const override;
 
     private:
-        asio::io_context mContext;
-        Concurrency::Thread mThreadContext;
+        IOContextASIO mContext;
         UniquePtr<ConnectionAsio> mConnection;
     };
 
@@ -69,15 +105,18 @@ namespace Network
         bool Start()override;
         void Update()override;
         void Stop()override;
+        bool IsStarted()const override;
 
     private:
-        void WaitForClientConnection();
+        void PostHandleAccept();
+        void HandleAccept(asio::ip::tcp::socket&& socket, std::error_code ec);
 
     private:
-        asio::io_context mContext;
-        Concurrency::Thread mThreadContext;
+        IOContextASIO mContext;
         asio::ip::tcp::acceptor mAcceptor;
         asio::ip::tcp::endpoint mEndPoint;
+        asio::steady_timer mAcceptorTimer;
+        bool mIsStarted = false;
 
         DynamicArray<SharedPtr<ConnectionAsio>> mActiveConnections;
     };

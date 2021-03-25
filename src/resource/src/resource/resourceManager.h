@@ -73,6 +73,8 @@ namespace Cjing3D
 		AsyncResult ReadFileData(const char* path, char*& buffer, size_t& size, AsyncHandle* asyncHanlde = nullptr);
 		AsyncResult WriteFileData(const char* path, void* buffer, size_t size,  AsyncHandle* asyncHanlde = nullptr);
 
+		// LoadHook, resourceManager could set a load hook. 
+		// LoadHook::OnBeforeLoad is executed before the resource is loaded.
 		struct LoadHook
 		{
 			LoadHook() = default;
@@ -82,7 +84,9 @@ namespace Cjing3D
 				IMMEDIATE,
 				DEFERRED 
 			};
-			virtual HookResult OoBeforeLoad(Resource* res) = 0;
+			virtual HookResult OnBeforeLoad(Resource* res) = 0;
+
+			// LoadHook::OnWait is executed when ResourceManager waiting for res.
 			virtual void OnWait() = 0;
 
 			void ContinueLoad(Resource* res, bool isImmediate = false);

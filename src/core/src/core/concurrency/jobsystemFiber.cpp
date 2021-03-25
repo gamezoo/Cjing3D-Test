@@ -36,9 +36,9 @@ namespace JobSystem
 		ManagerImpl()
 		{
 			mCounterPool.resize(JOB_SIGNAL_COUNT);
-			mFreeQueue.Reset(JOB_SIGNAL_COUNT);
+			mFreeHandleQueue.Reset(JOB_SIGNAL_COUNT);
 			for (U32 i = 0; i < JOB_SIGNAL_COUNT; ++i) {
-				mFreeQueue.Enqueue(i);
+				mFreeHandleQueue.Enqueue(i);
 			}
 		}
 
@@ -56,7 +56,7 @@ namespace JobSystem
 		std::array<MPMCBoundedQueue<JobFiber*>, (I32)Priority::MAX> mWaitingFibers;
 
 		// job signals
-		MPMCBoundedQueue<U32> mFreeQueue;
+		MPMCBoundedQueue<U32> mFreeHandleQueue;
 		std::vector<Counter> mCounterPool;
 
 		// job group allocator
@@ -217,7 +217,7 @@ namespace JobSystem
 	JobHandle ManagerImpl::AllocateHandle()
 	{
 		U32 handle = INVALID_HANDLE;
-		if (mFreeQueue.Dequeue(handle))
+		if (mFreeHandleQueue.Dequeue(handle))
 		{
 			Counter& counter = mCounterPool[handle & HANDLE_ID_MASK];
 			Concurrency::AtomicExchange(&counter.value_, 0);
@@ -231,11 +231,12 @@ namespace JobSystem
 			return;
 		}
 
+		// 如果当前fiber没有任务，则添加到FreeQueue队列中
 		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
 		I32 jobCount = Concurrency::AtomicDecrement(&counter.value_);
 		if (jobCount == 0 && freeHandle)
 		{
-			while (!mFreeQueue.Enqueue(jobHandle & HANDLE_ID_MASK))
+			while (!mFreeHandleQueue.Enqueue(jobHandle & HANDLE_ID_MASK))
 			{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
 				Logger::Warning("Failed to enqueue free conunter");
@@ -624,6 +625,7 @@ namespace JobSystem
 		// allocate counter
 		JobHandle localHandle = [&]() -> JobHandle 
 		{
+			// if jobHandle is invalid handle, allocate a new handle
 			if (!jobHandle) {
 				return gManagerImpl->AllocateHandle();
 			}
@@ -639,8 +641,10 @@ namespace JobSystem
 			*jobHandle = localHandle;
 		}
 
+		// set job count of handle
 		Concurrency::AtomicAdd(&gManagerImpl->mCounterPool[localHandle & HANDLE_ID_MASK].value_, numJobs);
 
+		// set total job count
 		const bool jobShouldFreeHandle = (jobHandle == nullptr);
 		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);
 
@@ -705,7 +709,7 @@ namespace JobSystem
 		}
 
 		if (value == 0) {
-			while (!gManagerImpl->mFreeQueue.Enqueue(*jobHandle & HANDLE_ID_MASK))
+			while (!gManagerImpl->mFreeHandleQueue.Enqueue(*jobHandle & HANDLE_ID_MASK))
 			{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
 				Logger::Warning("Failed to enqueue jobHandle");

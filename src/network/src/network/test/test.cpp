@@ -40,7 +40,7 @@ int main()
 
 	system("pause");
 	serverStarted = false;
-	//serverThread.Join();
+	serverThread.Join();
 	return 0;
 }
 

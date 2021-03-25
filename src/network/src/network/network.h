@@ -1,6 +1,7 @@
 #pragma once
 
 #include "definitions.h"
+#include "core\concurrency\concurrentQueue.h"
 
 namespace Cjing3D
 {
@@ -71,6 +72,7 @@ namespace Network
         virtual void Update() = 0;
         virtual void Stop() = 0;
         virtual bool OnClientConnect(SharedPtr<Connection> clientConn) { return true; }
+        virtual bool IsStarted()const = 0;
     };
 }
 }

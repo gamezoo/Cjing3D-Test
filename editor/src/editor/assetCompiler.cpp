@@ -58,7 +58,7 @@ namespace Cjing3D
 	{
 		AssetCompilerHook(AssetCompilerImpl& impl) : mImpl(impl) {}
 
-		virtual HookResult OoBeforeLoad(Resource* res);
+		virtual HookResult OnBeforeLoad(Resource* res);
 		virtual void OnWait();
 		AssetCompilerImpl& mImpl;
 	};
@@ -104,7 +104,7 @@ namespace Cjing3D
 		void AddResource(ResourceType type, const char* path);
 	};
 
-	ResourceManager::LoadHook::HookResult AssetCompilerHook::OoBeforeLoad(Resource* res)
+	ResourceManager::LoadHook::HookResult AssetCompilerHook::OnBeforeLoad(Resource* res)
 	{
 		return mImpl.OnBeforeLoad(res);
 	}
