@@ -98,11 +98,13 @@ namespace Network
     // Connectoin
     //////////////////////////////////////////////////////////////////////////
 
-    ConnectionAsio::ConnectionAsio(IOContextASIO& context, asio::ip::tcp::socket socket) :
+    ConnectionAsio::ConnectionAsio(IOContextASIO& context, asio::ip::tcp::socket socket, EventListener<(size_t)NetEvent::COUNT>& listener) :
         mContext(context),
         mSocket(std::move(socket)),
-        mStatus(ConnectionStatus::Connected)
+        mStatus(ConnectionStatus::Connecting),
+        mListener(listener)
     {
+        mRecvBuffer.Reserve(DEFAULT_TCP_BUFFER_SIZE);
     }
 
     ConnectionAsio::~ConnectionAsio()
@@ -111,22 +113,16 @@ namespace Network
 
     void ConnectionAsio::Disconnect()
     {
-        ConnectionStatus expected = ConnectionStatus::Connected;
+        ConnectionStatus expected = ConnectionStatus::Connecting;
         if (Concurrency::AtomicCmpExchange((I32*)(&mStatus),
-            (I32)ConnectionStatus::Closing, (I32)expected) == (I32)ConnectionStatus::Connected)
-        {
-            asio::post(mContext.GetStrand(), [this]() {
-                ConnectionStatus expected = ConnectionStatus::Closing;
-                Concurrency::AtomicCmpExchange((I32*)(&mStatus), (I32)ConnectionStatus::Closed, (I32)expected);
+            (I32)ConnectionStatus::Closing, (I32)expected) == (I32)ConnectionStatus::Connecting) {
+            PostDisconnect();
+        }
 
-                // close socket
-                asio::post(mContext.GetStrand(), [this]() {
-                    mSocket.shutdown(asio::socket_base::shutdown_both, errorCodeIgnore);
-                    mSocket.close();
-                 });
-
-                Logger::Info("Connection disconnected.");
-            });
+        expected = ConnectionStatus::Connected;
+        if (Concurrency::AtomicCmpExchange((I32*)(&mStatus),
+            (I32)ConnectionStatus::Closing, (I32)expected) == (I32)ConnectionStatus::Connected) {
+            PostDisconnect();
         }
     }
 
@@ -143,39 +139,136 @@ namespace Network
         return mSocket.is_open() && mStatus == ConnectionStatus::Connected;
     }
 
+    void ConnectionAsio::ConnectToClient()
+    {
+        try
+        {
+            ConnectionStatus expected = ConnectionStatus::Connecting;
+            if (Concurrency::AtomicCmpExchange((I32*)(&mStatus),
+                (I32)ConnectionStatus::Connected, (I32)expected) != (I32)ConnectionStatus::Connecting) {
+                asio::detail::throw_error(asio::error::already_started);
+            }
+
+            // post to read message from client
+            PostAsyncRead();
+        }
+        catch (std::exception& e)
+        {
+            Logger::Warning("[Server] Failed to connect to client:%s", e.what());
+            Disconnect();
+        }
+    }
+
     void ConnectionAsio::ConnectToServer(const asio::ip::tcp::resolver::results_type& endPoints)
     {
-        mStatus = ConnectionStatus::Connecting;
-
         asio::async_connect(mSocket, endPoints,
             [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
-                if (!ec)
-                {
-                    Logger::Info("[Client] Connected to %s:%d", endpoint.address().to_string().c_str(), endpoint.port());
-                    mStatus = ConnectionStatus::Connected;
+                if (!ec) {  
+                    HandleConnect(ec, endpoint);
                 }
                 else
                 {
                     Logger::Warning("[Client] Failed to connect to %s:%d", endpoint.address().to_string().c_str(), endpoint.port());
-                    mStatus = ConnectionStatus::Closed;
+                    Disconnect();
                 }
             });
     }
 
     void ConnectionAsio::PostAsyncRead()
     {
+        if (!IsConnected()) {
+            return;
+        }
         try
         {
-            ConnectionStatus expected = ConnectionStatus::Connected;
-            if (Concurrency::AtomicCmpExchange((I32*)(&mStatus), 
-                (I32)ConnectionStatus::Connected, (I32)expected) != (I32)ConnectionStatus::Connected) {
-                asio::detail::throw_error(asio::error::already_started);
-            }
+            void* buf = (void*)mRecvBuffer.OffsetData();
+            U32 size = mRecvBuffer.GetCapacity();
+            asio::async_read(mSocket, asio::buffer(buf, size), asio::bind_executor(mContext.GetStrand(), 
+                [this](const asio::error_code& ec, std::size_t bytesReceived) {
+                    HandleRead(ec, bytesReceived);
+                }));
+
         }
         catch (std::exception& e)
         {
-            Logger::Warning("[Server] Connection:%s", e.what());
-          
+            Logger::Warning("[Server] NetConnection:%s", e.what());
+            Disconnect();
+        }
+    }
+
+    void ConnectionAsio::PostDisconnect()
+    {
+        asio::post(mContext.GetStrand(), [this]() 
+        {
+            ConnectionStatus expected = ConnectionStatus::Closing;
+            Concurrency::AtomicCmpExchange((I32*)(&mStatus), (I32)ConnectionStatus::Closed, (I32)expected);
+
+            // close socket
+            if (mSocket.is_open()) {
+                Logger::Info("[%s] NetConnection disconnected.", mSocket.remote_endpoint().address().to_string().c_str());
+            }
+            else {
+                Logger::Info("NetConnection disconnected.");
+            }
+
+            asio::post(mContext.GetStrand(), [this]() {
+                mSocket.shutdown(asio::socket_base::shutdown_both, errorCodeIgnore);
+                mSocket.close();
+            });
+        });
+    }
+
+    void ConnectionAsio::HandleConnect(asio::error_code ec, asio::ip::tcp::endpoint endpoint)
+    {
+        try
+        {
+            // set current status is Connected, if it fails, reconnect to server
+            ConnectionStatus expected = ConnectionStatus::Connecting;
+            if (Concurrency::AtomicCmpExchange((I32*)(&mStatus),
+                (I32)ConnectionStatus::Connected, (I32)expected) != (I32)ConnectionStatus::Connecting) {
+                ec = asio::error::operation_aborted;
+            }
+
+            // fire connect event
+            if (mFireConnectFlag.TestAndSet()) {
+                mListener.FireEvent(NetEvent::CONNECT, ec);
+            }
+
+            asio::detail::throw_error(ec);
+            Logger::Info("[Client] Connected to %s:%d", endpoint.address().to_string().c_str(), endpoint.port());
+        }
+        catch (std::exception& e)
+        {
+            Logger::Warning("[Client] Failed to connect to %s:%d",
+                endpoint.address().to_string().c_str(), endpoint.port());
+            Disconnect();
+        }
+    }
+
+    void ConnectionAsio::HandleRead(const asio::error_code& ec, std::size_t bytesReceived)
+    {   
+        if (ec)
+        {
+            // try read if error is 'would_block' or 'try_again', otherwise close connection
+            if (ec.value() == asio::error::would_block ||
+                ec.value() == asio::error::try_again) {
+                PostAsyncRead();
+            }
+            else {  
+                Disconnect();
+            }
+        }
+        else
+        {
+            // notify receive event
+            if (bytesReceived > 0)
+            {
+                char* buf = (char*)mRecvBuffer.OffsetData();
+                mListener.FireEvent(NetEvent::RECEIVE, shared_from_this(), Span(buf, bytesReceived));
+            }
+
+            mRecvBuffer.ConsumeSize(bytesReceived, true);
+            PostAsyncRead();
         }
     }
 
@@ -196,6 +289,16 @@ namespace Network
     {
         try
         {
+            if (!mContext.IsStoped()) 
+            {
+                Logger::Warning("[%s] Connection is already started.", address);
+                return false;
+            }
+
+            // record host info
+            mHostAddress = address;
+            mHostPort = port;
+
             // Resolve ip-address into tangiable physical address
             asio::ip::tcp::resolver resolver(mContext.GetContext());
             StaticString<16> portStr;
@@ -203,7 +306,7 @@ namespace Network
             asio::ip::tcp::resolver::results_type endPoints = resolver.resolve(address.c_str(), portStr.c_str());
 
             // create client connection
-            mConnection = CJING_MAKE_UNIQUE<ConnectionAsio>(mContext, asio::ip::tcp::socket(mContext.GetContext()));
+            mConnection = CJING_MAKE_UNIQUE<ConnectionAsio>(mContext, asio::ip::tcp::socket(mContext.GetContext()), mListener);
         
             // connect to server
             mConnection->ConnectToServer(endPoints);
@@ -221,13 +324,12 @@ namespace Network
 
     void ClientInterfaceASIO::Disconnect()
     {
-        if (IsConnected()) {
+        if (mConnection)
+        {
             mConnection->Disconnect();
+            mContext.Stop();
+            mConnection.Reset();
         }
-
-        // stop the context and the thread
-        mContext.Stop();
-        mConnection.Reset();
     }
 
     bool ClientInterfaceASIO::IsConnected() const
@@ -346,18 +448,16 @@ namespace Network
         }
         else
         {
-            Logger::Info("[Server] New Connection:%s:%d", socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
-            SharedPtr<ConnectionAsio> newConn = CJING_MAKE_SHARED<ConnectionAsio>(mContext, std::move(socket));
+            Logger::Info("[Server] New NetConnection:%s:%d", socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
+            SharedPtr<ConnectionAsio> newConn = CJING_MAKE_SHARED<ConnectionAsio>(mContext, std::move(socket), mListener);
             if (OnClientConnect(newConn))
             {
                 mActiveConnections.push(std::move(newConn));
-                if (IsStarted()) {
-                    //mActiveConnections.back()->PostAsyncRead();
-                }
-                Logger::Info("[Server] Connection Approved.");
+                mActiveConnections.back()->ConnectToClient();
+                Logger::Info("[Server] NetConnection Approved.");
             }
             else {
-                Logger::Warning("[-----] Connection Denied.");
+                Logger::Warning("[-----] NetConnection Denied.");
             }
         }
 

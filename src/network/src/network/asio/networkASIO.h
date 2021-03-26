@@ -1,6 +1,7 @@
 #pragma once
 #include "network\network.h"
 #include "core\container\dynamicArray.h"
+#include "core\helper\stream.h"
 
 #ifdef CJING3D_NETWORK_ASIO
 namespace Cjing3D
@@ -47,10 +48,10 @@ namespace Network
     //////////////////////////////////////////////////////////////////////////
     // Connectoin
     //////////////////////////////////////////////////////////////////////////
-    class ConnectionAsio : public Connection
+    class ConnectionAsio : public NetConnection
     {
     public:
-        ConnectionAsio(IOContextASIO& context, asio::ip::tcp::socket socket);
+        ConnectionAsio(IOContextASIO& context, asio::ip::tcp::socket socket, EventListener<(size_t)NetEvent::COUNT>& listener);
         virtual ~ConnectionAsio();
 
         void Disconnect()override;
@@ -58,21 +59,29 @@ namespace Network
         void Receive()override;
         bool IsConnected()const override;
 
+        void ConnectToClient();
         void ConnectToServer(const asio::ip::tcp::resolver::results_type& endPoints);
         void PostAsyncRead();
 
         ConnectionStatus GetStatus()const override {
             return mStatus;
         }
-        bool IsDirty()const {
-            return mIsDirty;
-        }
 
     private:
+        void PostDisconnect();
+        void HandleConnect(asio::error_code ec, asio::ip::tcp::endpoint endpoint);
+        void HandleRead(const asio::error_code& ec, std::size_t bytesReceived);
+
+    private:
+        // common
         IOContextASIO& mContext;
         asio::ip::tcp::socket mSocket;
         volatile ConnectionStatus mStatus;
-        bool mIsDirty = false;
+        MemoryStream mRecvBuffer;
+        EventListener<(size_t)NetEvent::COUNT>& mListener;
+        
+        // client
+        Concurrency::AtomicFlag mFireConnectFlag;
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -91,6 +100,9 @@ namespace Network
     private:
         IOContextASIO mContext;
         UniquePtr<ConnectionAsio> mConnection;
+        EventListener<(size_t)NetEvent::COUNT> mListener;
+        String mHostAddress;
+        I32 mHostPort = 0;
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -107,6 +119,15 @@ namespace Network
         void Stop()override;
         bool IsStarted()const override;
 
+        // Receive format: void(SharedPtr<ConnectionAsio>&, Span<const char>)
+        template<typename F, typename... T>
+        void BindReceive(F&& func, T&&...obj)
+        {
+            mListener.AddObserver(NetEvent::RECEIVE,
+                EventObserver<SharedPtr<ConnectionAsio>&, Span<const char>>(
+                    std::forward<F>(func), std::forward<T>(obj)...));
+        }
+
     private:
         void PostHandleAccept();
         void HandleAccept(asio::ip::tcp::socket&& socket, std::error_code ec);
@@ -119,6 +140,7 @@ namespace Network
         bool mIsStarted = false;
 
         DynamicArray<SharedPtr<ConnectionAsio>> mActiveConnections;
+        EventListener<(size_t)NetEvent::COUNT> mListener;
     };
 }
 }

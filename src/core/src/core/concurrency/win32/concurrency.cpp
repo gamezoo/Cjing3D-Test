@@ -606,6 +606,30 @@ namespace Concurrency
 	{
 		AtomicExchange(&mLockedFlag, 0);
 	}
+	
+	struct AtomicFlagImpl
+	{
+		volatile I32 mBooleanValue;
+	};
+
+	AtomicFlag::AtomicFlag() :
+		mLockedFlag(0)
+	{
+	}
+
+	AtomicFlag::~AtomicFlag()
+	{
+	}
+
+	void AtomicFlag::Clear()
+	{
+		AtomicExchange(&mLockedFlag, 0);
+	}
+
+	bool AtomicFlag::TestAndSet()
+	{
+		return (AtomicCmpExchangeAcquire(&mLockedFlag, 1, 0) == 0);
+	}
 }
 }
 

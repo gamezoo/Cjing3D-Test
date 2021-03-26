@@ -160,6 +160,35 @@ namespace Cjing3D
 		U32 Size()const {
 			return mOffset;
 		}
+
+		const U8* OffsetData()const {
+			return mBuffer + mOffset;
+		}
+
+		U8* OffsetData() {
+			return mBuffer + mOffset;
+		}
+
+		U32 GetCapacity()const {
+			return mCapacity;
+		}
+
+		U32 GetRemainingCapacity()const {
+			return mCapacity - mOffset;
+		}
+
+		void ConsumeSize(U32 size, bool bReset)
+		{
+			if (mOffset + size >= mCapacity)
+			{
+				mOffset = mCapacity;
+				if (bReset) {
+					Clear();
+				}
+				return;
+			}
+			mOffset += size;
+		}
 	};
 
 	class InputMemoryStream

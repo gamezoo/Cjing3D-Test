@@ -19,6 +19,11 @@ int main()
 	// server
 	Cjing3D::Concurrency::Thread serverThread([](void* data)->int {
 		Network::ServerInterfaceASIO server(60000);
+		server.BindReceive([](SharedPtr<Network::ConnectionAsio>& ptr, Span<const char> buffer) {
+			String string(buffer);
+			Logger::Info(string.c_str());
+		});
+
 		server.Start();
 		serverStarted = true;
 		while (serverStarted) 

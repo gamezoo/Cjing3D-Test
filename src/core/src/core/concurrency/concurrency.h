@@ -276,5 +276,20 @@ namespace Concurrency
 
 		RWLock& mRWLock;
 	};
+
+	class AtomicFlag
+	{
+	public:
+		AtomicFlag();
+		~AtomicFlag();
+
+		void Clear();
+		bool TestAndSet();
+
+	private:
+		AtomicFlag(const AtomicFlag&) = delete;
+
+		volatile I32 mLockedFlag;
+	};
 }
 }
