@@ -29,6 +29,11 @@ namespace Cjing3D
 			T& operator*() { return mValue; };
 			T* operator->() { return &mValue; };
 
+			const T& Value() const { return mValue; };
+			const T* Ptr() const { return &mValue; };
+			T& Value() { return mValue; };
+			T* Ptr() { return &mValue; };
+
 			const ListElement* next()const { return mNext;}
 			ListElement* next() { return mNext; }
 			const ListElement* prev()const { return mPrev; }

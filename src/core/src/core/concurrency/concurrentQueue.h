@@ -49,6 +49,17 @@ namespace Cjing3D
 			return PushImpl(val);
 		}
 
+		bool pop_front()
+		{
+			Concurrency::ScopedMutex lock(mMutex);
+			if (mQueue.empty()) {
+				return false;
+			}
+
+			mQueue.pop_front();
+			return true;
+		}
+
 		bool pop_back()
 		{
 			Concurrency::ScopedMutex lock(mMutex);
@@ -66,7 +77,12 @@ namespace Cjing3D
 			mQueue.clear();
 		}
 
-		size_t size()const
+		bool empty()
+		{
+			Concurrency::ScopedMutex lock(mMutex);
+			return mQueue.size() == 0;
+		}
+		size_t size()
 		{
 			Concurrency::ScopedMutex lock(mMutex);
 			return mQueue.size();
@@ -74,23 +90,12 @@ namespace Cjing3D
 		T* front() 
 		{ 
 			Concurrency::ScopedMutex lock(mMutex);
-			return mQueue.front();
+			return mQueue.front()->Ptr();
 		}
 		T* back() 
 		{
 			Concurrency::ScopedMutex lock(mMutex);
-			return mQueue.back();
+			return mQueue.back()->Ptr();
 		}
-		const T* front()const 
-		{
-			Concurrency::ScopedMutex lock(mMutex);
-			return mQueue.front();
-		}
-		const T* back()const 
-		{
-			Concurrency::ScopedMutex lock(mMutex);
-			return mQueue.back();
-		}
-
 	};
 }
