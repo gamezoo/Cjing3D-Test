@@ -46,7 +46,7 @@ namespace Cjing3D
 
 		bool push_back(T&& val)
 		{
-			return PushImpl(val);
+			return PushImpl(std::forward<T>(val));
 		}
 
 		bool pop_front()

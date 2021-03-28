@@ -18,13 +18,14 @@ int main()
 
 	// server
 	Cjing3D::Concurrency::Thread serverThread([](void* data)->int {
-		Network::ServerInterfaceASIO server(60000);
+		Network::ServerInterfaceASIO server;
 		server.BindReceive([](SharedPtr<Network::ConnectionAsio>& ptr, Span<const char> buffer) {
 			String string(buffer);
-			Logger::Info(string.c_str());
+			Logger::Info("Server:%s", string.c_str());
+			ptr->Send("Hello world too!!!!!!");
 		});
 
-		server.Start();
+		server.Start("0.0.0.0", 60000);
 		serverStarted = true;
 		while (serverStarted) 
 		{
@@ -38,7 +39,15 @@ int main()
 
 	// client
 	Network::ClientInterfaceASIO client;
+	client.BindReceive([](SharedPtr<Network::ConnectionAsio>& ptr, Span<const char> buffer) {
+		String string(buffer);
+		Logger::Info("Client:%s", string.c_str());
+	});
 	client.Connect("127.0.0.1", 60000);
+
+	system("pause");
+	const char* buffer = "Hello world!";
+	client.Send(buffer);
 
 	system("pause");
 	client.Disconnect();

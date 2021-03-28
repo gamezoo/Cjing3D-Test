@@ -12,7 +12,7 @@ namespace Cjing3D
 	*/
 
 	template<class DerivedT, bool enable_shared_from_this = true>
-	class ObjectCRTP : public ENABLE_SHARED_FROM_THIS<DerivedT>
+	class ObjectCRTP : public std::enable_shared_from_this<DerivedT>
 	{
 	public:
 		ObjectCRTP() = default;
