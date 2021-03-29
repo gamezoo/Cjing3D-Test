@@ -214,7 +214,7 @@ bool Path::operator==(const Path& rhs) const
 
 bool Path::operator!=(const Path& rhs) const
 {
-	return mHash != mHash;
+	return mHash != rhs.mHash;
 }
 
 bool Path::SplitPath(char* outPath, size_t pathLen, char* outFile, size_t fileLen, char* outExt, size_t extLen)const
@@ -339,6 +339,12 @@ void Path::AppendPath(const char* path)
 	mHash = StringUtils::StringToHash(mPath.c_str());
 }
 
+void Path::AppendString(const char* str)
+{
+	mPath.append(str);
+	mHash = StringUtils::StringToHash(mPath.c_str());
+}
+
 void Path::Normalize()
 {
 	if (IsEmpty()) {
@@ -352,6 +358,12 @@ void Path::Normalize()
 bool Path::IsAbsolutePath() const
 {
 	return FindStringChar(mPath.c_str(), ':', 0) != -1;
+}
+
+void Path::Clear()
+{
+	mPath.clear();
+	mHash = 0;
 }
 
 }

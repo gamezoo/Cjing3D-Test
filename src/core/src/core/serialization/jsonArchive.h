@@ -47,7 +47,7 @@ namespace Cjing3D
 		const nlohmann::json* GetCurrentJson()const;
 		size_t GetCurrentValueCount()const;
 
-		inline void PushMap(const String& key, JsonSerializerFunc func)
+		inline void WriteCallback(const String& key, JsonSerializerFunc func)
 		{
 			auto currentJson = GetCurrentJson();
 			if (currentJson == nullptr) {
@@ -60,7 +60,7 @@ namespace Cjing3D
 			mJsonStack.pop();
 		}
 
-		inline void PushArray(JsonSerializerFunc func)
+		inline void WriteCallback(JsonSerializerFunc func)
 		{
 			auto currentJson = GetCurrentJson();
 			if (currentJson == nullptr) {

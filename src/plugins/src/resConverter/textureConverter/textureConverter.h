@@ -14,6 +14,7 @@ namespace Cjing3D
 
 		GPU::FORMAT mFormat = GPU::FORMAT_UNKNOWN;
 		bool mGenerateMipmap = true;
+		bool mIsNormalMap = false;
 		F32 mMipScale = -1.0f;
 	};
 
@@ -25,6 +26,7 @@ namespace Cjing3D
 		bool Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest) override;
 	
 	private:
-		GPU::ResHandle mTexture;
+		GPU::ResHandle mCurrentTexture;
+		TextureMetaObject mCurrentTextureMeta;
 	};
 }

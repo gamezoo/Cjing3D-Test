@@ -17,17 +17,17 @@ namespace Cjing3D
 		ResConverterContext(BaseFileSystem& filesystem);
 		virtual ~ResConverterContext();
 
+		void Load(const char* srcPath);
+		void Clear();
 		void AddSource(const char* path);
 		void AddOutput(const char* path);
 		bool Convert(IResConverter* converter, const ResourceType& resType, const char* srcPath, const char* destPath);
-		void WriteMetaData(const char* path);
 
 		template<typename T>
 		void SetMetaData(const T& data)
 		{
 			SetMetaDataImpl(data);
 		}
-
 		template<typename T>
 		T GetMetaData()
 		{
@@ -37,6 +37,8 @@ namespace Cjing3D
 		}
 
 		BaseFileSystem& GetFileSystem() { return mFileSystem; }
+		const Path& GetMetaFilePath()const { return mMetaPath; }
+		const Path& GetSrcPath()const { return mSrcPath; }
 
 	private:
 		void SetMetaDataImpl(const SerializedObject& obj);
@@ -44,9 +46,8 @@ namespace Cjing3D
 
 	private:
 		BaseFileSystem& mFileSystem;
-		MaxPathString mMetaFilePath;
-		JsonArchive* mSerializer = nullptr;
-		JsonArchive* mDeserializer = nullptr;
+		Path mMetaPath;
+		Path mSrcPath;
 
 		DynamicArray<String> mDependencies;
 		DynamicArray<String> mSources;

@@ -341,7 +341,7 @@ namespace Cjing3D
 		else
 		{
 			JsonArchive archive(ArchiveMode::ArchiveMode_Write);
-			archive.PushMap("resources", [&](JsonArchive& archive) {
+			archive.WriteCallback("resources", [&](JsonArchive& archive) {
 				for (const auto kvp : mResources) {
 					archive.WriteAndPush(kvp.second.mResPath);
 				}

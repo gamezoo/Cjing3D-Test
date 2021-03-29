@@ -159,7 +159,7 @@ namespace Cjing3D
 		archive.Write("version_major", SETTING_MAJOR);
 		archive.Write("version_minor", SETTING_MINOR);
 		archive.Write("imgui_ini", mImGuiIni);
-		archive.PushMap("imgui_style", [](JsonArchive& archive) {
+		archive.WriteCallback("imgui_style", [](JsonArchive& archive) {
 			SaveImGuiStyle(archive);
 		});
 

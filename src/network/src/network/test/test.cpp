@@ -1,4 +1,4 @@
-#define CJING_NETWORK_TEST
+//#define CJING_NETWORK_TEST
 #ifdef CJING_NETWORK_TEST
 
 #include "network\comm.h"

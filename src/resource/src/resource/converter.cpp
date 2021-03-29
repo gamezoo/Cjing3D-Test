@@ -9,13 +9,45 @@ namespace Cjing3D
 	ResConverterContext::ResConverterContext(BaseFileSystem& filesystem) :
 		mFileSystem(filesystem)
 	{
-		mSerializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Write, &filesystem);
 	}
 
 	ResConverterContext::~ResConverterContext()
 	{
-		CJING_SAFE_DELETE(mSerializer);
-		CJING_SAFE_DELETE(mDeserializer);
+	}
+
+	void ResConverterContext::Load(const char* srcPath)
+	{
+		// load complete metadata(sources, outputs), the orginal data will clear
+		MaxPathString metaPath(srcPath);
+		metaPath.append(".metadata");
+		if (mMetaPath.c_str() == metaPath) {
+			return;
+		}
+
+		Clear();
+
+		if (!mFileSystem.IsFileExists(metaPath.c_str()))
+		{
+			Logger::Warning("The metadata of target path '%s'is dose not exist.");
+			return;
+		}
+		mSrcPath = srcPath;
+		mMetaPath = metaPath;
+
+		JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, &mFileSystem);
+		// Unserialize internal info
+		archive.Read("$internal", [this](JsonArchive& archive) {
+			archive.Read("sources", mSources);
+			archive.Read("outputs", mOutputs);
+		});
+	}
+
+	void ResConverterContext::Clear()
+	{
+		mDependencies.clear();
+		mSources.clear();
+		mOutputs.clear();
+		mMetaPath.Clear();
 	}
 
 	void ResConverterContext::AddSource(const char* path)
@@ -30,8 +62,9 @@ namespace Cjing3D
 
 	bool ResConverterContext::Convert(IResConverter* converter, const ResourceType& resType, const char* srcPath, const char* destPath)
 	{
-		mMetaFilePath = srcPath;
-		mMetaFilePath.append(".metadata");
+		mSrcPath = srcPath;
+		mMetaPath = srcPath;
+		mMetaPath.AppendString(".metadata");
 
 		// create directory
 		MaxPathString dirPath;
@@ -48,60 +81,42 @@ namespace Cjing3D
 		bool ret = converter->Convert(*this, resType, srcPath, destPath);
 		Logger::Info("[Resource] Convert finished \"%s\" in %.2f ms.", srcPath, Timer::GetAbsoluteTime() - time);
 
-		// write metadata file
-		if (ret == true)
-		{
-			// try remove old metadata file
-			while (mFileSystem.IsFileExists(mMetaFilePath))
-			{
-				mFileSystem.DeleteFile(mMetaFilePath);
-				JobSystem::YieldCPU();
-			}
-
-			mSerializer->Write("sources", mSources);
-			mSerializer->Write("outputs", mOutputs);
-			mSerializer->Save(mMetaFilePath.c_str());
-		}
 		return ret;
 	}
 
 	void ResConverterContext::SetMetaDataImpl(const SerializedObject& obj)
 	{
-		if (mSerializer->GetMode() == ArchiveMode::ArchiveMode_Read)
+		if (mMetaPath.IsEmpty())
 		{
-			CJING_SAFE_DELETE(mSerializer);
-			mSerializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Write, &mFileSystem);
+			Logger::Warning("[ResConverterContext] Failed to set metadata and the target path is empty.");
+			return;
 		}
 
-		obj.Serialize(*mSerializer);
+		// try remove old metadata file
+		while (mFileSystem.IsFileExists(mMetaPath.c_str()))
+		{
+			mFileSystem.DeleteFile(mMetaPath.c_str());
+			JobSystem::YieldCPU();
+		}
+
+		JsonArchive archive(mMetaPath.c_str(), ArchiveMode::ArchiveMode_Write, &mFileSystem);
+		// serialize meta info
+		obj.Serialize(archive);
+
+		// serialize internal info
+		archive.WriteCallback("$internal", [this](JsonArchive& archive) {
+			archive.Write("sources", mSources);
+			archive.Write("outputs", mOutputs);
+		});
 	}
 
 	void ResConverterContext::GetMetaDataImpl(SerializedObject& obj)
 	{
-		if (mDeserializer && mDeserializer->GetMode() == ArchiveMode::ArchiveMode_Read) {
-			obj.Serialize(*mDeserializer);
-		}
-
-		if (!mFileSystem.IsFileExists(mMetaFilePath)) {
+		if (!mFileSystem.IsFileExists(mMetaPath.c_str())) {
 			return;
 		}
 
-		CJING_SAFE_DELETE(mDeserializer);
-		mDeserializer = CJING_NEW(JsonArchive)(ArchiveMode::ArchiveMode_Read, &mFileSystem);
-		obj.Unserialize(*mDeserializer);
-	}
-
-	void ResConverterContext::WriteMetaData(const char* path)
-	{
-		// try remove old metadata file
-		while (mFileSystem.IsFileExists(path))
-		{
-			mFileSystem.DeleteFile(path);
-			JobSystem::YieldCPU();
-		}
-
-		mSerializer->Write("sources", mSources);
-		mSerializer->Write("outputs", mOutputs);
-		mSerializer->Save(path);
+		JsonArchive archive(mMetaPath.c_str(), ArchiveMode::ArchiveMode_Read, &mFileSystem);
+		obj.Unserialize(archive);
 	}
 }

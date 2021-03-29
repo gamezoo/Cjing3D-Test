@@ -7,6 +7,7 @@ namespace Cjing3D
 {
 	class Resource;
 	class EditorWidgetAssetInspector;
+	class ResConverterContext;
 
 	class EditorWidgetAssetBrowser : public EditorWidget
 	{
@@ -35,11 +36,11 @@ namespace Cjing3D
 			U32 mFilePathHash;
 		};
 		DynamicArray<AssetFileInfo> mAssetFileInfos;
+		DynamicArray<Resource*> mSelectedResources;
+		Set<U32> mSelecetedResSet;
 
 		static const I32 THUMBNAIL_TILE_SIZE = 72;
 		bool mShowThumbnails = false;
-		DynamicArray<Resource*> mSelectedResources;
-		Set<U32> mSelecetedResSet;
 
 		SharedPtr<EditorWidgetAssetInspector> mAssetInspector;
 	};
@@ -50,6 +51,8 @@ namespace Cjing3D
 		EditorWidgetAssetInspector(GameEditor& editor, EditorWidgetAssetBrowser& browser);
 		~EditorWidgetAssetInspector();
 
+		void Initialize()override;
+		void Uninitialize()override;
 		void Update(F32 deltaTime)override;
 
 	protected:
@@ -58,5 +61,7 @@ namespace Cjing3D
 
 	private:
 		EditorWidgetAssetBrowser& mBrowser;
+		// res meta context
+		UniquePtr<ResConverterContext> mResContext = nullptr;
 	};
 }

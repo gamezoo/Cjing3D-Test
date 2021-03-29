@@ -221,6 +221,17 @@ namespace Cjing3D
 	{
 	}
 
+	void EditorWidgetAssetInspector::Initialize()
+	{
+		auto fileSystem = mEditor.GetEngine()->GetFileSystem();
+		mResContext = CJING_MAKE_UNIQUE<ResConverterContext>(*fileSystem);
+	}
+
+	void EditorWidgetAssetInspector::Uninitialize()
+	{
+		mResContext.Reset();
+	}
+
 	void EditorWidgetAssetInspector::Update(F32 deltaTime)
 	{
 		auto& selectedResources = mBrowser.mSelectedResources;
@@ -231,6 +242,10 @@ namespace Cjing3D
 		if (selectedResources.size() == 1)
 		{
 			auto& res = selectedResources[0];
+			if (res->GetPath() != mResContext->GetSrcPath().c_str()) {
+				mResContext->Load(res->GetPath().c_str());
+			}
+
 			ImGui::Text("Selected resource");
 			ImGui::Separator();
 			ImGui::TextUnformatted(res->GetPath().c_str());
@@ -268,10 +283,8 @@ namespace Cjing3D
 			for (auto plugin : plugins)
 			{
 				auto converter = plugin->CreateConverter();
-				if (converter && converter->SupportsType(ext.c_str(), res->GetType()))
-				{
-					ResConverterContext context(*fileSystem);
-					converter->OnEditorGUI(context, res->GetType(), res);
+				if (converter && converter->SupportsType(ext.c_str(), res->GetType())) {
+					converter->OnEditorGUI(*mResContext, res->GetType(), res);
 				}
 				plugin->DestroyConverter(converter);
 			}

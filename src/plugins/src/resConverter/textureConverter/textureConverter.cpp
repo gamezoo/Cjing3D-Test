@@ -14,6 +14,10 @@
 
 namespace Cjing3D
 {
+	// TODO
+	// 1. metadata editor
+	// 2. more img format support
+
 	struct ImageErrorHandler : nvtt::ErrorHandler
 	{
 		virtual ~ImageErrorHandler() {}
@@ -45,12 +49,14 @@ namespace Cjing3D
 	{
 		archive.Write("format", mFormat);
 		archive.Write("generateMipmap", mGenerateMipmap);
+		archive.Write("normalmap", mIsNormalMap);
 	}
 
 	void TextureMetaObject::Unserialize(JsonArchive& archive) 
 	{
 		archive.Read("format", mFormat);
 		archive.Read("generateMipmap", mGenerateMipmap);
+		archive.Read("normalmap", mIsNormalMap);
 	}
 
 	bool TextureResConverter::Convert(ResConverterContext& context, const ResourceType& type, const char* src, const char* dest)
@@ -110,10 +116,13 @@ namespace Cjing3D
 		// setup nvtt options
 		nvtt::Context nvttContext;
 		nvtt::InputOptions nvttInput;
+		if (metaData.mIsNormalMap) {
+			nvttInput.setGamma(1.0f, 1.0f);
+		}
 		nvttInput.setMipmapGeneration(metaData.mGenerateMipmap);
 		nvttInput.setAlphaCoverageMipScale(metaData.mMipScale, formatInfo.mChannels == 4 ? 3 : 0);
 		nvttInput.setAlphaMode(hasAlpah ? nvtt::AlphaMode_Transparency : nvtt::AlphaMode_None);
-		nvttInput.setNormalMap(false);
+		nvttInput.setNormalMap(metaData.mIsNormalMap);
 		nvttInput.setTextureLayout(nvtt::TextureType_2D, img.GetWidth(), img.GetHeight(), img.GetDepth());
 		nvttInput.setMipmapData(img.GetMipData<U8>(0), img.GetWidth(), img.GetHeight());
 
@@ -126,7 +135,7 @@ namespace Cjing3D
 		nvttOuput.setOutputHandler(&nvttOutputHandler);
 
 		nvtt::CompressionOptions compression;
-		compression.setFormat(hasAlpah ? nvtt::Format_BC7 : nvtt::Format_BC6);
+		compression.setFormat(metaData.mIsNormalMap ? nvtt::Format_BC5 : (hasAlpah ? nvtt::Format_BC7 : nvtt::Format_BC6));
 		compression.setQuality(nvtt::Quality_Normal);
 
 		if (!nvttContext.process(nvttInput, compression, nvttOuput))
@@ -155,6 +164,12 @@ namespace Cjing3D
 		ImGuiEx::VLeftLabel("Format");
 		ImGui::Text("%s", EnumTraits::EnumToName(texDesc.mFormat).data());
 
+		if (mCurrentTexture != texture->GetHandle()) 
+		{
+			mCurrentTexture = texture->GetHandle();
+			mCurrentTextureMeta = context.GetMetaData<TextureMetaObject>();
+		}
+
 		// show texture preview
 		if (texture->GetHandle())
 		{
@@ -166,11 +181,8 @@ namespace Cjing3D
 				texture_size.x = texture_size.y * texDesc.mWidth / texDesc.mHeight;
 			}
 
-			if (mTexture != texture->GetHandle()) {
-				mTexture = texture->GetHandle();
-			}
-			if (mTexture != GPU::ResHandle::INVALID_HANDLE) {
-				ImGui::Image((ImTextureID)&mTexture, texture_size);
+			if (mCurrentTexture != GPU::ResHandle::INVALID_HANDLE) {
+				ImGui::Image((ImTextureID)&mCurrentTexture, texture_size);
 			}
 
 			Path fullPath(context.GetFileSystem().GetBasePath());
@@ -184,13 +196,10 @@ namespace Cjing3D
 		}
 
 		// show image meta editor
-		//TextureMetaObject data = context.GetMetaData<TextureMetaObject>();
 		ImGui::Separator();
 
-		if (ImGui::Button("Apply"))
-		{
-			// context.SetMetaData(data);
-			// context.WriteMetaData();
+		if (ImGui::Button("Apply")) {
+			context.SetMetaData<TextureMetaObject>(mCurrentTextureMeta);
 		}
 	}
 

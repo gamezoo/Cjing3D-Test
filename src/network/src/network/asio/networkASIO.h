@@ -9,9 +9,8 @@ namespace Cjing3D
 {
 namespace Network
 {
-    // TODO£ºµ±Ç°¶ÔÏóÅÉÉú½á¹¹¼°ÎÄ¼þÌ«¹ý»ìÂÒ£¬ÐèÒªÕûÀíÒ»ÏÂ£¬·Ö³ÉClientºÍserverÁ½¸öÎÄ¼þ
-    // 1. Í¬Ê±È«²¿¸ÄÎª»ùÓÚCTRPµÄÊµÏÖ·½Ê½
-    // 2. ¸ÄÎªhpp
+    // TODOï¼šå½“å‰å¯¹è±¡æ´¾ç”Ÿç»“æž„åŠæ–‡ä»¶å¤ªè¿‡æ··ä¹±ï¼Œéœ€è¦æ•´ç†ä¸€ä¸‹
+    // 1. åˆ†æˆClientå’Œserverä¸¤ä¸ªæ–‡ä»¶,æ”¹ä¸ºhpp
   
     //////////////////////////////////////////////////////////////////////////
     // ClientInterface

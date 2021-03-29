@@ -44,8 +44,10 @@ public:
 	bool SplitPath(char* outPath, size_t pathLen, char* outFile = nullptr, size_t fileLen = 0, char* outExt = nullptr, size_t extLen = 0)const;
 	void AppendPath(const Path& path);
 	void AppendPath(const char* path);
+	void AppendString(const char* str);
 	void Normalize();
 	bool IsAbsolutePath()const;
+	void Clear();
 
 	Span<char> toSpan() {
 		return mPath.toSpan();

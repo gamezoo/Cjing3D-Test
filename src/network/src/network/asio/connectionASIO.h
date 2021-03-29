@@ -8,6 +8,12 @@ namespace Cjing3D
 {
 namespace Network
 {
+    // Connection(ASIO impl)
+    // Connection持有Disconnect和Connect(ToClient\ToServer)以及对应的Recv\Send
+    // 
+    // Clinet: Clinet仅持有一个Connection，执行ConnectToServer
+    // Server: Server根据连接的Client,执行ConnectToClient
+
     class ConnectionAsio :
         public NetConnection<ConnectionAsio>,
         public EventQueue,

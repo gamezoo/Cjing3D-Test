@@ -219,13 +219,14 @@ namespace ResourceManager
 	DynamicArray<String> ResourceManagerImpl::LoadResSources(const char* src)
 	{
 		DynamicArray<String> ret;
-
 		MaxPathString metaPath(src);
 		metaPath.append(".metadata");
 		if (mFilesystem->IsFileExists(metaPath.c_str()))
 		{
 			JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, mFilesystem);
-			archive.Read("sources", ret);
+			archive.Read("$internal", [&ret](JsonArchive& archive) {
+				archive.Read("sources", ret);
+			});
 		}
 		return ret;
 	}

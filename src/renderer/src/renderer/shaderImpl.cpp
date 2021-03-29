@@ -46,14 +46,14 @@ namespace Cjing3D
 	{
 		// blendStateDesc
 		auto& blendStateDesc = desc.mBlendState;
-		archive.PushMap("mBlendState", [&](JsonArchive& archive) 
+		archive.WriteCallback("mBlendState", [&](JsonArchive& archive) 
 		{
 			archive.Write("mAlphaToCoverageEnable", blendStateDesc.mAlphaToCoverageEnable);
 			archive.Write("mIndependentBlendEnable", blendStateDesc.mIndependentBlendEnable);
-			archive.PushMap("mRenderTarget", [&](JsonArchive& archive) {
+			archive.WriteCallback("mRenderTarget", [&](JsonArchive& archive) {
 				for (int i = 0; i < 8; i++)
 				{
-					archive.PushArray([&](JsonArchive& archive) {
+					archive.WriteCallback([&](JsonArchive& archive) {
 						SerializeRenderTargetBlend(blendStateDesc.mRenderTarget[i], archive);
 						});
 				}
@@ -62,7 +62,7 @@ namespace Cjing3D
 
 		// RasterizerStateDesc
 		auto& rasterizerStateDesc = desc.mRasterizerState;
-		archive.PushMap("mRasterizerState", [&](JsonArchive& archive)
+		archive.WriteCallback("mRasterizerState", [&](JsonArchive& archive)
 		{
 			archive.Write("mFillMode", rasterizerStateDesc.mFillMode);
 			archive.Write("mCullMode", rasterizerStateDesc.mCullMode);
@@ -79,7 +79,7 @@ namespace Cjing3D
 
 		// DepthStencilStateDesc
 		auto& depthStencilStateDesc = desc.mDepthStencilState;
-		archive.PushMap("mDepthStencilState", [&](JsonArchive& archive)
+		archive.WriteCallback("mDepthStencilState", [&](JsonArchive& archive)
 		{
 			archive.Write("mDepthEnable", depthStencilStateDesc.mDepthEnable);
 			archive.Write("mDepthWriteMask", depthStencilStateDesc.mDepthWriteMask);
@@ -87,10 +87,10 @@ namespace Cjing3D
 			archive.Write("mStencilEnable", depthStencilStateDesc.mStencilEnable);
 			archive.Write("mStencilReadMask", depthStencilStateDesc.mStencilReadMask);
 			archive.Write("mStencilWriteMask", depthStencilStateDesc.mStencilWriteMask);
-			archive.PushMap("mFrontFace", [&](JsonArchive& archive) {
+			archive.WriteCallback("mFrontFace", [&](JsonArchive& archive) {
 				SerializeDepthStencilOp(depthStencilStateDesc.mFrontFace, archive);
 			});
-			archive.PushMap("mBackFace", [&](JsonArchive& archive) {
+			archive.WriteCallback("mBackFace", [&](JsonArchive& archive) {
 				SerializeDepthStencilOp(depthStencilStateDesc.mBackFace, archive);
 			});
 		});
