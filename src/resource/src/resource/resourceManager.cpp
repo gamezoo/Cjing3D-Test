@@ -899,6 +899,58 @@ namespace ResourceManager
 		}
 	}
 
+	void WaitForResources(Span<Resource*> resources)
+	{
+		Debug::CheckAssertion(IsInitialized());
+		if (resources.length() == 0) {
+			return;
+		}
+
+#ifdef _DEBUG
+		F64 maxWaitTime = 100.0f;
+#else
+		F64 maxWaitTime = 10.0f;
+#endif
+		F64 startTime = Timer::GetAbsoluteTime();
+		bool isAllLoaded = true;
+		for (Resource* res : resources) 
+		{
+			if (!res->IsLoaded() && !res->IsFaild()) 
+			{
+				isAllLoaded = false;
+				break;
+			}
+		}
+		while (isAllLoaded)
+		{
+			if (mImpl->mLoadHook != nullptr) {
+				mImpl->mLoadHook->OnWait();
+			}
+
+			JobSystem::YieldCPU();
+			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
+			{
+#ifdef _DEBUG
+				Logger::Warning("Resource load time out, try loading again");
+				maxWaitTime *= 2;
+#else
+				Logger::Error("Resource load time out");
+				break;
+#endif
+			}
+
+			isAllLoaded = true;
+			for (Resource* res : resources)
+			{
+				if (!res->IsLoaded() && !res->IsFaild())
+				{
+					isAllLoaded = false;
+					break;
+				}
+			}
+		}
+	}
+
 	void WaitAll()
 	{
 		F64 maxWaitTime = 100000.0f;

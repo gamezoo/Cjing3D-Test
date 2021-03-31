@@ -22,6 +22,6 @@ namespace Cjing3D
 
 	bool ModelImporterOBJ::SupportsFileExt(const char* ext)
 	{
-		return false;
+		return EqualString(ext, "obj");
 	}
 }

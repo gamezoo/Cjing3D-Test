@@ -5,13 +5,6 @@
 
 namespace Cjing3D
 {
-	class MaterialMetaObject : public SerializedObject
-	{
-	public:
-		virtual void Serialize(JsonArchive& archive)const;
-		virtual void Unserialize(JsonArchive& archive);
-	};
-
 	class MaterialResConverter : public IResConverter
 	{
 	public:

@@ -113,6 +113,7 @@ namespace Renderer
 			InstanceHandler* instanceHandler = nullptr);
 
 		ShaderTechnique GetObjectTech(RENDERPASS renderPass, BLENDMODE blendMode);
+		ShaderTechnique GetObjectTech(Shader& shader, RENDERPASS renderPass, BLENDMODE blendMode);
 
 	public:
 		Concurrency::RWLock mLock;
@@ -317,9 +318,10 @@ namespace Renderer
 
 				// get target shader technique
 				ShaderTechnique tech;
-				if (material->mCustomShaderIndex >= 0)
+				if (material->mUseCustomShader && material->mMaterial)
 				{
 					// custom shader
+					tech = GetObjectTech(*material->mMaterial->GetShader(), renderPass, material->GetBlendMode());
 				}
 				else
 				{
@@ -336,9 +338,9 @@ namespace Renderer
 				bindingSet.Set("constBuffer_Material", GPU::Binding::ConstantBuffer(material->mConstantBuffer, GPU::SHADERSTAGES_PS));
 
 				// bind material textures
-				bindingSet.Set("texture_BaseColorMap", GPU::Binding::Texture(material->GetTexture(MaterialComponent::BaseColorMap), GPU::SHADERSTAGES_PS));
-				bindingSet.Set("texture_NormalMap", GPU::Binding::Texture(material->GetTexture(MaterialComponent::NormalMap), GPU::SHADERSTAGES_PS));
-				bindingSet.Set("texture_SurfaceMap", GPU::Binding::Texture(material->GetTexture(MaterialComponent::SurfaceMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_BaseColorMap", GPU::Binding::Texture(material->GetTexture(Material::BaseColorMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_NormalMap",    GPU::Binding::Texture(material->GetTexture(Material::NormalMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_SurfaceMap",   GPU::Binding::Texture(material->GetTexture(Material::SurfaceMap), GPU::SHADERSTAGES_PS));
 
 				if (shaderContext.Bind(tech, bindingSet))
 				{
@@ -355,14 +357,18 @@ namespace Renderer
 	ShaderTechnique RendererImpl::GetObjectTech(RENDERPASS renderPass, BLENDMODE blendMode)
 	{
 		auto shader = GetShader(SHADERTYPE_MAIN);
+		return GetObjectTech(*shader, renderPass, blendMode);
+	}
 
+	ShaderTechnique RendererImpl::GetObjectTech(Shader& shader, RENDERPASS renderPass, BLENDMODE blendMode)
+	{
 		ShaderTechHasher hasher;
 		hasher.mRenderPass = renderPass;
 		hasher.mBlendMode = blendMode;
 
 		ShaderTechniqueDesc desc = {};
 		desc.mPrimitiveTopology = GPU::TRIANGLESTRIP;
-		return std::move(shader->CreateTechnique(hasher, desc));
+		return std::move(shader.CreateTechnique(hasher, desc));
 	}
 
 	//////////////////////////////////////////////////////////////////////////

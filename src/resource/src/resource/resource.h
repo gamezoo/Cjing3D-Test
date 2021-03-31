@@ -126,25 +126,26 @@ namespace Cjing3D
 	};
 
 #define DECLARE_RESOURCE(CLASS_NAME, NAME)                                                      \
-	static const ResourceType ResType;                                                             \
-	virtual ResourceType GetType()const { return ResType; };                                       \
+	static const ResourceType ResType;                                                          \
+	virtual ResourceType GetType()const { return ResType; };                                    \
 	static void RegisterFactory();                                                              \
 	static void UnregisterFactory();                                                            \
-	static class CLASS_NAME##Factory* GetFactory();
+	static class CLASS_NAME##Factory* GetFactory();                                             \
+	friend class CLASS_NAME##Factory;
 
 #define DEFINE_RESOURCE(CLASS_NAME, NAME)                                                       \
-	const ResourceType CLASS_NAME::ResType(NAME);                                                 \
+	const ResourceType CLASS_NAME::ResType(NAME);                                               \
 	static CLASS_NAME##Factory* mFactory = nullptr;                                             \
 	void CLASS_NAME::RegisterFactory()                                                          \
 	{                                                                                           \
 		assert(mFactory == nullptr);                                                            \
 		mFactory = CJING_NEW(CLASS_NAME##Factory)();                                            \
-		ResourceManager::RegisterFactory(CLASS_NAME::ResType, mFactory);                           \
+		ResourceManager::RegisterFactory(CLASS_NAME::ResType, mFactory);                        \
 	}                                                                                           \
 	void CLASS_NAME::UnregisterFactory()                                                        \
 	{                                                                                           \
 		assert(mFactory != nullptr);                                                            \
-		ResourceManager::UnregisterFactory(CLASS_NAME::ResType);                                   \
+		ResourceManager::UnregisterFactory(CLASS_NAME::ResType);                                \
 		CJING_SAFE_DELETE(mFactory);															\
 	}                                                                                           \
 	class CLASS_NAME##Factory* CLASS_NAME::GetFactory()                                         \

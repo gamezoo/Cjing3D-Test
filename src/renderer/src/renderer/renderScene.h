@@ -4,6 +4,8 @@
 #include "core\engine.h"
 #include "renderer\renderer.h"
 
+#include "material.h"
+
 namespace Cjing3D
 {
 	/// ////////////////////////////////////////////////////////////////////////////////
@@ -19,32 +21,20 @@ namespace Cjing3D
 
 	struct MaterialComponent
 	{
+		// res material
+		MaterialRef mMaterial;
+
 		// members
 		BLENDMODE mBlendMode = BLENDMODE_OPAQUE;
 		F32x4 mBaseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-		enum TextureSlot
-		{
-			BaseColorMap,
-			NormalMap,
-			SurfaceMap,
-
-			TextureSlot_Count,
-		};
-		struct TextureMap
-		{
-			String mName;
-			GPU::ResHandle mResource;
-		};
-		TextureMap mTextures[TextureSlot_Count];
-
-		I32 mCustomShaderIndex = -1;
+		bool mUseCustomShader = false;
 		GPU::ResHandle mConstantBuffer;
 
 		// methods
 		BLENDMODE GetBlendMode()const { return mBlendMode; }
-		GPU::ResHandle GetTexture(TextureSlot slot)const {
-			return mTextures[(I32)slot].mResource;
+
+		GPU::ResHandle GetTexture(Material::TextureSlot slot)const {
+			return mMaterial ? mMaterial->GetTexture(slot) : GPU::ResHandle::INVALID_HANDLE;
 		}
 	};
 

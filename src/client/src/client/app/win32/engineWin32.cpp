@@ -170,7 +170,10 @@ namespace Cjing3D::Win32
 	void EngineWin32::Update(Universe& universe, F32 dt)
 	{
 		// update input system
-		mImpl->mInputSystem->Update(dt);
+		bool isActive = mImpl->mGameWindowWin32->IsWindowActive();
+		if (isActive) {
+			mImpl->mInputSystem->Update(dt);
+		}
 
 		// update universe
 		universe.Update(dt);
