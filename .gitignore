@@ -9,8 +9,8 @@ editor/bin
 editor/build
 src/math/build
 src/math/lib
-src/luabinder/build
-src/luabinder/lib
+src/luaHelper/build
+src/luaHelper/lib
 src/core/build
 src/core/lib
 tools/pre_parser/lua_bind/__pycache__/lua_bind.cpython-37.pyc

@@ -49,6 +49,7 @@ is_static_plugin = true
 work_dir = nil
 build_editor = true
 build_app = false
+all_plugins = {}
 
 function setup_project_confgiurations()
 	configuration "Debug"

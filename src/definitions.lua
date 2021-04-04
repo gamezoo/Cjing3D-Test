@@ -1,5 +1,5 @@
 -- definitions
-PROJECT_LUA_BINDER_NAME = "luaBinder"
+PROJECT_LUA_HELPER_NAME = "luaHelper"
 PROJECT_MATH_NAME       = "math"
 PROJECT_CORE_NAME       = "core"
 PROJECT_RENDERER_NAME   = "renderer"
@@ -12,7 +12,6 @@ PROJECT_NETWORK         = "network"
 default_engine_dependencies = 
 {
     PROJECT_MATH_NAME,
-    PROJECT_LUA_BINDER_NAME,
     PROJECT_CORE_NAME,
     PROJECT_CLIENT_NAME,
     PROJECT_RESOURCE_NAME,
@@ -24,7 +23,7 @@ dependencies_mapping =
 {
     [PROJECT_CORE_NAME]   = { 
         PROJECT_MATH_NAME,
-        PROJECT_LUA_BINDER_NAME
+        PROJECT_LUA_HELPER_NAME
     },
 
     [PROJECT_RESOURCE_NAME] = { 

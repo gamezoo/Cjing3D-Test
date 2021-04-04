@@ -35,7 +35,7 @@ solution ("Cjing3D")
     filter { }
     
 -- engine lib project
-dofile "../src/project.lua"
+dofile "../src/modules.lua"
 
 -- example projects
 print("-------------------------------------------------------------")

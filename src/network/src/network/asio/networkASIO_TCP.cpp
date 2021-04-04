@@ -1,4 +1,4 @@
-#include "networkASIO.h"
+#include "networkASIO_TCP.h"
 #include "core\string\stringUtils.h"
 
 #ifdef CJING3D_NETWORK_ASIO
@@ -66,7 +66,7 @@ namespace Network
         if (!mActiveConnections.empty())
         {
             mActiveConnections.erase(std::remove_if(mActiveConnections.begin(), mActiveConnections.end(),
-                [](const SharedPtr<ConnectionAsio>& conn) {
+                [](const SharedPtr<ConnectionTCPAsio>& conn) {
                     return conn->GetStatus() == ConnectionStatus::Closed;
                 }),
                 mActiveConnections.end());

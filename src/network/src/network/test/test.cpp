@@ -19,7 +19,7 @@ int main()
 	// server
 	Cjing3D::Concurrency::Thread serverThread([](void* data)->int {
 		Network::ServerInterfaceASIO server;
-		server.BindReceive([](SharedPtr<Network::ConnectionAsio>& ptr, Span<const char> buffer) {
+		server.BindReceive([](SharedPtr<Network::ConnectionTCPAsio>& ptr, Span<const char> buffer) {
 			String string(buffer);
 			Logger::Info("Server:%s", string.c_str());
 			ptr->Send("Hello world too!!!!!!");
@@ -39,7 +39,7 @@ int main()
 
 	// client
 	Network::ClientInterfaceASIO client;
-	client.BindReceive([](SharedPtr<Network::ConnectionAsio>& ptr, Span<const char> buffer) {
+	client.BindReceive([](SharedPtr<Network::ConnectionTCPAsio>& ptr, Span<const char> buffer) {
 		String string(buffer);
 		Logger::Info("Client:%s", string.c_str());
 	});

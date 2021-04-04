@@ -3,7 +3,7 @@
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
-#include "renderer\model.h"
+#include "renderer\modelImpl.h"
 
 #include "modelImporterOBJ.h"
 
@@ -28,24 +28,35 @@ namespace Cjing3D
 	{
 		ModelMetaObject data = context.GetMetaData<ModelMetaObject>();
 		BaseFileSystem& fileSystem = context.GetFileSystem();
+
+		// 1. get taget model importer
+		MaxPathString srcExt;
+		Path::GetPathExtension(Span(src, StringLength(src)), srcExt.toSpan());
+		ModelImporter* importer = GetImporter(srcExt);
+		if (importer) {
+			return false;
+		}
+
+		// 2. import model
 		DynamicArray<char> source;
 		if (!fileSystem.ReadFile(src, source)) {
 			return false;
 		}
 		context.AddSource(src);
 
-		// 1. get taget model importer
-		MaxPathString srcExt;
-		Path::GetPathExtension(Span(src, StringLength(src)), srcExt.toSpan());
-		ModelImporter* importer = GetImporter(srcExt);
-		if (importer == nullptr) {
+		if (!importer->Import(context, Span(source.data(), source.size()), src)) {
 			return false;
 		}
 
-		// 2. import model by importer
-		if (!importer->Import(context, src)) {
+		// 3. write
+		File* file = CJING_NEW(File);
+		if (!fileSystem.OpenFile(dest, *file, FileFlags::DEFAULT_WRITE))
+		{
+			CJING_SAFE_DELETE(file);
 			return false;
 		}
+		// write model
+		importer->WriteModel(*file);
 
 		context.AddOutput(dest);
 		context.SetMetaData<ModelMetaObject>(data);
@@ -65,18 +76,5 @@ namespace Cjing3D
 	bool ModelResConverter::SupportsType(const char* ext, const ResourceType& type)
 	{
 		return type == ResourceType("Model") && SupportsFileExt(ext);
-	}
-
-	LUMIX_PLUGIN_ENTRY(modelConverter)
-	{
-		ResConverterPlugin* plugin = CJING_NEW(ResConverterPlugin);
-		plugin->CreateConverter = []() -> IResConverter* {
-			return CJING_NEW(ModelResConverter);
-		};
-		plugin->DestroyConverter = [](IResConverter*& converter) {
-			CJING_SAFE_DELETE(converter);
-			converter = nullptr;
-		};
-		return plugin;
 	}
 }

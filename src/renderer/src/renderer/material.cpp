@@ -65,6 +65,12 @@ namespace Cjing3D
 			}
 			ResourceManager::WaitForResources(Span(loadedTextures.data(), loadedTextures.size()));
 
+			// TODO: setup material bindings, if necessary
+			//if (impl->mShader->CreateBindingSet("MaterialBindings"))
+			//{
+
+			//}
+
 			material->mImpl = impl;
 			Logger::Info("[Resource] Material loaded successful:%s.", name);
 			return true;

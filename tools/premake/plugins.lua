@@ -1,7 +1,4 @@
 
--- all plugins
-all_plugins = {}
-
 local function setup_platform_win32()
     systemversion(windows_sdk_version())
 end 
@@ -30,13 +27,13 @@ local function set_plugin_env(plugin_dependencies, config)
     end 
 end 
 
-function setup_plugins_definines()
-    if #all_plugins <= 0 then 
+function setup_plugins_definines(plugins)
+    if #plugins <= 0 then 
         return
     end 
 
     local definines_str = ""
-    for index, plugin in ipairs(all_plugins) do
+    for index, plugin in ipairs(plugins) do
         if index > 1 then 
             definines_str = definines_str .. ",";
         end

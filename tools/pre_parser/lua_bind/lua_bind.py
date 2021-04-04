@@ -242,7 +242,7 @@ def generate(meta_info, output_file_name):
     code = cgu.src_line("// codegen_lua_bind")
     code += cgu.src_line("#pragma once")
     code += cgu.src_line("")
-    code += cgu.src_line('#include ' + cgu.in_quotes("luabinder\luaBinder.h"))
+    code += cgu.src_line('#include ' + cgu.in_quotes("luaHelper\luaBinder.h"))
     for input_head in meta_info.input_head_files:
         code += cgu.src_line('#include ' + cgu.in_quotes(input_head))
     code += cgu.src_line("")

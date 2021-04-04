@@ -12,12 +12,13 @@ print("-------------------------------------------------------------")
 print("[Engine modulers]")
 print("-------------------------------------------------------------")
 dofile "math/project.lua"
-dofile "luabinder/project.lua"
+dofile "luaHelper/project.lua"
 dofile "core/project.lua"
 dofile "resource/project.lua"
-dofile "client/project.lua"
 dofile "gpu/project.lua"
 dofile "renderer/project.lua"
 dofile "imguiRhi/project.lua"
 dofile "network/project.lua"
+-- client
+dofile "client/project.lua"
 group ""

@@ -14,14 +14,14 @@ namespace Network
     // Clinet: Clinet仅持有一个Connection，执行ConnectToServer
     // Server: Server根据连接的Client,执行ConnectToClient
 
-    class ConnectionAsio :
-        public NetConnection<ConnectionAsio>,
+    class ConnectionTCPAsio :
+        public NetConnectionTCP<ConnectionTCPAsio>,
         public EventQueue,
-        public Sender<ConnectionAsio>,
-        public DataPersistence<ConnectionAsio>
+        public Sender<ConnectionTCPAsio>,
+        public DataPersistence<ConnectionTCPAsio>
     {
     public:
-        ConnectionAsio(IOContextASIO& context, asio::ip::tcp::socket socket, EventListener<(size_t)NetEvent::COUNT>& listener) :
+        ConnectionTCPAsio(IOContextASIO& context, asio::ip::tcp::socket socket, EventListener<(size_t)NetEvent::COUNT>& listener) :
             EventQueue(context),
             mContext(context),
             mSocket(std::move(socket)),
@@ -30,7 +30,7 @@ namespace Network
         {
             mRecvBuffer.Reserve(DEFAULT_TCP_BUFFER_SIZE);
         }
-        ~ConnectionAsio() {}
+        ~ConnectionTCPAsio() {}
 
     public:
         // devried function
@@ -130,7 +130,7 @@ namespace Network
             }
             catch (std::exception& e)
             {
-                Logger::Warning("[Server] NetConnection:%s", e.what());
+                Logger::Warning("[Server] NetConnectionTCP:%s", e.what());
                 Disconnect();
             }
         }
@@ -145,10 +145,10 @@ namespace Network
 
                 // close socket
                 if (mSocket.is_open()) {
-                    Logger::Info("[%s] NetConnection disconnected.", mSocket.remote_endpoint().address().to_string().c_str());
+                    Logger::Info("[%s] NetConnectionTCP disconnected.", mSocket.remote_endpoint().address().to_string().c_str());
                 }
                 else {
-                    Logger::Info("NetConnection disconnected.");
+                    Logger::Info("NetConnectionTCP disconnected.");
                 }
 
                 asio::post(mContext.GetStrand(), [this]() {
@@ -211,7 +211,7 @@ namespace Network
                 if (bytesReceived > 0)
                 {
                     char* buf = (char*)mRecvBuffer.OffsetData();
-                    SharedPtr<ConnectionAsio> ptr = this->shared_from_this();
+                    SharedPtr<ConnectionTCPAsio> ptr = this->shared_from_this();
                     mListener.FireEvent(NetEvent::RECEIVE, ptr, Span(buf, bytesReceived));
                 }
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "network\network.h"
-#include "network\asio\connectionASIO.h"
+#include "network\asio\connectionASIO_TCP.h"
 #include "network\asio\networkASIO_impl.h"
 
 #ifdef CJING3D_NETWORK_ASIO
@@ -30,12 +30,12 @@ namespace Network
             return mConnection ? mConnection->Send(buffer) : false;
         }
 
-        // Receive format: void(SharedPtr<ConnectionAsio>&, Span<const char>)
+        // Receive format: void(SharedPtr<ConnectionTCPAsio>&, Span<const char>)
         template<typename F, typename... T>
         void BindReceive(F&& func, T&&...obj)
         {
             mListener.AddObserver(NetEvent::RECEIVE,
-                EventObserver<SharedPtr<ConnectionAsio>&, Span<const char>>(
+                EventObserver<SharedPtr<ConnectionTCPAsio>&, Span<const char>>(
                     std::forward<F>(func), std::forward<T>(obj)...));
         }
 
@@ -62,7 +62,7 @@ namespace Network
                 asio::ip::tcp::resolver::results_type endPoints = resolver.resolve(address.c_str(), portStr.c_str());
 
                 // create client connection
-                mConnection = CJING_MAKE_SHARED<ConnectionAsio>(mContext, asio::ip::tcp::socket(mContext.GetContext()), mListener);
+                mConnection = CJING_MAKE_SHARED<ConnectionTCPAsio>(mContext, asio::ip::tcp::socket(mContext.GetContext()), mListener);
 
                 // connect to server
                 mConnection->ConnectToServer(endPoints, std::move(condition));
@@ -80,7 +80,7 @@ namespace Network
 
     private:
         IOContextASIO mContext;
-        SharedPtr<ConnectionAsio> mConnection;
+        SharedPtr<ConnectionTCPAsio> mConnection;
         EventListener<(size_t)NetEvent::COUNT> mListener;
         String mHostAddress;
         I32 mHostPort = 0;
@@ -100,12 +100,12 @@ namespace Network
         void Stop();
         bool IsStarted()const ;
 
-        // Receive format: void(SharedPtr<ConnectionAsio>&, Span<const char>)
+        // Receive format: void(SharedPtr<ConnectionTCPAsio>&, Span<const char>)
         template<typename F, typename... T>
         void BindReceive(F&& func, T&&...obj)
         {
             mListener.AddObserver(NetEvent::RECEIVE,
-                EventObserver<SharedPtr<ConnectionAsio>&, Span<const char>>(
+                EventObserver<SharedPtr<ConnectionTCPAsio>&, Span<const char>>(
                     std::forward<F>(func), std::forward<T>(obj)...));
         }
 
@@ -189,11 +189,11 @@ namespace Network
             }
             else
             {
-                Logger::Info("[Server] New NetConnection:%s:%d", socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
-                SharedPtr<ConnectionAsio> newConn = CJING_MAKE_SHARED<ConnectionAsio>(mContext, std::move(socket), mListener);
+                Logger::Info("[Server] New NetConnectionTCP:%s:%d", socket.remote_endpoint().address().to_string().c_str(), socket.remote_endpoint().port());
+                SharedPtr<ConnectionTCPAsio> newConn = CJING_MAKE_SHARED<ConnectionTCPAsio>(mContext, std::move(socket), mListener);
                 mActiveConnections.push(std::move(newConn));
                 mActiveConnections.back()->ConnectToClient(condition);
-                Logger::Info("[Server] NetConnection Approved.");
+                Logger::Info("[Server] NetConnectionTCP Approved.");
             }
 
             PostHandleAccept(condition);
@@ -205,7 +205,7 @@ namespace Network
         asio::steady_timer mAcceptorTimer;
         bool mIsStarted = false;
 
-        DynamicArray<SharedPtr<ConnectionAsio>> mActiveConnections;
+        DynamicArray<SharedPtr<ConnectionTCPAsio>> mActiveConnections;
         EventListener<(size_t)NetEvent::COUNT> mListener;
     };
 }

@@ -4,6 +4,28 @@
 group "plugins"
 
 -----------------------------------------------------------------
+-- Modules
+-----------------------------------------------------------------
+-- luaScripts
+create_plugin(
+    "luaScripts",
+    { PROJECT_CORE_NAME, PROJECT_LUA_HELPER_NAME},
+    function()
+        -- libdirs
+        libdirs {  "../../3rdparty/lua/lib/" .. platform_dir,  }
+
+        -- Debug config
+        filter {"configurations:Debug"}
+            links {"lua_lib_d"}
+
+        -- Release config
+        filter {"configurations:Release"}
+            links {"lua_lib"}
+        filter {}
+    end 
+)
+
+-----------------------------------------------------------------
 -- Converter
 -----------------------------------------------------------------
 -- plugin shader converter
@@ -33,6 +55,7 @@ create_plugin(
         filter {"configurations:Release"}
             links {"fcpp"}
             links {"nvtt"}
+        filter {}
     end 
 )
 

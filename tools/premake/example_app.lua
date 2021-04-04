@@ -11,7 +11,7 @@ end
 local function setup_third_modules()
 end 
 
-local function link_all_plugins(plugins, config)
+local function link_plugins(plugins, config)
     if plugins == nil then 
         return
     end 
@@ -60,7 +60,19 @@ function create_example_app(project_name, source_directory, root_directory, app_
         setup_project_env()
         setup_platform()
         setup_project_definines()
-        setup_plugins_definines()
+
+        -- plugins
+        if plugins ~= nil then 
+            setup_plugins_definines(plugins)
+
+            filter {"configurations:Debug"}
+                link_plugins(plugins, "Debug")
+
+            filter {"configurations:Release"}
+                link_plugins(plugins, "Release")
+
+            filter {}
+        end 
 
         -- includes
         includedirs { 
@@ -117,7 +129,6 @@ function create_example_app(project_name, source_directory, root_directory, app_
             targetname(project_name)
             defines { "DEBUG" }
             setup_engine("Debug", engine_dependencies)
-            link_all_plugins(plugins, "Debug")
             link_all_extra_dependencies(extra_dependencies, "Debug")
 
         -- Release config
@@ -125,7 +136,6 @@ function create_example_app(project_name, source_directory, root_directory, app_
             targetname(project_name .. "_d")
             defines { "NDEBUG" }
             setup_engine("Release", engine_dependencies)
-            link_all_plugins(plugins, "Release")
             link_all_extra_dependencies(extra_dependencies, "Release")
 
         filter { }

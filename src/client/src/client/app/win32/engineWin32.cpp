@@ -7,7 +7,6 @@
 #include "core\plugin\modulePulgin.h"
 #include "core\filesystem\filesystem_physfs.h"
 #include "core\concurrency\jobsystem.h"
-#include "core\scripts\luaContext.h"
 #include "core\helper\profiler.h"
 #include "core\helper\buildConfig.h"
 #include "resource\resourceManager.h"
@@ -24,7 +23,6 @@ namespace Cjing3D::Win32
 
 		BaseFileSystem* mFileSystem = nullptr;
 		Win32::InputManagerWin32* mInputSystem = nullptr;
-		LuaContext* mLuaContext = nullptr;
 		File mLogFile;
 		FileLoggerSink mFileLoggerSink;
 	};
@@ -73,10 +71,6 @@ namespace Cjing3D::Win32
 			PluginManager::LoadPlugin(plugin);
 		}
 #endif
-		// init lua context
-		mImpl->mLuaContext = CJING_NEW(LuaContext)(*this);
-		mImpl->mLuaContext->Initialize();
-
 		// init filesystem
 		BaseFileSystem* filesystem = nullptr;
 		if (mInitConfig.mPackPath != nullptr)
@@ -112,7 +106,7 @@ namespace Cjing3D::Win32
 		gpuSetupParams.mIsFullscreen = mInitConfig.mIsFullScreen;
 		Renderer::Initialize(gpuSetupParams, mInitConfig.mIsApp ? true : false);
 
-		// load custom plugins
+		// load plugins
 		for (const char* plugin : mInitConfig.mPlugins) {
 			PluginManager::LoadPlugin(plugin);
 		}
@@ -150,10 +144,6 @@ namespace Cjing3D::Win32
 
 		// uninit filesystem
 		CJING_SAFE_DELETE(mImpl->mFileSystem);
-
-		// uninit lua context
-		mImpl->mLuaContext->Uninitialize();
-		CJING_SAFE_DELETE(mImpl->mLuaContext);
 
 		// uninit plugin manager
 		PluginManager::Uninitialize();

@@ -1,7 +1,7 @@
 // codegen_lua_bind
 #pragma once
 
-#include "luabinder\luaBinder.h"
+#include "luaHelper\luaBinder.h"
 #include ".\test\geometry.h"
 #include ".\test\intersectable.h"
 

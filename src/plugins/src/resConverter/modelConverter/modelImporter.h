@@ -12,8 +12,8 @@ namespace Cjing3D
 		ModelImporter() {};
 		virtual ~ModelImporter() {}
 
-		virtual bool Import(ResConverterContext& context, const char* src) = 0;
-		virtual const char* GetOutput()const = 0;
+		virtual bool Import(ResConverterContext& context, Span<char> memBuffer, const char* src) = 0;
+		virtual void WriteModel(File& file) = 0;
 		virtual bool SupportsFileExt(const char* ext) = 0;
 	};
 }

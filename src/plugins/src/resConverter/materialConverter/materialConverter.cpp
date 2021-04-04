@@ -97,17 +97,4 @@ namespace Cjing3D
 	{
 		return type == ResourceType("Material") && EqualString(ext, "mat");
 	}
-
-	LUMIX_PLUGIN_ENTRY(materialConverter)
-	{
-		ResConverterPlugin* plugin = CJING_NEW(ResConverterPlugin);
-		plugin->CreateConverter = []() -> IResConverter* {
-			return CJING_NEW(MaterialResConverter);
-		};
-		plugin->DestroyConverter = [](IResConverter*& converter) {
-			CJING_SAFE_DELETE(converter);
-			converter = nullptr;
-		};
-		return plugin;
-	}
 }

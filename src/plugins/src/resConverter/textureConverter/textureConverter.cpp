@@ -211,17 +211,4 @@ namespace Cjing3D
 			 EqualString(ext, "jpeg") ||
 			 EqualString(ext, "dds"));
 	}
-
-	LUMIX_PLUGIN_ENTRY(textureConverter)
-	{
-		ResConverterPlugin* plugin = CJING_NEW(ResConverterPlugin);
-		plugin->CreateConverter = []() -> IResConverter* {
-			return CJING_NEW(TextureResConverter);
-		};
-		plugin->DestroyConverter = [](IResConverter*& converter) {
-			CJING_SAFE_DELETE(converter);
-			converter = nullptr;
-		};
-		return plugin;
-	}
 }

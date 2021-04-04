@@ -7,11 +7,11 @@ namespace Cjing3D
 namespace Network
 {
     template<typename DerivedT>
-    class NetConnection : public ObjectCRTP<DerivedT>
+    class NetConnectionTCP : public ObjectCRTP<DerivedT>
     {
     public:
-        NetConnection() {}
-        ~NetConnection() {}
+        NetConnectionTCP() {}
+        ~NetConnectionTCP() {}
 
         void Disconnect()
         {

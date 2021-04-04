@@ -11,7 +11,7 @@ local function setup_platform()
     end 
 end 
 
-project (PROJECT_LUA_BINDER_NAME)
+project (PROJECT_LUA_HELPER_NAME)
     location("build/" ..  platform_dir)
     objdir("build/" ..  platform_dir .. "/temp")
     kind "StaticLib"
@@ -20,7 +20,7 @@ project (PROJECT_LUA_BINDER_NAME)
     setup_project_env()
     setup_platform()
     setup_project_definines()
-    targetname(PROJECT_LUA_BINDER_NAME)
+    targetname(PROJECT_LUA_HELPER_NAME)
 
     -- Files
     local SOURCE_DIR = "src"
