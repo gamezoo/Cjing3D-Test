@@ -45,13 +45,13 @@ namespace Cjing3D
 	{
 		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
 		RegisterWidget("GameView", CJING_MAKE_SHARED<EditorWidgetGameView>(*this));
-		RegisterWidget("SceneView", CJING_MAKE_SHARED<EditorWidgetSceneView>(*this));
-		RegisterWidget("AssetBrowser", CJING_MAKE_SHARED<EditorWidgetAssetBrowser>(*this));
-		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this));
-		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this));
-		RegisterWidget("EntityList", CJING_MAKE_SHARED<EditorWidgetEntityList>(*this));
-		RegisterWidget("Profiler", CJING_MAKE_SHARED<EditorWidgetProfiler>(*this));
-		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this));
+		//RegisterWidget("SceneView", CJING_MAKE_SHARED<EditorWidgetSceneView>(*this));
+		RegisterWidget("AssetBrowser", CJING_MAKE_SHARED<EditorWidgetAssetBrowser>(*this), true);
+		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this), true);
+		RegisterWidget("Inspector", CJING_MAKE_SHARED<EditorWidgetEntityInspector>(*this), true);
+		RegisterWidget("EntityList", CJING_MAKE_SHARED<EditorWidgetEntityList>(*this), true);
+		RegisterWidget("Profiler", CJING_MAKE_SHARED<EditorWidgetProfiler>(*this), true);
+		RegisterWidget("Log", CJING_MAKE_SHARED<EditorWidgetLog>(*this), true);
 	}
 
 	void GameEditor::Initialize()
@@ -102,6 +102,8 @@ namespace Cjing3D
 	void GameEditor::Uninitialize()
 	{
 		SaveEditorSetting();
+
+		mRegisteredMenuViews.clear();
 
 		for (auto widget : mWidgets) {
 			widget->Uninitialize();
@@ -198,15 +200,21 @@ namespace Cjing3D
 		return false;
 	}
 
-	void GameEditor::RegisterWidget(const StringID& name, SharedPtr<EditorWidget> widget)
+	void GameEditor::RegisterWidget(const char* name, SharedPtr<EditorWidget> widget, bool registerToViewMenu)
 	{
 		auto index = mWidgetMap.find(name);
 		if (index != nullptr) {
 			return;
 		}
 
+		widget->SetName(name);
+
 		mWidgetMap.insert(name, mWidgets.size());
 		mWidgets.push(widget);
+
+		if (registerToViewMenu) {
+			mRegisteredMenuViews.push(widget.get());
+		}
 	}
 
 	SharedPtr<EditorWidget> GameEditor::GetWidget(const StringID& name)
@@ -221,6 +229,18 @@ namespace Cjing3D
 	AssetCompiler& GameEditor::GetAssetCompiler()
 	{
 		return *mAssetCompiler;
+	}
+
+	void GameEditor::Render()
+	{
+		for (auto& widget : mWidgets)
+		{
+			if (widget != nullptr && widget->IsVisible()) {
+				widget->Draw();
+			}
+		}
+
+		MainComponent::Render();
 	}
 
 	void GameEditor::DockingBegin()

@@ -19,7 +19,7 @@ namespace Cjing3D
 		for (auto& scene : scenes)
 		{
 			scene->Clear();
-			scene->Uninitialize();
+			// scene->Uninitialize(); uninit will called when universe deleted
 		}
 
 		CJING_DELETE(universe);

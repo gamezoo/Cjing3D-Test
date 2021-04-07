@@ -19,11 +19,14 @@ namespace Cjing3D
 
 		virtual void Initialize() {}
 		virtual void Update(F32 deltaTime) {}
+		virtual void Draw() {}
 		virtual void Uninitialize() {}
 
 		bool Begin();
 		void End();
 
+		void SetName(const String& name) { mName = name; }
+		const String GetName()const { return mName; }
 		bool IsVisible()const { return mIsVisible; }
 		void SetVisible(bool isVisible) { mIsVisible = isVisible; }
 		F32  GetHeight()const { return mHeight; }
@@ -36,6 +39,7 @@ namespace Cjing3D
 	protected:
 		GameEditor& mEditor;
 
+		String mName;
 		bool mIsVisible = true;
 		bool mIsBegun = false;
 		bool mIsWindow = true;

@@ -293,6 +293,13 @@ namespace Platform {
 		return ret >= 32;
 	}
 
+	I32 GetCPUsCount()
+	{
+		SYSTEM_INFO sys_info;
+		GetSystemInfo(&sys_info);
+		return sys_info.dwNumberOfProcessors > 0 ? sys_info.dwNumberOfProcessors : 1;
+	}
+
 	WindowRect GetClientBounds(WindowType window)
 	{
 		RECT rect;

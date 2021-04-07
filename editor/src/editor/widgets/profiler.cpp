@@ -14,6 +14,7 @@ namespace Cjing3D
 		U32 mThreadID;
 		U32 mBufStart;
 		U32 mBufEnd;
+		bool mIsShowInProfiler;
 		U32 mBufSize;
 		const U8* mBuffer;
 
@@ -24,6 +25,7 @@ namespace Cjing3D
 			mThreadID = stream.Read<U32>();
 			mBufStart = stream.Read<U32>();
 			mBufEnd = stream.Read<U32>();
+			mIsShowInProfiler = stream.Read<bool>();
 			mBufSize = stream.Read<U32>();
 			mBuffer = stream.data() + stream.Offset();
 		}
@@ -208,7 +210,9 @@ namespace Cjing3D
 				case Profiler::ProfileType::BEGIN_CPU:
 				{
 					scopeLevel++;
-					blocks[scopeLevel].mOffset = pos;	// 用于在END_CPU时从buffer读取block数据
+
+					// 用于在END_CPU时从buffer读取block数据
+					blocks[scopeLevel].mOffset = pos;
 					curY += 20.0f;
 
 					maxScopeLevel = std::max(maxScopeLevel, scopeLevel);
@@ -228,6 +232,20 @@ namespace Cjing3D
 						DrawBlock(blockHeader.mTime, header.mTime, name, 0xffDDddDD);
 					}
 					scopeLevel--;
+				}
+				break;
+				case Profiler::ProfileType::END_FIBER_WAIT:
+				case Profiler::ProfileType::BEGIN_FIBER_WAIT: 
+				{
+					Profiler::FiberWaitRecord record;
+					ReadFromThreadCtx(ctx, pos + sizeof(Profiler::ProfileBlockHeader), record);
+					if (header.mTime >= startTime && header.mTime <= mProfilerDataLastTime)
+					{
+						const F32 t = F32((header.mTime - startTime) / F64(mRange));
+						const float x = startX * (1 - t) + endX * t;
+						const U32 color = header.mType == Profiler::ProfileType::END_FIBER_WAIT ? 0xffff0000 : 0xff00ff00;
+						drawList->AddRect(ImVec2(x - 2, curY - 2), ImVec2(x + 2, curY + 2), color);
+					}
 				}
 				break;
 				default:

@@ -2,9 +2,10 @@
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\helper\debug.h"
 #include "core\helper\timer.h"
+#include "core\helper\profiler.h"
 #include "core\memory\linearAllocator.h"
+#include "core\container\dynamicArray.h"
 
-#include <vector>
 #include <array>
 
 #ifdef CJING3D_PLATFORM_WIN32
@@ -42,10 +43,11 @@ namespace JobSystem
 			}
 		}
 
-		std::vector<WorkerThread*> mWorkerThreads;
+		DynamicArray<WorkerThread*> mWorkerThreads;
 		MPMCBoundedQueue<JobFiber*> mFreeFibers;
 		I32 mFiberStackSize = 0;
-		Concurrency::Semaphore mScheduleSem = Concurrency::Semaphore(0, 65536);
+		//Concurrency::Semaphore mScheduleSem = Concurrency::Semaphore(0, 65536);	// 暂时不使用sem，改为cv和rwlock
+		Concurrency::ConditionMutex mScheduleLock;
 		bool mIsExting = false;
 
 		volatile I32 mOutOfFibers = 0;
@@ -59,8 +61,6 @@ namespace JobSystem
 		MPMCBoundedQueue<U32> mFreeHandleQueue;
 		std::vector<Counter> mCounterPool;
 
-		// job group allocator
-
 		// debug infos
 #ifdef DEBUG
 		volatile I32 mNumPendingJobs   = 0;
@@ -71,11 +71,14 @@ namespace JobSystem
 		void ReleaseHandle(JobHandle jobHandle, bool freeHandle);
 		bool IsHandleZero(JobHandle jobHandle);
 
-		bool GetJobFiber(JobFiber** ouputFiber);
-		void ReleaseFiber(JobFiber* fiber, bool complete);
+		bool GetJobFiber(WorkerThread* worker, JobFiber** ouputFiber);
+		void ReleaseFiber(WorkerThread* worker, JobFiber* fiber, bool complete);
 	};
 	ManagerImpl* gManagerImpl = nullptr;
 
+	//////////////////////////////////////////////////////////////////////////
+	// JobFiber
+	//////////////////////////////////////////////////////////////////////////
 	class JobFiber
 	{
 	public:
@@ -94,21 +97,18 @@ namespace JobSystem
 				JobInfo& jobInfo = jobFiber->mJobInfo;
 				if (jobInfo.jobFunc_ != nullptr) 
 				{
+					Profiler::BeginCPUBlock("Job");
+
 					jobInfo.jobFunc_(jobInfo.userParam_, jobInfo.userData_);
 					jobInfo.jobFunc_ = nullptr;
+
+					Profiler::EndCPUBlock();
 				}
 
 				// update counter
 				if (jobFiber->mJobInfo.mHandle != INVALID_HANDLE) {
 					jobFiber->mManager.ReleaseHandle(jobFiber->mJobInfo.mHandle, jobFiber->mJobInfo.mFreeHandle);
 				}
-				//I32 jobCount = Concurrency::AtomicDecrement(&jobFiber->mJobInfo.mCounter->value_);
-				//if (jobCount == 0)
-				//{
-				//	if (jobFiber->mJobInfo.mFreeCounter) {
-				//		SAFE_DELETE(jobFiber->mJobInfo.mCounter);
-				//	}
-				//}
 
 				Concurrency::AtomicDecrement(&jobFiber->mManager.mJobCount);
 
@@ -144,6 +144,9 @@ namespace JobSystem
 		bool mIsExiting = false;
 	};
 
+	//////////////////////////////////////////////////////////////////////////
+	// WorkThread
+	//////////////////////////////////////////////////////////////////////////
 	// workThread是一个负责调度的线程，该线程会将自身转换为Fiber，同时从manager中
 	// 获取可用的jobFiber
 	class WorkerThread
@@ -153,6 +156,18 @@ namespace JobSystem
 			mManager(manager),
 			mIndex(index)
 		{
+			// show in profiler
+			Profiler::ShowInProfiler(true);
+
+			// init waiting fibers
+			for (auto& waitingFibers : mWorkerWaitingFibers) {
+				waitingFibers = MPMCBoundedQueue<JobFiber*>(128);
+			}
+			// init pending jobs
+			for (auto& pendingJobs : mWorkerPendingJobs) {
+				pendingJobs = MPMCBoundedQueue<JobInfo>(128);
+			}
+
 			std::string debugName = std::string("Job worker thread") + std::to_string(index);
 			mThread = Concurrency::Thread(ThreadEntryPointCallback, this, Concurrency::Thread::DEFAULT_STACK_SIZE, debugName);
 
@@ -166,23 +181,35 @@ namespace JobSystem
 			mThread.Join();
 		}
 
+		void Sleep(Concurrency::ConditionMutex& lock, I32 time = INFINITE)
+		{
+			Concurrency::ScopedConditionMutex locker(lock);
+			mThread.Sleep(lock, time);
+		}
+
+		void Wakeup(Concurrency::ConditionMutex& lock)
+		{
+			Concurrency::ScopedConditionMutex locker(lock);
+			mThread.Wakeup();
+		}
+
 		static int ThreadEntryPointCallback(void* userData)
 		{
 			WorkerThread* worker = reinterpret_cast<WorkerThread*>(userData);
+			JobSystem::ManagerImpl& manager = worker->mManager;
 
 			// convert current thread to fiber
 			Concurrency::Fiber workerFiber(Concurrency::Fiber::THIS_THREAD, "Job worker fiber");
-
-			JobSystem::ManagerImpl& manager = worker->mManager;
 			JobSystem::JobFiber* jobFiber = nullptr;
 
 			// 仅当manager.mIsExiting=true时，结束循环
-			while (manager.GetJobFiber(&jobFiber))
+			while (manager.GetJobFiber(worker, &jobFiber))
 			{
 				if (!jobFiber)
 				{
-					// 如果没有任务，则等待信号量，或超时后再次从Manager中获取
-					manager.mScheduleSem.Wait(WORKER_SEMAPHORE_WAITTIME);
+					// 如果没有任务，则等待CV，或超时后再次从Manager中获取
+					Profiler::ColorBlock(Color4::Pink());
+					worker->Sleep(manager.mScheduleLock, WORKER_SEMAPHORE_WAITTIME);
 				}
 				else
 				{
@@ -190,12 +217,13 @@ namespace JobSystem
 #endif
 					Concurrency::AtomicExchange(&worker->mMoveToWaitingFlag, 0);
 					jobFiber->SwitchTo(worker, &workerFiber);
+					Profiler::ColorBlock(Color4::Pink());
 
 #ifdef JOB_SYSTEM_PROFILE_ENABLE
 #endif
 					bool complete = Concurrency::AtomicExchange(&worker->mMoveToWaitingFlag, 0) == 0;
 					complete |= jobFiber->mJobInfo.jobFunc_ == nullptr;
-					manager.ReleaseFiber(jobFiber, complete);
+					manager.ReleaseFiber(worker, jobFiber, complete);
 				}
 			}
 
@@ -212,7 +240,15 @@ namespace JobSystem
 		volatile I32 mMoveToWaitingFlag = 0;
 		I32 mIndex = -1;
 		bool mExiting = false;
+
+		// exclusive jobs, the supporting nums of jobs is smaller then common jobQueue
+		std::array<MPMCBoundedQueue<JobInfo>, (I32)Priority::MAX> mWorkerPendingJobs;
+		std::array<MPMCBoundedQueue<JobFiber*>, (I32)Priority::MAX> mWorkerWaitingFibers;
 	};
+
+	//////////////////////////////////////////////////////////////////////////
+	// ManagerImpl
+	//////////////////////////////////////////////////////////////////////////
 
 	JobHandle ManagerImpl::AllocateHandle()
 	{
@@ -256,7 +292,7 @@ namespace JobSystem
 		return counter.value_ <= 0;
 	}
 
-	bool ManagerImpl::GetJobFiber(JobFiber** ouputFiber)
+	bool ManagerImpl::GetJobFiber(WorkerThread* worker, JobFiber** ouputFiber)
 	{
 		JobFiber* fiber = nullptr;
 		*ouputFiber = nullptr;
@@ -265,6 +301,97 @@ namespace JobSystem
 		// 如果存在Job： 则从freeFiber中取得fiber去执行
 		// 如果不存在job，则尝试从waitingFiber中取得fiber继续执行
 
+		/// //////////////////////////////////////////////////////////////////////////
+		/// handle worker exclusive jobQueue
+		if (worker != nullptr)
+		{
+			for (I32 priority = 0; priority < (I32)Priority::MAX; priority++)
+			{
+				JobInfo jobInfo;
+				if (worker->mWorkerPendingJobs[priority].Dequeue(jobInfo))
+				{
+#ifdef DEBUG
+					Concurrency::AtomicDecrement(&mNumPendingJobs);
+#endif
+
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+					F64 startTime = Timer::GetAbsoluteTime();
+					const F64 LOG_TIME_THRESHOLD = 100.0f / 1000000.0;    // 100us.
+					const F64 LOG_TIME_REPEAT = 1000.0f / 1000.0;      // 1000ms.
+					F64 nextLogTime = startTime + LOG_TIME_THRESHOLD;
+#endif
+					// get free fiber
+					I32 spinCount = 0;
+					I32 spinCountMax = 100;
+					while (!mFreeFibers.Dequeue(fiber))
+					{
+						spinCount++;
+						if (spinCount > spinCountMax) {
+							Concurrency::AtomicIncrement(&mOutOfFibers);
+						}
+
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+						// log when enqueue job failed
+						F64 currentTime = Timer::GetAbsoluteTime();
+						if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
+						{
+							if (currentTime > nextLogTime)
+							{
+								Logger::Warning("Failed to get free job fiber, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
+								nextLogTime = currentTime + LOG_TIME_REPEAT;
+							}
+						}
+#endif
+						Concurrency::SwitchToThread();
+
+						// 如果所有的线程都陷入此循环中，则需要强制结束
+						if (spinCount > spinCountMax)
+						{
+							if ((Concurrency::AtomicDecrement(&mOutOfFibers) + 1) == mWorkerThreads.size())
+							{
+								static bool breakHere = true;
+								if (breakHere)
+								{
+									DBG_BREAK;
+									breakHere = false;
+								}
+							}
+						}
+					}
+
+					if (fiber == nullptr) {
+						return false;
+					}
+#ifdef DEBUG
+					Concurrency::AtomicDecrement(&mNumFreeFibers);
+#endif
+					* ouputFiber = fiber;
+					fiber->SetJobInfo(jobInfo);
+
+#if JOB_SYSTEM_LOGGING_LEVEL >= 2
+					Logger::Info("Woker pending job \"%s\" (%u) being scheduled.", fiber->mJobInfo.jobName.c_str(), fiber->mJobInfo.userParam_);
+#endif
+					return true;
+				}
+
+				// waiting job fiber being rescheduled
+				if (worker->mWorkerWaitingFibers[priority].Dequeue(fiber))
+				{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 2
+					Logger::Info("Woker waiting job \"%s\" (%u) being rescheduled.", fiber->mJobInfo.jobName.c_str(), fiber->mJobInfo.userParam_);
+#endif
+#ifdef DEBUG
+					Concurrency::AtomicDecrement(&mNumWaitingFibers);
+#endif
+					* ouputFiber = fiber;
+					return true;
+				}
+			}
+		}
+
+
+		/// //////////////////////////////////////////////////////////////////////////
+		/// handle common jobQueue
 		for (I32 priority = 0; priority < (I32)Priority::MAX; priority++)
 		{
 			JobInfo jobInfo;
@@ -342,6 +469,9 @@ namespace JobSystem
 #if JOB_SYSTEM_LOGGING_LEVEL >= 2
 				Logger::Info("Waiting job \"%s\" (%u) being rescheduled.", fiber->mJobInfo.jobName.c_str(), fiber->mJobInfo.userParam_);
 #endif
+#ifdef DEBUG
+				Concurrency::AtomicDecrement(&mNumWaitingFibers);
+#endif
 
 				*ouputFiber = fiber;
 				return true;
@@ -351,7 +481,7 @@ namespace JobSystem
 		return !mIsExting;
 	}
 
-	void ManagerImpl::ReleaseFiber(JobFiber* fiber, bool complete)
+	void ManagerImpl::ReleaseFiber(WorkerThread* worker, JobFiber* fiber, bool complete)
 	{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 2
 		Logger::Info("Job %s.\"%s\" (%u).", complete ? "complete" : "waiting", fiber->mJobInfo.jobName.c_str(), fiber->mJobInfo.userParam_);
@@ -373,12 +503,25 @@ namespace JobSystem
 		else
 		{
 			const I32 prio = (I32)fiber->GetJobInfo().jobPriority_;
-			while (!mWaitingFibers[prio].Enqueue(fiber)) 
+			if ((I32)fiber->GetJobInfo().mWorkerIndex != USE_ANY_WORKER)
 			{
+				while (!worker->mWorkerWaitingFibers[prio].Enqueue(fiber))
+				{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
-				Logger::Warning("Failed to enqueue waiting fiber");
+					Logger::Warning("Failed to enqueue worker waiting fiber");
 #endif
-				Concurrency::SwitchToThread();
+					Concurrency::SwitchToThread();
+				}
+			}
+			else
+			{
+				while (!mWaitingFibers[prio].Enqueue(fiber))
+				{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+					Logger::Warning("Failed to enqueue waiting fiber");
+#endif
+					Concurrency::SwitchToThread();
+				}
 			}
 #ifdef DEBUG
 			Concurrency::AtomicIncrement(&mNumWaitingFibers);
@@ -386,6 +529,8 @@ namespace JobSystem
 		}
 	}
 
+	//////////////////////////////////////////////////////////////////////////
+	// Manager
 	//////////////////////////////////////////////////////////////////////////
 
 	void Initialize(I32 numThreads, I32 numFibers, I32 fiberStackSize)
@@ -410,7 +555,7 @@ namespace JobSystem
 
 		// init workThread
 		for (I32 i = 0; i < numThreads; i++) {
-			gManagerImpl->mWorkerThreads.emplace_back(CJING_NEW(WorkerThread(i, *gManagerImpl)));
+			gManagerImpl->mWorkerThreads.push(CJING_NEW(WorkerThread(i, *gManagerImpl)));
 		}
 
 		// init fibers
@@ -433,7 +578,10 @@ namespace JobSystem
 
 		gManagerImpl->mIsExting = true;
 		Concurrency::Barrier();
-		gManagerImpl->mScheduleSem.Signal(gManagerImpl->mWorkerThreads.size());
+		for (auto* workerThread : gManagerImpl->mWorkerThreads) {
+			workerThread->Wakeup(gManagerImpl->mScheduleLock);
+		}
+		// gManagerImpl->mScheduleSem.Signal(gManagerImpl->mWorkerThreads.size());
 
 		Concurrency::Fiber exitFiber(Concurrency::Fiber::THIS_THREAD, "Job Manager Deletion Fiber");
 		DBG_ASSERT(exitFiber.IsValid());
@@ -540,7 +688,10 @@ namespace JobSystem
 				YieldCPU();
 			}
 			// 通知worker去执行job
-			gManagerImpl->mScheduleSem.Signal(1);
+			for (auto* workerThread : gManagerImpl->mWorkerThreads) {
+				workerThread->Wakeup(gManagerImpl->mScheduleLock);
+			}
+			// gManagerImpl->mScheduleSem.Signal(1);
 
 #ifdef DEBUG
 			Concurrency::AtomicIncrement(&gManagerImpl->mNumPendingJobs);
@@ -552,7 +703,16 @@ namespace JobSystem
 		}
 	}
 
-	void RunJob(const JobFunc& job, void* jobData, JobHandle* jobHandle, Priority priority, const std::string& jobName)
+	void RunJob(JobInfo jobInfo, JobHandle* jobHandle)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		RunJobs(&jobInfo, 1, jobHandle);
+	}
+
+	void RunJob(const JobFunc& job, void* jobData, JobHandle* jobHandle, Priority priority, I32 workerIndex, const std::string& jobName)
 	{
 		if (!IsInitialized()) {
 			return;
@@ -564,6 +724,7 @@ namespace JobSystem
 		jobInfo.userData_ = jobData;
 		jobInfo.jobPriority_ = priority;
 		jobInfo.jobFunc_ = job;
+		jobInfo.mWorkerIndex = workerIndex;
 
 		RunJobs(&jobInfo, 1, jobHandle);
 	}
@@ -660,28 +821,55 @@ namespace JobSystem
 			JobInfo& jobInfo = jobInfos[i];
 			jobInfo.mHandle = localHandle;
 			jobInfo.mFreeHandle = jobShouldFreeHandle;
-			//jobInfo.mCounter = localCounter;
-			//jobInfo.mFreeCounter = jobShouldFreeCounter;
 
-			auto& pendingJobs = gManagerImpl->mPendingJobs[(I32)jobInfo.jobPriority_];
-			while (!pendingJobs.Enqueue(jobInfo))
+			// 如果指定了workerThread,则将job添加到worker专属队列中
+			if (jobInfo.mWorkerIndex != USE_ANY_WORKER)
 			{
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-				// log when enqueue job failed
-				F64 currentTime = Timer::GetAbsoluteTime();
-				if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
+				WorkerThread* workerThread = gManagerImpl->mWorkerThreads[jobInfo.mWorkerIndex % gManagerImpl->mWorkerThreads.size()];
+				auto& pendingJobs = workerThread->mWorkerPendingJobs[(I32)jobInfo.jobPriority_];
+				while (!pendingJobs.Enqueue(jobInfo))
 				{
-					if (currentTime > nextLogTime)
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+					// log when enqueue job failed
+					F64 currentTime = Timer::GetAbsoluteTime();
+					if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
 					{
-						Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
-						nextLogTime = currentTime + LOG_TIME_REPEAT;
+						if (currentTime > nextLogTime)
+						{
+							Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
+							nextLogTime = currentTime + LOG_TIME_REPEAT;
+						}
 					}
-				}
 #endif
-				YieldCPU();
+					YieldCPU();
+				}
+				workerThread->Wakeup(gManagerImpl->mScheduleLock);
 			}
-			// 通知worker去执行job
-			gManagerImpl->mScheduleSem.Signal(1);
+			else
+			{
+				auto& pendingJobs = gManagerImpl->mPendingJobs[(I32)jobInfo.jobPriority_];
+				while (!pendingJobs.Enqueue(jobInfo))
+				{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+					// log when enqueue job failed
+					F64 currentTime = Timer::GetAbsoluteTime();
+					if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
+					{
+						if (currentTime > nextLogTime)
+						{
+							Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
+							nextLogTime = currentTime + LOG_TIME_REPEAT;
+						}
+					}
+#endif
+					YieldCPU();
+				}
+				// 通知worker去执行job
+				for (auto* workerThread : gManagerImpl->mWorkerThreads) {
+					workerThread->Wakeup(gManagerImpl->mScheduleLock);
+				}
+				// gManagerImpl->mScheduleSem.Signal(1);
+			}
 
 #ifdef DEBUG
 			Concurrency::AtomicIncrement(&gManagerImpl->mNumPendingJobs);
@@ -703,6 +891,22 @@ namespace JobSystem
 			return;
 		}
 
+		// 如果当前线程没有纤程化，则直接sleep等待
+		auto currentFiber = Concurrency::Fiber::GetCurrentFiber();
+		if (!currentFiber)
+		{
+			Counter& counter = gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK];
+			while (counter.value_ > value) {
+				Concurrency::Sleep(0.001f);
+			}
+			return;
+		}
+
+		// fiber profile
+		Profiler::ColorBlock(Color4::Red());
+		Profiler::FiberSwitchData switchData = Profiler::BeginFiberWaitBlock(*jobHandle);
+
+		// 否则会yield当前纤程，Jobsystem可能会执行优先级更高的job
 		Counter& counter = gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK];
 		while (counter.value_ > value) {
 			YieldCPU();
@@ -718,6 +922,7 @@ namespace JobSystem
 			}
 			*jobHandle = INVALID_HANDLE;
 		}
+		Profiler::EndFiberWaitBlock(*jobHandle, switchData);
 	}
 
 	void YieldCPU()
@@ -752,9 +957,14 @@ namespace JobSystem
 			return;
 		}
 
+		Profiler::ColorBlock(Color4::Red());
+		Profiler::FiberSwitchData switchData = Profiler::BeginFiberWaitBlock(INVALID_HANDLE);
+
 		while (gManagerImpl->mJobCount > 0) {
 			YieldCPU();
 		}
+
+		Profiler::EndFiberWaitBlock(INVALID_HANDLE, switchData);
 	}
 
 	void WaitForCounter(Counter* counter, I32 value, bool freeCounter)

@@ -86,6 +86,7 @@ namespace Cjing3D {
 		static constexpr Color4 Black() { return Color4(0, 0, 0, 255); }
 		static constexpr Color4 White() { return Color4(255, 255, 255, 255); }
 		static constexpr Color4 Yellow() { return Color4(255, 255, 0, 255); }
+		static constexpr Color4 Pink() { return Color4(255, 0, 255, 255); }
 
 		bool operator==(const Color4& color)const { return mRGBA == color.mRGBA; }
 		bool operator!=(const Color4& color)const { return mRGBA != color.mRGBA; }

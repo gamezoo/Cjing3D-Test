@@ -42,11 +42,13 @@ namespace Cjing3D
 
 		bool IsUniverseChanged()const;
 
-		void RegisterWidget(const StringID& name, SharedPtr<EditorWidget> widget);
+		void RegisterWidget(const char* name, SharedPtr<EditorWidget> widget, bool registerToViewMenu = false);
 		SharedPtr<EditorWidget> GetWidget(const StringID& name);
 		AssetCompiler& GetAssetCompiler();
+		DynamicArray<EditorWidget*>& GetRegisteredMenuViews() { return mRegisteredMenuViews; }
 
 	private:
+		void Render()override;
 		void DockingBegin();
 		void DockingEnd();
 
@@ -58,6 +60,7 @@ namespace Cjing3D
 
 		HashMap<StringID, I32> mWidgetMap;
 		DynamicArray<SharedPtr<EditorWidget>> mWidgets;
+		DynamicArray<EditorWidget*> mRegisteredMenuViews;
 
 		GameEditorRenderer* mRenderer = nullptr;
 		ScopedConnection mEventConnection;

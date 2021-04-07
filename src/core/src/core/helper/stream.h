@@ -246,7 +246,7 @@ namespace Cjing3D
 		{
 			U8 v;
 			Read(&v, sizeof(v));
-			return v;
+			return v != 0;
 		}
 
 		const U8* data()const {

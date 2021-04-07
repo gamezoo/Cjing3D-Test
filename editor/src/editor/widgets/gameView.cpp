@@ -72,20 +72,29 @@ namespace Cjing3D
 			}
 
 			mRenderPath->Update(deltaTime);
-			mRenderPath->Render();
 
-			GPU::CommandList* cmd = GPU::CreateCommandlist();
-			if (auto binding = cmd->BindScopedFrameBindingSet(mFrameBinding)) 
-			{
-				cmd->EventBegin("GameCompose");
-				mRenderPath->Compose(*cmd);
-				cmd->EventEnd();
-			}
 			if (mGameTextrue.GetHandle())  {
 				ImGui::Image((ImTextureID)mGameTextrue.GetHandlePtr(), size);
 			}
 			else {
 				ImGuiEx::Rect(size.x, size.y, 0xffFF00FF);
+			}
+		}
+
+		void Draw()
+		{
+			RenderScene* scene = Renderer::GetRenderScene();
+			if (!scene) {
+				return;
+			}
+			mRenderPath->Render();
+
+			GPU::CommandList* cmd = GPU::CreateCommandlist();
+			if (auto binding = cmd->BindScopedFrameBindingSet(mFrameBinding))
+			{
+				cmd->EventBegin("GameCompose");
+				mRenderPath->Compose(*cmd);
+				cmd->EventEnd();
 			}
 		}
 	};
@@ -118,5 +127,10 @@ namespace Cjing3D
 	void EditorWidgetGameView::Update(F32 deltaTime)
 	{
 		mImpl->Update(deltaTime);
+	}
+
+	void EditorWidgetGameView::Draw()
+	{
+		mImpl->Draw();
 	}
 }

@@ -80,6 +80,7 @@ namespace Platform {
 	I32  GetDPI();
 	void CopyToClipBoard(const char* txt);
 	bool OpenExplorer(const char* path);
+	I32  GetCPUsCount();
 
 	/////////////////////////////////////////////////////////////////////////////////
 	// window

@@ -32,30 +32,13 @@ namespace Cjing3D
 			}
 			if (ImGui::BeginMenu("View"))
 			{
-				if (ImGui::MenuItem("Asset browser", nullptr, mEditor.GetWidget("AssetBrowser")->IsVisible())) {
-					mEditor.GetWidget("AssetBrowser")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Log", nullptr, mEditor.GetWidget("Log")->IsVisible())) {
-					mEditor.GetWidget("Log")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Setting", nullptr, mEditor.GetWidget("Setting")->IsVisible())) {
-					mEditor.GetWidget("Setting")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Entity List", nullptr, mEditor.GetWidget("EntityList")->IsVisible())) {
-					mEditor.GetWidget("EntityList")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Entity Inspector", nullptr, mEditor.GetWidget("Inspector")->IsVisible())) {
-					mEditor.GetWidget("Inspector")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Game View", nullptr, mEditor.GetWidget("GameView")->IsVisible())) {
-					mEditor.GetWidget("GameView")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Scene View", nullptr, mEditor.GetWidget("SceneView")->IsVisible())) {
-					mEditor.GetWidget("SceneView")->SetVisible(true);
-				};
-				if (ImGui::MenuItem("Profiler", nullptr, mEditor.GetWidget("Profiler")->IsVisible())) {
-					mEditor.GetWidget("Profiler")->SetVisible(true);
-				};	
+				auto& views = mEditor.GetRegisteredMenuViews();
+				for (auto view : views)
+				{
+					if (ImGui::MenuItem(view->GetName().c_str(), nullptr, view->IsVisible())) {
+						view->SetVisible(true);
+					};
+				}
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("Test"))

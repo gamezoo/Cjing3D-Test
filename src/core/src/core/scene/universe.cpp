@@ -63,6 +63,15 @@ namespace Cjing3D
 
 	Universe::~Universe()
 	{
+		// uninit scenes
+		for (auto& scene : mScenes)
+		{
+			if (scene) {
+				scene->Uninitialize();
+			}
+		}
+
+		// uninit systems
 		for (auto system : mSystems)
 		{
 			if (system.mSystem != nullptr) {
@@ -105,6 +114,7 @@ namespace Cjing3D
 
 	void Universe::AddScene(UniquePtr<ECS::IScene>&& scene)
 	{
+		scene->Initialize();
 		mScenes.push(std::move(scene));
 	}
 

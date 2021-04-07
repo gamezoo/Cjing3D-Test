@@ -52,6 +52,8 @@ namespace Concurrency
 	I64 AtomicCmpExchangeAcquire(volatile I64* pw, I64 exchg, I64 comp);
 	I64 AtomicExchangeIfGreater(volatile I64* pw, volatile I64 val);
 
+	class ConditionMutex;
+
 	class Thread
 	{
 	public:
@@ -68,6 +70,8 @@ namespace Concurrency
 		void SetAffinity(U64 mask);
 		I32 Join();
 		bool IsValid()const;
+		void Sleep(ConditionMutex& lock, I32 timeout = INFINITE);
+		void Wakeup();
 
 	private:
 		Thread(const Thread& rhs) = delete;
@@ -85,6 +89,8 @@ namespace Concurrency
 	public:
 		Mutex();
 		~Mutex();
+		Mutex(Mutex&& rhs);
+		void operator=(Mutex&& rhs);
 
 		void Lock();
 		bool TryLock();
@@ -94,11 +100,8 @@ namespace Concurrency
 		Mutex(const Mutex& rhs) = delete;
 		Mutex& operator=(const Mutex& rhs) = delete;
 
-#ifdef CJING3D_PLATFORM_WIN32
-		struct MutexImpl* mImpl = nullptr;
-#else
-		std::mutex mMutex;
-#endif
+		struct MutexImpl* Get();
+		U8 mImplData[60];
 	};
 
 	class ScopedMutex
@@ -177,16 +180,19 @@ namespace Concurrency
 	class Semaphore
 	{
 	public:
-		Semaphore(I32 initialCount, I32 maximumCount, const std::string& debugName = "");
+		Semaphore(I32 initialCount, I32 maximumCount, const char* debugName = nullptr);
+		Semaphore(Semaphore&& rhs);
 		~Semaphore();
 
 		bool Signal(I32 count);
-		bool Wait(I32 timeout = -1);
+		bool Wait(I32 timeout = INFINITE);
 
 	private:
 		Semaphore(const Semaphore&) = delete;
 
-		struct SemaphoreImpl* mImpl = nullptr;
+		struct SemaphoreImpl* Get();
+		U8 mImplData[32];
+		const char* mDebugName = nullptr;
 	};
 
 #endif
@@ -235,6 +241,8 @@ namespace Concurrency
 		void EndWrite();
 
 	private:
+		friend class ConditionVariable;
+
 		RWLock(const RWLock&) = delete;
 
 		struct RWLockImpl* mImpl = nullptr;
@@ -290,6 +298,59 @@ namespace Concurrency
 		AtomicFlag(const AtomicFlag&) = delete;
 
 		volatile I32 mLockedFlag;
+	};
+
+	// just used for ConditionVariable, use Mutex in general
+	class alignas(8) ConditionMutex
+	{
+	public:
+		ConditionMutex();
+		~ConditionMutex();
+		ConditionMutex(ConditionMutex&& rhs);
+
+		void Enter();
+		void Exit();
+
+	private:
+		friend class ConditionVariable;
+
+		ConditionMutex(const ConditionMutex& rhs) = delete;
+		ConditionMutex& operator=(const ConditionMutex& rhs) = delete;
+
+		U8 mImplData[8];
+	};
+
+	class ScopedConditionMutex
+	{
+	public:
+		explicit ScopedConditionMutex(ConditionMutex& lock)
+			: mMutex(lock)
+		{
+			lock.Enter();
+		}
+		~ScopedConditionMutex() { mMutex.Exit(); }
+
+	private:
+		ScopedConditionMutex(const ScopedConditionMutex&) = delete;
+		void operator=(const ScopedConditionMutex&) = delete;
+
+		ConditionMutex& mMutex;
+	};
+
+	class ConditionVariable
+	{
+	public:
+		ConditionVariable();
+		ConditionVariable(ConditionVariable&& rhs);
+		~ConditionVariable();
+
+		void Sleep(ConditionMutex& lock, I32 timeout = INFINITE);
+		void Wakeup();
+
+	private:
+		ConditionVariable(const ConditionVariable&) = delete;
+
+		U8 mImplData[64];
 	};
 }
 }

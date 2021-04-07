@@ -107,7 +107,8 @@ namespace Cjing3D
 		if (!isActive) {
 			mDeltaTimeAccumulator = 0;
 		}
-		else {
+		else 
+		{
 			// fixed update
 			const F32 dt = isLockFrameRate ? (1.0f / targetFrameRate) : deltaTime;
 			{

@@ -101,7 +101,6 @@ int LuaScriptScene::api_panic(lua_State*l)
 void LuaScriptSystem::CreateScene(Universe& universe)
 {
 	UniquePtr<LuaScriptScene> scene = CJING_MAKE_UNIQUE<LuaScriptScene>(*this, universe);
-	scene->Initialize();
 	universe.AddScene(std::move(scene));
 }
 

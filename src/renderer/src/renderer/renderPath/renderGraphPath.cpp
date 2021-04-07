@@ -27,14 +27,15 @@ namespace Cjing3D
 
 	void RenderGraphPath::Update(F32 dt)
 	{
-		mMainGraph.Clear();
-		mFinalResources.clear();
-
-		UpdatePipelines();
 	}
 
 	void RenderGraphPath::Render()
 	{
+		mMainGraph.Clear();
+		mFinalResources.clear();
+
+		UpdatePipelines();
+
 		if (mMainGraph.GetPassCount() > 0 && mFinalResources.size() > 0)
 		{
 			if (!mMainGraph.ExecuteWithoutSubmit(Span(mFinalResources.data(), mFinalResources.size()))) {

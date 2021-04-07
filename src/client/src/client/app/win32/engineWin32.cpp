@@ -54,15 +54,11 @@ namespace Cjing3D::Win32
 		// init platform
 		Platform::Initialize();
 
-		// init profiler
-		Profiler::Initialize();
-		Profiler::SetCurrentThreadName("MainThread");
-
-		// init jobsystme
-		JobSystem::Initialize(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
-
 		// init plugin manager
 		PluginManager::Initialize(*this);
+
+		Concurrency::Mutex mutex;
+		Concurrency::ScopedMutex lock(mutex);
 
 #ifdef CJING_PLUGINS
 		const char* plugins[] = { CJING_PLUGINS };
@@ -147,12 +143,6 @@ namespace Cjing3D::Win32
 
 		// uninit plugin manager
 		PluginManager::Uninitialize();
-
-		// uninit jobsystem
-		JobSystem::Uninitialize();
-
-		// uninit profiler
-		Profiler::Uninitilize();
 
 		Logger::Info("Engine uninitialized");
 	}

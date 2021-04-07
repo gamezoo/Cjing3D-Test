@@ -150,7 +150,7 @@ namespace Cjing3D
 		Concurrency::Mutex mMutex;
 		Engine& mEngine;
 	};
-	PluginMangaerImpl* mImpl = nullptr;
+	static PluginMangaerImpl* mImpl = nullptr;
 
 	void PluginManager::Initialize(Engine& engine)
 	{

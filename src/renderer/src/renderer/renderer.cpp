@@ -434,7 +434,6 @@ namespace Renderer
 	void InitRenderScene(Engine& engine, Universe& universe)
 	{
 		UniquePtr<RenderScene> renderScene = CJING_MAKE_UNIQUE<RenderScene>(engine, universe);
-		renderScene->Initialize();
 		mImpl->mRenderScene = renderScene.Get();
 		universe.AddScene(std::move(renderScene));
 	}

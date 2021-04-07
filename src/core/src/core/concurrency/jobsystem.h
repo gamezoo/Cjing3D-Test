@@ -6,8 +6,9 @@ namespace Cjing3D
 {
 	namespace JobSystem
 	{
-		static const I32 MAX_FIBER_COUNT = 128;
-		static const I32 FIBER_STACK_SIZE = 16 * 1024;
+		static const I32 MAX_FIBER_COUNT = 256;
+		static const I32 FIBER_STACK_SIZE = 6 * 1024;
+		static const I32 USE_ANY_WORKER = 0xff;
 
 		using JobHandle = U32;
 		constexpr JobHandle INVALID_HANDLE = 0xFFFFFFFF;
@@ -46,6 +47,9 @@ namespace Cjing3D
 			void* userData_ = nullptr;
 			JobHandle mHandle = INVALID_HANDLE;
 			bool mFreeHandle = false;
+			I32 mWorkerIndex = USE_ANY_WORKER;
+			// todo
+			JobHandle mPreconditon = INVALID_HANDLE;
 
 			// not use
 			Counter* mCounter = nullptr;
@@ -59,7 +63,8 @@ namespace Cjing3D
 		void EndProfile();
 		void YieldCPU();
 
-		void RunJob(const JobFunc& job, void* jobData = nullptr, JobHandle* jobHandle = nullptr, Priority priority = Priority::NORMAL, const std::string& jobName = "");
+		void RunJob(JobInfo jobInfo, JobHandle* jobHandle = nullptr);
+		void RunJob(const JobFunc& job, void* jobData = nullptr, JobHandle* jobHandle = nullptr, Priority priority = Priority::NORMAL, I32 workerIndex = USE_ANY_WORKER, const std::string& jobName = "");
 		void RunJobs(I32 jobCount, I32 groupSize, const JobGroupFunc& jobFunc, size_t sharedMemSize = 0, JobHandle* jobHandle = nullptr,  Priority priority = Priority::NORMAL, const std::string& jobName = "");
 		void RunJobs(JobInfo* jobInfos, I32 numJobs, JobHandle* jobHandle = nullptr);
 		void Wait(JobHandle* jobHandle, I32 value = 0);

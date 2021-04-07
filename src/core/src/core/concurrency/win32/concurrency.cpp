@@ -3,6 +3,7 @@
 #include "core\concurrency\concurrency.h"
 #include "core\platform\platform.h"
 #include "core\helper\debug.h"
+#include "core\helper\profiler.h"
 #include "core\memory\memory.h"
 
 #include <array>
@@ -211,6 +212,7 @@ namespace Concurrency
 		HANDLE threadHandle_ = 0;
 		Thread::EntryPointFunc entryPointFunc_ = nullptr;
 		void* userData_ = nullptr;
+		ConditionVariable mConditonVariable;
 		std::string debugName_;
 	};
 
@@ -246,16 +248,9 @@ namespace Concurrency
 			::RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG), (const ULONG_PTR*)&info);
 		}
 #endif
+		Profiler::SetCurrentThreadName(impl->debugName_.c_str());
 		return impl->entryPointFunc_(impl->userData_);
 	}
-
-	struct MutexImpl
-	{
-		CRITICAL_SECTION critSec_;
-		HANDLE lockedThread_;
-		volatile I32 lockedCount_ = 0;
-	};
-
 
 	Thread::Thread(EntryPointFunc entryPointFunc, void* userData, I32 stackSize, std::string debugName)
 	{
@@ -315,37 +310,72 @@ namespace Concurrency
 		return mImpl != nullptr;
 	}
 
+	void Thread::Sleep(ConditionMutex& lock, I32 timeout)
+	{
+		mImpl->mConditonVariable.Sleep(lock, timeout);
+	}
+
+	void Thread::Wakeup()
+	{
+		mImpl->mConditonVariable.Wakeup();
+	}
+
+	struct MutexImpl
+	{
+		CRITICAL_SECTION critSec_;
+		HANDLE lockedThread_;
+		volatile I32 lockedCount_ = 0;
+	};
+
+	MutexImpl* Mutex::Get()
+	{
+		return reinterpret_cast<MutexImpl*>(&mImplData[0]);
+	}
+
 	Mutex::Mutex()
 	{
-		// mutex use default new
-		mImpl = new MutexImpl();
-		::InitializeCriticalSection(&mImpl->critSec_);
+		static_assert(sizeof(MutexImpl) <= sizeof(mImplData), "mImplData too small for MutexImpl!");
+		memset(mImplData, 0, sizeof(mImplData));
+		new(mImplData) MutexImpl();
+		::InitializeCriticalSection(&Get()->critSec_);
 	}
 
 	Mutex::~Mutex()
 	{
-		if (mImpl != nullptr)
-		{
-			::DeleteCriticalSection(&mImpl->critSec_);
-
-			// mutex use default delete
-			delete mImpl;
-		}
+		::DeleteCriticalSection(&Get()->critSec_);
+		Get()->~MutexImpl();
 	}
+
+	Mutex::Mutex(Mutex&& rhs)
+	{
+		rhs.Lock();
+		std::swap(mImplData, rhs.mImplData);
+		Unlock();
+	}
+
+	void Mutex::operator=(Mutex&& rhs)
+	{
+		rhs.Lock();
+		std::swap(mImplData, rhs.mImplData);
+		Unlock();
+	}
+
 	void Mutex::Lock()
 	{
-		::EnterCriticalSection(&mImpl->critSec_);
-		if (AtomicIncrement(&mImpl->lockedCount_) == 1) {
-			mImpl->lockedThread_ = ::GetCurrentThread();
+		DBG_ASSERT(Get() != nullptr);
+		::EnterCriticalSection(&Get()->critSec_);
+		if (AtomicIncrement(&Get()->lockedCount_) == 1) {
+			Get()->lockedThread_ = ::GetCurrentThread();
 		}
 	}
 
 	bool Mutex::TryLock()
 	{
-		if (!::TryEnterCriticalSection(&mImpl->critSec_))
+		DBG_ASSERT(Get() != nullptr);
+		if (!!::TryEnterCriticalSection(&Get()->critSec_))
 		{
-			if (AtomicIncrement(&mImpl->lockedCount_) == 1) {
-				mImpl->lockedThread_ = ::GetCurrentThread();
+			if (AtomicIncrement(&Get()->lockedCount_) == 1) {
+				Get()->lockedThread_ = ::GetCurrentThread();
 			}
 			return true;
 		}
@@ -354,10 +384,12 @@ namespace Concurrency
 
 	void Mutex::Unlock()
 	{
-		if (AtomicDecrement(&mImpl->lockedCount_) == 0) {
-			mImpl->lockedThread_ = nullptr;
+		DBG_ASSERT(Get() != nullptr);
+		DBG_ASSERT(Get()->lockedThread_ == ::GetCurrentThread());
+		if (AtomicDecrement(&Get()->lockedCount_) == 0) {
+			Get()->lockedThread_ = nullptr;
 		}
-		::LeaveCriticalSection(&mImpl->critSec_);
+		::LeaveCriticalSection(&Get()->critSec_);
 	}
 
 	FLS::FLS()
@@ -484,6 +516,8 @@ namespace Concurrency
 		void* currentFiber = ::GetCurrentFiber();
 		if (currentFiber != nullptr && mImpl != nullptr && currentFiber != mImpl->fiber_)
 		{
+			Profiler::BeforeFiberSwitch();
+
 			void* nextFiber = mImpl->nextFiber_;
 			mImpl->nextFiber_ = mImpl->entryPointFunc_ != nullptr ? currentFiber : nullptr;
 			::SwitchToFiber(mImpl->fiber_);
@@ -516,30 +550,43 @@ namespace Concurrency
 	struct SemaphoreImpl
 	{
 		HANDLE handle_;
-		std::string debugName_;
 	};
 
-	Semaphore::Semaphore(I32 initialCount, I32 maximumCount, const std::string& debugName)
+	SemaphoreImpl* Semaphore::Get()
 	{
-		mImpl = CJING_NEW(SemaphoreImpl);
-		mImpl->handle_ = ::CreateSemaphore(nullptr, initialCount, maximumCount, nullptr);
-		mImpl->debugName_ = debugName;
+		return reinterpret_cast<SemaphoreImpl*>(&mImplData[0]);
+	}
+
+	Semaphore::Semaphore(I32 initialCount, I32 maximumCount, const char* debugName)
+	{
+		memset(mImplData, 0, sizeof(mImplData));
+		new(mImplData) SemaphoreImpl();
+		Get()->handle_ = ::CreateSemaphore(nullptr, initialCount, maximumCount, nullptr);
+		mDebugName = debugName;
+	}
+
+	Semaphore::Semaphore(Semaphore&& rhs)
+	{
+		std::swap(mImplData, rhs.mImplData);
+		std::swap(mDebugName, rhs.mDebugName);
 	}
 
 	Semaphore::~Semaphore()
 	{
-		::CloseHandle(mImpl->handle_);
-		CJING_SAFE_DELETE(mImpl);
+		::CloseHandle(Get()->handle_);
+		Get()->~SemaphoreImpl();
 	}
 
 	bool Semaphore::Signal(I32 count)
 	{
-		return ::ReleaseSemaphore(mImpl->handle_, count, nullptr);
+		DBG_ASSERT(Get() != nullptr);
+		return ::ReleaseSemaphore(Get()->handle_, count, nullptr);
 	}
 
 	bool Semaphore::Wait(I32 timeout)
 	{
-		return (::WaitForSingleObject(mImpl->handle_, timeout) == WAIT_OBJECT_0);
+		DBG_ASSERT(Get() != nullptr);
+		return (::WaitForSingleObject(Get()->handle_, timeout) == WAIT_OBJECT_0);
 	}
 
 	struct RWLockImpl
@@ -549,6 +596,7 @@ namespace Concurrency
 	RWLock::RWLock()
 	{
 		// mutex use default new
+		memset(mImplData, 0, sizeof(mImplData));
 		mImpl = new(mImplData) RWLockImpl();
 	}
 
@@ -629,6 +677,67 @@ namespace Concurrency
 	bool AtomicFlag::TestAndSet()
 	{
 		return (AtomicCmpExchangeAcquire(&mLockedFlag, 1, 0) == 0);
+	}
+
+	ConditionVariable::ConditionVariable()
+	{
+		static_assert(sizeof(mImplData) >= sizeof(CONDITION_VARIABLE), "Size is not enough");
+		static_assert(alignof(CONDITION_VARIABLE) == alignof(CONDITION_VARIABLE), "Alignment does not match");
+		memset(mImplData, 0, sizeof(mImplData));
+		CONDITION_VARIABLE* cv = new (mImplData) CONDITION_VARIABLE();
+		::InitializeConditionVariable(cv);
+	}
+
+	ConditionVariable::~ConditionVariable()
+	{
+		((CONDITION_VARIABLE*)mImplData)->~CONDITION_VARIABLE();
+	}
+
+	void ConditionVariable::Sleep(ConditionMutex& lock, I32 timeout)
+	{
+		::SleepConditionVariableSRW((CONDITION_VARIABLE*)mImplData, (SRWLOCK*)lock.mImplData, timeout, 0);
+	}
+
+	ConditionVariable::ConditionVariable(ConditionVariable&& rhs)
+	{
+		std::swap(mImplData, rhs.mImplData);
+	}
+
+	void ConditionVariable::Wakeup()
+	{
+		::WakeConditionVariable((CONDITION_VARIABLE*)mImplData);
+	}
+
+	ConditionMutex::ConditionMutex()
+	{
+		static_assert(sizeof(mImplData) >= sizeof(SRWLOCK), "Size is not enough");
+		static_assert(alignof(ConditionMutex) == alignof(SRWLOCK), "Alignment does not match");
+		memset(mImplData, 0, sizeof(mImplData));
+		SRWLOCK* lock = new (mImplData) SRWLOCK();
+		InitializeSRWLock(lock);
+	}
+
+	ConditionMutex::~ConditionMutex()
+	{
+		SRWLOCK* lock = (SRWLOCK*)mImplData;
+		lock->~SRWLOCK();
+	}
+
+	ConditionMutex::ConditionMutex(ConditionMutex&& rhs)
+	{
+		std::swap(mImplData, rhs.mImplData);
+	}
+
+	void ConditionMutex::Enter()
+	{
+		SRWLOCK* lock = (SRWLOCK*)mImplData;
+		AcquireSRWLockExclusive(lock);
+	}
+
+	void ConditionMutex::Exit()
+	{
+		SRWLOCK* lock = (SRWLOCK*)mImplData;
+		::ReleaseSRWLockExclusive(lock);
 	}
 }
 }
