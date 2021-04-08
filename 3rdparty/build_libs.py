@@ -6,7 +6,7 @@ import subprocess
 # definition
 ##########################################################################################
 _3rdLibs = [
-    #"lua",
+    "lua",
     "fcpp"
     #"bullet" # not use now
 ]
