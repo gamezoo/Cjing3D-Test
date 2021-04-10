@@ -516,8 +516,9 @@ namespace Concurrency
 		void* currentFiber = ::GetCurrentFiber();
 		if (currentFiber != nullptr && mImpl != nullptr && currentFiber != mImpl->fiber_)
 		{
+#ifdef DEBUG
 			Profiler::BeforeFiberSwitch();
-
+#endif
 			void* nextFiber = mImpl->nextFiber_;
 			mImpl->nextFiber_ = mImpl->entryPointFunc_ != nullptr ? currentFiber : nullptr;
 			::SwitchToFiber(mImpl->fiber_);

@@ -115,7 +115,7 @@ namespace Cjing3D
 
 		void WriteString(const char* string)
 		{
-			if (string && string[0] != '\0') {
+			if (string) {
 				Write(string, StringLength(string) + 1);
 			}
 			else {

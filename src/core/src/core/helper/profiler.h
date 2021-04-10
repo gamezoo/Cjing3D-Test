@@ -12,6 +12,8 @@ namespace Cjing3D
 
 namespace Profiler
 {
+#define PROFILE_ENABLE
+
 	enum class ProfileType : U8
 	{
 		BEGIN_CPU,
@@ -19,6 +21,7 @@ namespace Profiler
 		COLOR,
 		BEGIN_FIBER_WAIT,
 		END_FIBER_WAIT,
+		FRAME
 	};
 
 	struct FiberWaitRecord
@@ -74,7 +77,26 @@ namespace Profiler
 			EndCPUBlock();
 		}
 	};
+
+	struct ScopedFiberSwitchBlock
+	{
+		FiberSwitchData mSwitchData;
+		U32 mJobHandle;
+
+		ScopedFiberSwitchBlock(U32 jobHandle)
+		{
+			mSwitchData = BeginFiberWaitBlock(jobHandle);
+			mJobHandle = jobHandle;
+		}
+
+		~ScopedFiberSwitchBlock()
+		{
+			EndFiberWaitBlock(mJobHandle, mSwitchData);
+		}
+	};
 }
 
-#define PROFILER_CPU_BLOCK(name) Profiler::ScopedCPUBlock scope(name);
+#define PROFILE_FILBER_SWITCH(jobHandle) Profiler::ScopedFiberSwitchBlock scopedSwitch(jobHandle);
+#define PROFILE_FUNCTION() Profiler::ScopedCPUBlock scope(__FUNCTION__);
+#define PROFILE_CPU_BLOCK(name) Profiler::ScopedCPUBlock scope(name);
 }

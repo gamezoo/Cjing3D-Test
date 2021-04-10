@@ -6,11 +6,11 @@ namespace Cjing3D
 {
 	/// ///////////////////////////////////////////////////////////////////////
 	/// definitions
-	static constexpr int DEFAULT_RANGE = 10000;
+	static constexpr int DEFAULT_RANGE = 100'000;
 
 	struct ThreadLocalContextProxy
 	{
-		const char* mName;
+		StaticString<64> mName;
 		U32 mThreadID;
 		U32 mBufStart;
 		U32 mBufEnd;
@@ -39,6 +39,7 @@ namespace Cjing3D
 	struct UIProfilerBlock
 	{
 		U32 mOffset = 0;
+		U32 mColor = 0;
 	};
 
 	/// ///////////////////////////////////////////////////////////////////////
@@ -89,6 +90,13 @@ namespace Cjing3D
 			InputMemoryStream inputStream(mProfileData);
 			const U32 count = inputStream.Read<U32>();
 			const U8* it = inputStream.data() + inputStream.Offset();
+
+			// global
+			ThreadLocalContextProxy globalCtx(it);
+			func(globalCtx);
+			it = globalCtx.GetNext();
+
+			// other threads
 			for (int i = 0; i < count; i++)
 			{
 				ThreadLocalContextProxy ctx(it);
@@ -166,6 +174,9 @@ namespace Cjing3D
 		ImDrawList* drawList = ImGui::GetWindowDrawList();
 		const U64 startTime = mProfilerDataLastTime - mRange;
 
+		// get global context
+		ThreadLocalContextProxy globalContext(mProfileData.data() + sizeof(U32)); // skip count
+
 		// show profiler data of each thread
 		ForEachThread([&](const ThreadLocalContextProxy& ctx) {
 			if (ctx.mThreadID == 0) {
@@ -198,6 +209,8 @@ namespace Cjing3D
 
 			// Traversal buffer to parse ProfilerBlocks
 			UIProfilerBlock blocks[64];
+			UIProfilerBlock fiberWaitblocks[16];
+			I32 fiberWaitLevel = 0;
 			I32 scopeLevel = 0;
 			I32 maxScopeLevel = 0;
 			U32 pos = ctx.mBufStart;
@@ -213,6 +226,7 @@ namespace Cjing3D
 
 					// 用于在END_CPU时从buffer读取block数据
 					blocks[scopeLevel].mOffset = pos;
+					blocks[scopeLevel].mColor = 0xffDDddDD;
 					curY += 20.0f;
 
 					maxScopeLevel = std::max(maxScopeLevel, scopeLevel);
@@ -229,12 +243,12 @@ namespace Cjing3D
 
 						const char* name;
 						ReadFromThreadCtx(ctx, block.mOffset + sizeof(Profiler::ProfileBlockHeader), name);
-						DrawBlock(blockHeader.mTime, header.mTime, name, 0xffDDddDD);
+						DrawBlock(blockHeader.mTime, header.mTime, name, block.mColor);
+					
+						scopeLevel--;
 					}
-					scopeLevel--;
 				}
 				break;
-				case Profiler::ProfileType::END_FIBER_WAIT:
 				case Profiler::ProfileType::BEGIN_FIBER_WAIT: 
 				{
 					Profiler::FiberWaitRecord record;
@@ -243,11 +257,43 @@ namespace Cjing3D
 					{
 						const F32 t = F32((header.mTime - startTime) / F64(mRange));
 						const float x = startX * (1 - t) + endX * t;
-						const U32 color = header.mType == Profiler::ProfileType::END_FIBER_WAIT ? 0xffff0000 : 0xff00ff00;
-						drawList->AddRect(ImVec2(x - 2, curY - 2), ImVec2(x + 2, curY + 2), color);
+						drawList->AddRect(ImVec2(x - 2, curY - 2), ImVec2(x + 2, curY + 2), 0xff00ff00);
+					}
+
+					fiberWaitblocks[fiberWaitLevel].mOffset = pos;
+					fiberWaitblocks[fiberWaitLevel].mColor = 0xff0000ff;
+					fiberWaitLevel++;
+				}
+				break;
+				case Profiler::ProfileType::END_FIBER_WAIT:
+				{
+					Profiler::FiberWaitRecord record;
+					ReadFromThreadCtx(ctx, pos + sizeof(Profiler::ProfileBlockHeader), record);
+					if (fiberWaitLevel > 0)
+					{
+						// prev block
+						fiberWaitLevel--;
+
+						auto& block = fiberWaitblocks[fiberWaitLevel];
+						Profiler::ProfileBlockHeader blockHeader;
+						ReadFromThreadCtx<Profiler::ProfileBlockHeader>(ctx, block.mOffset, blockHeader);
+						DrawBlock(blockHeader.mTime, header.mTime, "Wait", block.mColor);
+					}
+
+					if (header.mTime >= startTime && header.mTime <= mProfilerDataLastTime)
+					{
+						// draw link point
+						const F32 t = F32((header.mTime - startTime) / F64(mRange));
+						const float x = startX * (1 - t) + endX * t;
+						drawList->AddRect(ImVec2(x - 2, curY - 2), ImVec2(x + 2, curY + 2), 0xffff0000);
 					}
 				}
 				break;
+				case Profiler::ProfileType::COLOR:
+					if (scopeLevel > 0) {
+						ReadFromThreadCtx(ctx, pos + sizeof(Profiler::ProfileBlockHeader), blocks[scopeLevel].mColor);
+					}
+					break;
 				default:
 					break;
 				}
@@ -284,6 +330,35 @@ namespace Cjing3D
 					cursorToEnd <<= 1;
 				}
 				mProfilerDataLastTime = cursorToEnd + cursorTime;
+			}
+		}
+
+		// process global context
+		{
+			float threadsEndY = ImGui::GetCursorScreenPos().y;
+			ThreadLocalContextProxy& ctx = globalContext;
+			U32 pos = ctx.mBufStart;
+			while (pos != ctx.mBufEnd)
+			{
+				Profiler::ProfileBlockHeader header;
+				ReadFromThreadCtx<Profiler::ProfileBlockHeader>(ctx, pos, header);
+				switch (header.mType)
+				{
+				case Profiler::ProfileType::FRAME:
+				{
+					if (header.mTime >= startTime && header.mTime <= mProfilerDataLastTime)
+					{
+						const float t = float((header.mTime - startTime) / double(mRange));
+						const float x = startX * (1 - t) + endX * t;
+						drawList->AddLine(ImVec2(x, startY), ImVec2(x, threadsEndY), 0xffff0000);
+					}
+				}
+				break;
+				default:
+					break;
+				}
+
+				pos += header.mSize;
 			}
 		}
 	}

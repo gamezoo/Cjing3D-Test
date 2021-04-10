@@ -118,7 +118,7 @@ namespace JobSystem
 			}
 		}
 
-		void SwitchTo(WorkerThread* worker , Concurrency::Fiber* workFiber)
+		void SwitchTo(WorkerThread* worker, Concurrency::Fiber* workFiber)
 		{
 			mWorkFiber = workFiber;
 			mWorker = worker;
@@ -208,6 +208,7 @@ namespace JobSystem
 				if (!jobFiber)
 				{
 					// 如果没有任务，则等待CV，或超时后再次从Manager中获取
+					PROFILE_CPU_BLOCK("sleeping");
 					Profiler::ColorBlock(Color4::Pink());
 					worker->Sleep(manager.mScheduleLock, WORKER_SEMAPHORE_WAITTIME);
 				}
@@ -217,7 +218,6 @@ namespace JobSystem
 #endif
 					Concurrency::AtomicExchange(&worker->mMoveToWaitingFlag, 0);
 					jobFiber->SwitchTo(worker, &workerFiber);
-					Profiler::ColorBlock(Color4::Pink());
 
 #ifdef JOB_SYSTEM_PROFILE_ENABLE
 #endif
@@ -623,27 +623,7 @@ namespace JobSystem
 	bool IsInitialized()
 	{
 		return gManagerImpl != nullptr;
-	}
-
-	void BeginProfile()
-	{
-#ifdef JOB_SYSTEM_PROFILE_ENABLE
-		if (!IsInitialized()) {
-			return;
-		}
-
-#endif;
-	}
-
-	void EndProfile()
-	{
-#ifdef JOB_SYSTEM_PROFILE_ENABLE
-		if (!IsInitialized()) {
-			return;
-		}
-
-#endif;
-	}
+	} 
 
 	void RunJobs(JobInfo* jobInfos, I32 numJobs, Counter** counter)
 	{
@@ -903,8 +883,7 @@ namespace JobSystem
 		}
 
 		// fiber profile
-		Profiler::ColorBlock(Color4::Red());
-		Profiler::FiberSwitchData switchData = Profiler::BeginFiberWaitBlock(*jobHandle);
+		PROFILE_FILBER_SWITCH(*jobHandle);
 
 		// 否则会yield当前纤程，Jobsystem可能会执行优先级更高的job
 		Counter& counter = gManagerImpl->mCounterPool[*jobHandle & HANDLE_ID_MASK];
@@ -922,7 +901,6 @@ namespace JobSystem
 			}
 			*jobHandle = INVALID_HANDLE;
 		}
-		Profiler::EndFiberWaitBlock(*jobHandle, switchData);
 	}
 
 	void YieldCPU()
@@ -957,14 +935,11 @@ namespace JobSystem
 			return;
 		}
 
-		Profiler::ColorBlock(Color4::Red());
-		Profiler::FiberSwitchData switchData = Profiler::BeginFiberWaitBlock(INVALID_HANDLE);
+		PROFILE_FILBER_SWITCH(INVALID_HANDLE);
 
 		while (gManagerImpl->mJobCount > 0) {
 			YieldCPU();
 		}
-
-		Profiler::EndFiberWaitBlock(INVALID_HANDLE, switchData);
 	}
 
 	void WaitForCounter(Counter* counter, I32 value, bool freeCounter)

@@ -165,7 +165,7 @@ namespace Cjing3D::Win32
 			semaphore.Signal(1);
 		}, this, nullptr, JobSystem::Priority::NORMAL, 0, "MainThreadJob");
 
-		PROFILER_CPU_BLOCK("Sleeping");
+		PROFILE_CPU_BLOCK("Sleeping");
 		semaphore.Wait();
 	}
 }

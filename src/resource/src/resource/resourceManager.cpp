@@ -921,13 +921,15 @@ namespace ResourceManager
 				break;
 			}
 		}
-		while (isAllLoaded)
+
+		while (!isAllLoaded)
 		{
 			if (mImpl->mLoadHook != nullptr) {
 				mImpl->mLoadHook->OnWait();
 			}
 
 			JobSystem::YieldCPU();
+
 			if (Timer::GetAbsoluteTime() - startTime > maxWaitTime)
 			{
 #ifdef _DEBUG
@@ -955,6 +957,7 @@ namespace ResourceManager
 	{
 		F64 maxWaitTime = 100000.0f;
 		F64 startTime = Timer::GetAbsoluteTime();
+
 		while (mImpl->mPendingResJobs > 0) 
 		{
 			if (mImpl->mLoadHook != nullptr) {

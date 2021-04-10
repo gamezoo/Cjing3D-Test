@@ -93,6 +93,8 @@ namespace Cjing3D
 	{
 		Profiler::BeginFrame();
 
+		PROFILE_FUNCTION();
+
 		auto engineTime = Timer::Instance().GetTime();
 		F32 deltaTime = engineTime.GetDeltaTime();
 		 
@@ -112,7 +114,7 @@ namespace Cjing3D
 			// fixed update
 			const F32 dt = isLockFrameRate ? (1.0f / targetFrameRate) : deltaTime;
 			{
-				PROFILER_CPU_BLOCK("FixedUpdate");
+				PROFILE_CPU_BLOCK("FixedUpdate");
 				if (!mIsSkipFrame)
 				{
 					FixedUpdate();
@@ -144,14 +146,16 @@ namespace Cjing3D
 		{
 			Compose(*cmd);
 		}
-		Profiler::EndFrame(); // Profiler需要在Present()前执行来保障GPU::Query正确记录
 		Renderer::PresentEnd();
-
 		Renderer::EndFrame();
+
+		Profiler::EndFrame();
 	}
 
 	void MainComponent::FixedUpdate()
 	{
+		PROFILE_FUNCTION();
+
 		mEngine->FixedUpdate();
 
 		if (mRenderPath != nullptr) {
@@ -161,7 +165,7 @@ namespace Cjing3D
 
 	void MainComponent::Update(F32 deltaTime)
 	{
-		PROFILER_CPU_BLOCK("Update");
+		PROFILE_FUNCTION();
 
 		mEngine->Update(*mUniverse, deltaTime);
 
@@ -172,7 +176,7 @@ namespace Cjing3D
 
 	void MainComponent::Render()
 	{
-		PROFILER_CPU_BLOCK("Render");
+		PROFILE_FUNCTION();
 
 		if (mRenderPath != nullptr) {
 			mRenderPath->Render();
@@ -181,7 +185,7 @@ namespace Cjing3D
 
 	void MainComponent::Compose(GPU::CommandList& cmd)
 	{
-		PROFILER_CPU_BLOCK("Compose");
+		PROFILE_FUNCTION();
 
 		if (mRenderPath != nullptr)
 		{

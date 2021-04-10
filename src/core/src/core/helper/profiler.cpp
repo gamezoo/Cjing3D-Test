@@ -44,9 +44,11 @@ namespace Profiler
 	public:
 		Concurrency::Mutex mMutex;
 		DynamicArray<ThreadLocalContext*> mThreadContexts;
-		ThreadLocalContext mGlobalContext;
 		bool mIsPaused = true;
 		volatile I32 mFiberWaitCount = 0;
+
+		// global context for Frame/GPU
+		ThreadLocalContext mGlobalContext;
 
 	public:
 		ProfilerImpl() {}
@@ -81,6 +83,10 @@ namespace Profiler
 		template<typename T>
 		void RecordBlock(ThreadLocalContext& ctx, ProfileType type, const T& value)
 		{
+			if (IsPaused()) {
+				return;
+			}
+
 #pragma pack(1)
 			struct 
 			{
@@ -134,6 +140,7 @@ namespace Profiler
 		{
 			Concurrency::ScopedMutex lock(mMutex);
 			stream.Write((U32)mThreadContexts.size());
+			GetProfilerData(stream, mGlobalContext);
 			for (auto ctx : mThreadContexts) {
 				GetProfilerData(stream, *ctx);
 			}
@@ -178,93 +185,111 @@ namespace Profiler
 
 	void BeginFrame()
 	{
+#ifdef PROFILE_ENABLE
 		Debug::CheckAssertion(IsInitialied());
+#endif
 	}
 
 	void EndFrame()
 	{
+#ifdef PROFILE_ENABLE
 		Debug::CheckAssertion(IsInitialied());
+		gImpl->RecordBlock(gImpl->mGlobalContext, ProfileType::FRAME, 0);
+#endif
 	}
 
 	void BeginCPUBlock(const char* name)
 	{
+#ifdef PROFILE_ENABLE
 		Debug::CheckAssertion(IsInitialied());
-		if (!gImpl->IsPaused())
-		{
-			ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
-			ctx->mOpenBlockStack.push(name);
-			gImpl->RecordBlock(*ctx, ProfileType::BEGIN_CPU, name);
-		}
+		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
+		ctx->mOpenBlockStack.push(name);
+		gImpl->RecordBlock(*ctx, ProfileType::BEGIN_CPU, name);
+#endif
 	}
 
 	void EndCPUBlock()
 	{
+#ifdef PROFILE_ENABLE
 		Debug::CheckAssertion(IsInitialied());
-		if (!gImpl->IsPaused())
+		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
+		if (!ctx->mOpenBlockStack.empty())
 		{
-			ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
-			if (!ctx->mOpenBlockStack.empty())
-			{
-				const char* name = ctx->mOpenBlockStack.back();
-				ctx->mOpenBlockStack.pop();
-				gImpl->RecordBlock(*ctx, ProfileType::END_CPU, name);
-			}
+			ctx->mOpenBlockStack.pop();
+			gImpl->RecordBlock(*ctx, ProfileType::END_CPU, 0);
 		}
+#endif
 	}
 
 	void ColorBlock(const Color4& color)
 	{
+#ifdef PROFILE_ENABLE
+		// set next block color
 		Debug::CheckAssertion(IsInitialied());
-		if (!gImpl->IsPaused())
-		{
-			const U32 value = color.GetRGBA();
-			ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
-			gImpl->RecordBlock(*ctx, ProfileType::COLOR, value);
-		}
+		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
+		gImpl->RecordBlock(*ctx, ProfileType::COLOR, color.GetRGBA());
+#endif
 	}
 
 	FiberSwitchData BeginFiberWaitBlock(U32 jobHandle)
 	{
+#ifdef PROFILE_ENABLE
 		Debug::CheckAssertion(IsInitialied());
-		if (gImpl->IsPaused()) {
-			return FiberSwitchData();
-		}
 
+		// record fiber block
 		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
 		FiberWaitRecord record;
 		record.mID = Concurrency::AtomicIncrement(&gImpl->mFiberWaitCount);
 		record.mJobHandle = jobHandle;
 		gImpl->RecordBlock(*ctx, ProfileType::BEGIN_FIBER_WAIT, record);
 
+		// record switch data
 		FiberSwitchData switchData;
 		switchData.mID = record.mID;
 		switchData.mCount = ctx->mOpenBlockStack.size();
 		Memory::Memcpy(switchData.mFiberOpenBlocks, ctx->mOpenBlockStack.data(), 
 			std::min(switchData.mCount, (U32)ARRAYSIZE(switchData.mFiberOpenBlocks)) * sizeof(const char*));
 		return switchData;
+#endif
 	}
 
 	void EndFiberWaitBlock(U32 jobHandle, const FiberSwitchData& switchData)
 	{
+#ifdef PROFILE_ENABLE
 		Debug::CheckAssertion(IsInitialied());
-		if (!gImpl->IsPaused())
-		{
-			ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
-			FiberWaitRecord record;
-			record.mID = switchData.mID;;
-			record.mJobHandle = jobHandle;
-			gImpl->RecordBlock(*ctx, ProfileType::END_FIBER_WAIT, record);
 
-			for (U32 i = 0; i < switchData.mCount; ++i)
-			{
-				if (i < ARRAYSIZE(switchData.mFiberOpenBlocks)) {
-					BeginCPUBlock(switchData.mFiberOpenBlocks[i]);
-				}
-				else {
-					BeginCPUBlock("N/A");
-				}
+		// record fiber block
+		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
+		FiberWaitRecord record;
+		record.mID = switchData.mID;;
+		record.mJobHandle = jobHandle;
+		gImpl->RecordBlock(*ctx, ProfileType::END_FIBER_WAIT, record);
+
+		// continue switch blocks
+		for (U32 i = 0; i < switchData.mCount; ++i)
+		{
+			if (i < ARRAYSIZE(switchData.mFiberOpenBlocks)) {
+				BeginCPUBlock(switchData.mFiberOpenBlocks[i]);
+			}
+			else {
+				BeginCPUBlock("N/A");
 			}
 		}
+#endif
+	}
+
+	void BeforeFiberSwitch()
+	{
+#ifdef PROFILE_ENABLE
+		// 在Fiber切换前，将所有blocks清空
+		Debug::CheckAssertion(IsInitialied());
+		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
+		while (!ctx->mOpenBlockStack.empty())
+		{
+			ctx->mOpenBlockStack.pop();
+			gImpl->RecordBlock(*ctx, ProfileType::END_CPU, 0);
+		}
+#endif
 	}
 
 	void ShowInProfiler(bool show)
@@ -278,19 +303,6 @@ namespace Profiler
 	{
 		Debug::CheckAssertion(IsInitialied());
 		gImpl->GetProfilerData(stream);
-	}
-
-	void BeforeFiberSwitch()
-	{
-		// 在Fiber切换前，将所有blocks清空
-		Debug::CheckAssertion(IsInitialied());
-		ThreadLocalContext* ctx = gImpl->GetThreadLocalContext();
-		while (!ctx->mOpenBlockStack.empty())
-		{
-			const char* name = ctx->mOpenBlockStack.back();
-			ctx->mOpenBlockStack.pop();
-			gImpl->RecordBlock(*ctx, ProfileType::END_CPU, name);
-		}
 	}
 }
 }
