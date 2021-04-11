@@ -207,7 +207,7 @@ namespace Cjing3D
 				mHashTable = nullptr;
 				Alloc();
 
-				// ½«oldkeysºÍoldValueÖØĞÂ²åÈë
+				// å°†oldkeyså’ŒoldValueé‡æ–°æ’å…¥
 				for (U32 i = 0; i < oldCapacity; i++)
 				{
 					U32 hash = oldHashTable[i];
@@ -303,7 +303,7 @@ namespace Cjing3D
 			return hash & mMask;
 		}
 
-		// »ñÈ¡hashµÄÆÚÍûÎ»ÖÃºÍcurPosµÄ¾àÀë
+		// è·å–hashçš„æœŸæœ›ä½ç½®å’ŒcurPosçš„è·ç¦»
 		U32 ProbeDistanceHash(U32 hash, U32 curPos)
 		{
 			return (curPos - GetPosByHash(hash) + mCapacity) & mMask;
@@ -316,7 +316,7 @@ namespace Cjing3D
 			ValueT* ret = nullptr;
 			while (true)
 			{
-				// Èç¹ûÖ¸¶¨Î»ÖÃÎª¿Õ£¬ÔòÖ±½ÓÔÚ¸ÃÎ»ÖÃ´´½¨keyºÍvalue
+				// å¦‚æœæŒ‡å®šä½ç½®ä¸ºç©ºï¼Œåˆ™ç›´æ¥åœ¨è¯¥ä½ç½®åˆ›å»ºkeyå’Œvalue
 				if (mHashTable[pos] == 0)
 				{
 					new (&mKeys[pos])  KeyT(std::move(key));
@@ -328,22 +328,34 @@ namespace Cjing3D
 					}
 					return ret;
 				}
-				// Èç¹ûÎ»ÖÃÒÑ±»Õ¼ÓÃ£¨³åÍ»£©£¬Ê¹ÓÃÏßĞÔ¿ª·ÅÊ½Ñ°Ö·Ñ°ÕÒÏÂÒ»¸ö¿ÉÓÃÎ»ÖÃ
-				else
-				{
-					// »ñÈ¡µ±Ç°ÒÑ´æÔÚµÄ¶ÔÏóµÄÆÚÍûhashPosºÍposµÄ¾àÀë£¬Èç¹ûÕâ¸ö¾àÀëĞ¡ÓÚdist£¬
-					// ½»»»ÒÑ´æÔÚ¶ÔÏóºÍelem,Ö®ºóÔòÑ°ÕÒÒÑ´æÔÚ¶ÔÏóµÄÏÂÒ»¸ö¿ÉÓÃÎ»ÖÃ.
-					// Ä¿µÄÊÇÊ¹µÃËùÓĞelemµÄÎ»ÖÃÆ«ÒÆ¾¡¿ÉÄÜĞ¡£¬¼õÉÙ³åÍ»´ÎÊı
 
-					// TODO: Too many copy constructs
-					ValueT currentValue = value;
+				// å¦‚æœä½ç½®å·²è¢«å ç”¨ï¼ˆå†²çªï¼‰ï¼Œä½¿ç”¨çº¿æ€§å¼€æ”¾å¼å¯»å€å¯»æ‰¾ä¸‹ä¸€ä¸ªå¯ç”¨ä½ç½®
+
+				// è·å–å½“å‰å·²å­˜åœ¨çš„å¯¹è±¡çš„æœŸæœ›hashPoså’Œposçš„è·ç¦»ï¼Œå¦‚æœè¿™ä¸ªè·ç¦»å°äºdistï¼Œ
+				// äº¤æ¢å·²å­˜åœ¨å¯¹è±¡å’Œelem,ä¹‹ååˆ™å¯»æ‰¾å·²å­˜åœ¨å¯¹è±¡çš„ä¸‹ä¸€ä¸ªå¯ç”¨ä½ç½®.
+				// ç›®çš„æ˜¯ä½¿å¾—æ‰€æœ‰elemçš„ä½ç½®åç§»å°½å¯èƒ½å°ï¼Œå‡å°‘å†²çªæ¬¡æ•°
+
+				// TODO: Too many copy constructs
+				ValueT currentValue = value;
+				while (true)
+				{
+					if (mHashTable[pos] == 0)
+					{
+						new (&mKeys[pos])  KeyT(std::move(key));
+						new (&mValues[pos]) ValueT(currentValue);
+						mHashTable[pos] = hash;
+
+						if (ret == nullptr) {
+							ret = &mValues[pos];
+						}
+						return ret;
+					}
+
 					U32 curElemProbeDist = ProbeDistanceHash(mHashTable[pos], pos);
 					if (curElemProbeDist < dist)
 					{
 						std::swap(hash, mHashTable[pos]);
 						std::swap(key, mKeys[pos]);
-
-						// std::swap(value, mValues[pos]
 						ValueT temp = mValues[pos];
 						mValues[pos] = currentValue;
 						currentValue = temp;
@@ -368,7 +380,7 @@ namespace Cjing3D
 			ValueT* ret = nullptr;
 			while (true)
 			{
-				// Èç¹ûÖ¸¶¨Î»ÖÃÎª¿Õ£¬ÔòÖ±½ÓÔÚ¸ÃÎ»ÖÃ´´½¨keyºÍvalue
+				// å¦‚æœæŒ‡å®šä½ç½®ä¸ºç©ºï¼Œåˆ™ç›´æ¥åœ¨è¯¥ä½ç½®åˆ›å»ºkeyå’Œvalue
 				if (mHashTable[pos] == 0)
 				{
 					new (&mKeys[pos])  KeyT(std::move(key));
@@ -380,12 +392,12 @@ namespace Cjing3D
 					}
 					return ret;
 				}
-				// Èç¹ûÎ»ÖÃÒÑ±»Õ¼ÓÃ£¨³åÍ»£©£¬ÔòÑ°ÕÒÏÂÒ»¸ö¿ÉÓÃÎ»ÖÃ
+				// å¦‚æœä½ç½®å·²è¢«å ç”¨ï¼ˆå†²çªï¼‰ï¼Œåˆ™å¯»æ‰¾ä¸‹ä¸€ä¸ªå¯ç”¨ä½ç½®
 				else
 				{
-					// Èç¹ûµ±Ç°elemµÄhashÎ»ÖÃºÍÊµ¼ÊÎ»ÖÃµÄ¾àÀë£¬Ğ¡ÓÚdist
-					// Ôò½«µ±Ç°ÖµºÍelem½»»»£¬¼ÌĞøÈ¥Ñ°ÕÒelemµÄ¿ÉÓÃÎ»ÖÃ
-					// ÕâÑù¿ÉÊ¹ËùÓĞelemµÄÆ«ÒÆ¾¡¿ÉÄÜĞ¡£¬½ÏÉÙÑ­»·´ÎÊı
+					// å¦‚æœå½“å‰elemçš„hashä½ç½®å’Œå®é™…ä½ç½®çš„è·ç¦»ï¼Œå°äºdist
+					// åˆ™å°†å½“å‰å€¼å’Œelemäº¤æ¢ï¼Œç»§ç»­å»å¯»æ‰¾elemçš„å¯ç”¨ä½ç½®
+					// è¿™æ ·å¯ä½¿æ‰€æœ‰elemçš„åç§»å°½å¯èƒ½å°ï¼Œè¾ƒå°‘å¾ªç¯æ¬¡æ•°
 					U32 curElemProbeDist = ProbeDistanceHash(mHashTable[pos], pos);
 					if (curElemProbeDist < dist)
 					{
@@ -436,7 +448,7 @@ namespace Cjing3D
 			mHashTable = nullptr;
 			Alloc();
 
-			// ½«oldkeysºÍoldValueÖØĞÂ²åÈë
+			// å°†oldkeyså’ŒoldValueé‡æ–°æ’å…¥
 			for (U32 i = 0; i < oldCapacity; i++)
 			{
 				U32 hash = oldHashTable[i];
