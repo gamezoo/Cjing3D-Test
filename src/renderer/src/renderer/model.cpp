@@ -1,6 +1,7 @@
 #include "model.h"
 #include "modelImpl.h"
 #include "resource\resourceManager.h"
+#include "core\helper\stream.h"
 
 namespace Cjing3D
 {
@@ -22,10 +23,10 @@ namespace Cjing3D
 			return model;
 		}
 
-		virtual bool LoadResource(Resource* resource, const char* name, File& file)
+		virtual bool LoadResource(Resource* resource, const char* name, U64 size, const U8* data)
 		{
 			Model* model = reinterpret_cast<Model*>(resource);
-			if (!model || !file) {
+			if (!model || size <= 0 || data == nullptr) {
 				return false;
 			}
 
@@ -33,9 +34,11 @@ namespace Cjing3D
 				return false;
 			}
 
+			InputMemoryStream inputStream(data, (U32)size);
+
 			// read shader general header
 			ModelGeneralHeader generalHeader;
-			if (!file.Read(&generalHeader, sizeof(generalHeader)))
+			if (!inputStream.Read(&generalHeader, sizeof(generalHeader)))
 			{
 				Logger::Warning("Failed to read model general header");
 				return false;
@@ -67,11 +70,6 @@ namespace Cjing3D
 
 			Model* model = reinterpret_cast<Model*>(resource);
 			CJING_DELETE(model);
-			return true;
-		}
-
-		virtual bool IsNeedConvert()const
-		{
 			return true;
 		}
 	};

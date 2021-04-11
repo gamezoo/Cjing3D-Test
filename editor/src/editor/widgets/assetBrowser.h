@@ -8,6 +8,7 @@ namespace Cjing3D
 	class Resource;
 	class EditorWidgetAssetInspector;
 	class ResConverterContext;
+	class ResConverterPlugin;
 
 	class EditorWidgetAssetBrowser : public EditorWidget
 	{
@@ -63,5 +64,7 @@ namespace Cjing3D
 		EditorWidgetAssetBrowser& mBrowser;
 		// res meta context
 		UniquePtr<ResConverterContext> mResContext = nullptr;
+		// converter plugins
+		DynamicArray<ResConverterPlugin*> mConverterPlugins;
 	};
 }

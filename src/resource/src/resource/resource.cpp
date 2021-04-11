@@ -1,10 +1,13 @@
 #include "resource.h"
 #include "core\string\stringUtils.h"
 #include "core\helper\debug.h"
+#include "core\helper\stream.h"
 #include "core\concurrency\concurrency.h"
+#include "core\compress\lz4.h"
 
 namespace  Cjing3D
 {
+	const U32 CompiledResourceHeader::MAGIC = 0x129A1119;
 	const ResourceType ResourceType::INVALID_TYPE("");
 
 	ResourceType::ResourceType(const char* type) 
@@ -18,7 +21,6 @@ namespace  Cjing3D
 		mRefCount(0),
 		mEmpty(1),
 		mFailed(0),
-		mConverting(0),
 		mState(ResState::EMPTY),
 		mDesiredState(ResState::EMPTY)
 	{
@@ -29,7 +31,6 @@ namespace  Cjing3D
 		mRefCount(0),
 		mEmpty(1),
 		mFailed(0),
-		mConverting(0),
 		mState(ResState::EMPTY),
 		mDesiredState(ResState::EMPTY)
 	{
@@ -111,16 +112,6 @@ namespace  Cjing3D
 		CheckState();
 	}
 
-	bool Resource::SetConverting(bool isConverting)
-	{
-		if (isConverting) {
-			return Concurrency::AtomicIncrement(&mConverting) == 1;
-		}
-		else {
-			return Concurrency::AtomicDecrement(&mConverting) == 0;
-		}
-	}
-
 	void Resource::CheckState()
 	{
 		// check state by failed dep and emtpy dep
@@ -173,5 +164,38 @@ namespace  Cjing3D
 		}
 
 		CheckState();
+	}
+
+	bool ResourceFactory::LoadResourceFromFile(Resource* resource, const char* name, U64 size, const U8* data)
+	{
+		// read shader general header
+		const CompiledResourceHeader& header = *(const CompiledResourceHeader*)data;
+
+		// check magic and version
+		if (header.mMagic != CompiledResourceHeader::MAGIC ||
+			header.mMajor != CompiledResourceHeader::MAJOR ||
+			header.mMinor != CompiledResourceHeader::MINOR)
+		{
+			Logger::Warning("resource version mismatch.");
+			return false;
+		}
+
+		if (header.mFlags & CompiledResourceHeader::COMPRESSED_LZ4)
+		{
+			// if res is compressed, decompress first
+			MemoryStream tmp;
+			tmp.Resize(header.mDecompressedSize);
+			const I32 res = LZ4_decompress_safe((const char*)data + sizeof(header), (char*)tmp.data(), I32(size - sizeof(header)), (I32)tmp.Size());
+			if (res != header.mDecompressedSize) 
+			{
+				Logger::Warning("resource decompress failed.");
+				return false;
+			}
+			return LoadResource(resource, name, header.mDecompressedSize, tmp.data());
+		}
+		else
+		{
+			return LoadResource(resource, name, size - sizeof(header), data + sizeof(header));
+		}
 	}
 }

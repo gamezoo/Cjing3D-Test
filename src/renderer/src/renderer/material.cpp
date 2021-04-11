@@ -1,5 +1,6 @@
 #include "material.h"
 #include "materialImpl.h"
+#include "core\helper\stream.h"
 #include "resource\resourceManager.h"
 
 namespace Cjing3D
@@ -21,10 +22,10 @@ namespace Cjing3D
 			return material;
 		}
 
-		virtual bool LoadResource(Resource* resource, const char* name, File& file)
+		virtual bool LoadResource(Resource* resource, const char* name, U64 size, const U8* data)
 		{
 			Material* material = reinterpret_cast<Material*>(resource);
-			if (!material || !file) {
+			if (!material || size <= 0 || data == nullptr) {
 				return false;
 			}
 
@@ -32,8 +33,10 @@ namespace Cjing3D
 				return false;
 			}
 
+			InputMemoryStream inputStream(data, (U32)size);
+
 			MaterialImpl* impl = CJING_NEW(MaterialImpl);
-			if (!file.Read(&impl->mData, sizeof(MaterialData)))
+			if (!inputStream.Read(&impl->mData, sizeof(MaterialData)))
 			{
 				CJING_SAFE_DELETE(impl);
 				return false;

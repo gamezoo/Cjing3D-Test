@@ -18,7 +18,6 @@ namespace Cjing3D
 		bool IsInitialized();
 		void RegisterFactory(ResourceType type, ResourceFactory* factory);
 		void UnregisterFactory(ResourceType type);
-		DynamicArray<ResConverterPlugin*>& GetPlugins();
 
 		Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate = false);
 
@@ -34,10 +33,7 @@ namespace Cjing3D
 			return static_cast<T*>(LoadResource(T::ResType, inPath, true));
 		}
 
-		// TODO; move the part about converter to editor's assertCompiler
 		Path GetResourceConvertedPath(const Path& inPath);
-		bool CheckResourceNeedConvert(const Path& inPath, Path* outPath = nullptr);
-		bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate = false);
 		ResourceType GetResourceType(const char* path);
 		void RegisterExtension(const char* ext, ResourceType type);
 

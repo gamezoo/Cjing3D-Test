@@ -58,7 +58,7 @@ namespace Concurrency
 	{
 	public:
 		using EntryPointFunc = std::function<int(void*)>;
-		static const I32 DEFAULT_STACK_SIZE = 16 * 1024;
+		static const I32 DEFAULT_STACK_SIZE = 0x8000;
 
 		Thread() = default;
 		Thread(EntryPointFunc entryPointFunc, void* userData, I32 stackSize = DEFAULT_STACK_SIZE, std::string debugName = "");

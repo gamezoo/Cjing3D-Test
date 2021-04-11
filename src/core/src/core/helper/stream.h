@@ -76,8 +76,11 @@ namespace Cjing3D
 			}
 
 			U8* tempBuf = (U8*)CJING_ALLOCATOR_MALLOC(mAllocator, mOffset);
-			Memory::Memcpy(tempBuf, mBuffer, mCapacity);
-			CJING_ALLOCATOR_FREE(mAllocator, mBuffer);
+			if (mCapacity > 0) 
+			{
+				Memory::Memcpy(tempBuf, mBuffer, mCapacity);
+				CJING_ALLOCATOR_FREE(mAllocator, mBuffer);
+			}
 			mBuffer = tempBuf;
 			mCapacity = mOffset;
 		}
@@ -255,6 +258,10 @@ namespace Cjing3D
 
 		U32 Offset()const {
 			return mOffset;
+		}
+
+		U32 Size()const {
+			return mSize;
 		}
 	};
 }

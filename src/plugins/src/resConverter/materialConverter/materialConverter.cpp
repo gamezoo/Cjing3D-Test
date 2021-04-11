@@ -3,6 +3,7 @@
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
+#include "core\helper\stream.h"
 #include "renderer\materialImpl.h"
 
 namespace Cjing3D
@@ -76,13 +77,12 @@ namespace Cjing3D
 		}
 
 		// 3. write
-		File* file = CJING_NEW(File);
-		if (!fileSystem.OpenFile(dest, *file, FileFlags::DEFAULT_WRITE))
-		{
-			CJING_SAFE_DELETE(file);
+		MemoryStream stream;
+		stream.Write(&materialData, sizeof(materialData));
+
+		if (!context.WriteResource(dest, stream.data(), stream.Size())) {
 			return false;
 		}
-		file->Write(&materialData, sizeof(materialData));
 
 		context.AddOutput(dest);
 		context.SetMetaData<MaterialMetaObject>(metaData);

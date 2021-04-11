@@ -3,6 +3,7 @@
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
+#include "core\helper\stream.h"
 #include "renderer\modelImpl.h"
 
 #include "modelImporterOBJ.h"
@@ -49,14 +50,13 @@ namespace Cjing3D
 		}
 
 		// 3. write
-		File* file = CJING_NEW(File);
-		if (!fileSystem.OpenFile(dest, *file, FileFlags::DEFAULT_WRITE))
-		{
-			CJING_SAFE_DELETE(file);
+		MemoryStream stream;
+		importer->WriteModel(stream);
+
+		// write resource
+		if (!context.WriteResource(dest, stream.data(), stream.Size())) {
 			return false;
 		}
-		// write model
-		importer->WriteModel(*file);
 
 		context.AddOutput(dest);
 		context.SetMetaData<ModelMetaObject>(data);

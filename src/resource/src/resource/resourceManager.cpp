@@ -67,9 +67,7 @@ namespace ResourceManager
 		Concurrency::Thread mReadThread;
 		bool mIOExiting = false;
 
-		// converter plugins
-		DynamicArray<ResConverterPlugin*> mConverterPlugins;
-
+		
 		volatile I32 mPendingResJobs = 0;
 		volatile I32 mConversionJobs = 0;
 
@@ -102,12 +100,6 @@ namespace ResourceManager
 		mReadThread(ReadIOTaskFunc, this, 65536, "ReadIOThread"),
 		mFilesystem(filesystem)
 	{
-		// acquire all converter plugins
-		DynamicArray<Plugin*> plugins;
-		PluginManager::GetPlugins<ResConverterPlugin>(plugins);
-		for (auto plugin : plugins) {
-			mConverterPlugins.push(reinterpret_cast<ResConverterPlugin*>(plugin));
-		}
 		mIsInitialized = true;
 	}
 
@@ -398,126 +390,6 @@ namespace ResourceManager
 		String mOriginalPath;
 	};
 
-	// Resource convert job
-	class ResourceConvertJob : public JobSystem::TaskJob
-	{
-	public:
-		ResourceConvertJob(Resource* resource, const ResourceType& resType, const char* srcPath, const char* convertedPath);
-		virtual ~ResourceConvertJob();
-
-		void SetLoadJob(ResourceLoadJob* job) { mResLoadJob = job; }
-		void SetIsImmediate(bool isImmediate) { mIsImmediate = isImmediate; }
-		void OnWork(I32 param)override;
-		void OnCompleted()override;
-
-	private:
-		Resource* mResource;
-		ResourceType mResType;
-		String mSrcPath;
-		String mConvertedPath;
-		ResourceLoadJob* mResLoadJob;
-		bool mConversionRet;
-
-		bool mIsImmediate = false;
-		I32 mCurrentConvertTime = 0;
-		static const I32 MaxConvertTimes = 3;
-	};
-
-	ResourceConvertJob::ResourceConvertJob(Resource* resource, const ResourceType& resType, const char* srcPath, const char* convertedPath) :
-		JobSystem::TaskJob("ResourceConvertJob"),
-		mResource(resource),
-		mResType(resType),
-		mSrcPath(srcPath),
-		mConvertedPath(convertedPath),
-		mResLoadJob(nullptr),
-		mConversionRet(false)
-	{
-		Concurrency::AtomicIncrement(&mImpl->mPendingResJobs);
-		if (mResource != nullptr) {
-			Debug::CheckAssertion(mResource->SetConverting(true));
-		}
-	}
-
-	ResourceConvertJob::~ResourceConvertJob()
-	{
-		Concurrency::AtomicDecrement(&mImpl->mPendingResJobs);
-		if (mResource != nullptr) {
-			mResource->SetConverting(false);
-		}
-	}
-
-	void ResourceConvertJob::OnWork(I32 param)
-	{
-		Concurrency::AtomicIncrement(&mImpl->mConversionJobs);
-
-		// find avaiable convertes to convert the resource
-		MaxPathString mExt;
-		Path::GetPathExtension(Span(mSrcPath.c_str(), StringLength(mSrcPath)), mExt.toSpan());		
-		for (auto plugin : mImpl->mConverterPlugins)
-		{
-			auto converter = plugin->CreateConverter();
-			if (converter && converter->SupportsType(mExt.c_str(), mResType))
-			{
-				ResConverterContext context(*mImpl->mFilesystem);
-				mConversionRet = context.Convert(converter, mResType, mSrcPath, mConvertedPath.c_str());
-			}
-			plugin->DestroyConverter(converter);
-
-			// break if conversion succeeds
-			if (mConversionRet) {
-				break;
-			}
-		}
-		Concurrency::AtomicDecrement(&mImpl->mConversionJobs);
-	}
-
-	void ResourceConvertJob::OnCompleted()
-	{
-		// if convert failed, try again
-		if (!mConversionRet)
-		{
-			if (mCurrentConvertTime < MaxConvertTimes)
-			{
-				mCurrentConvertTime++;
-				if (mIsImmediate) {
-					return RunTaskImmediate(0);
-				}
-				else {
-					return RunTask(0, JobSystem::Priority::LOW);
-				}
-			}
-			else
-			{
-				if (mResource != nullptr) {
-					mResource->OnLoaded(false);
-				}
-			}
-		}
-
-		// if convert success, try to do loading job
-		if (mResLoadJob)
-		{
-			if (mConversionRet)
-			{
-				if (mIsImmediate) {
-					mResLoadJob->RunTaskImmediate(0);
-				}
-				else
-				{
-					JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
-					mResLoadJob->RunTask(0, JobSystem::Priority::LOW, &jobHandle);
-					JobSystem::Wait(&jobHandle);
-				}
-			}
-			else
-			{
-				mResLoadJob->OnCompleted();
-				mResLoadJob = nullptr;
-			}
-		}
-		CJING_DELETE(this);
-	}
-
 	ResourceLoadJob::ResourceLoadJob(ResourceFactory& factory, Resource& resource, const char* name, const char*path, const char* originalPath) :
 		JobSystem::TaskJob("ResourceLoadJob"),
 		mFactory(factory),
@@ -546,8 +418,7 @@ namespace ResourceManager
 			return;
 		}
 
-		File file(buffer.data(), buffer.size(), FileFlags::DEFAULT_READ);
-		bool success = mFactory.LoadResource(&mResource, mName.c_str(), file);
+		bool success = mFactory.LoadResourceFromFile(&mResource, mName.c_str(), buffer.size(), (const U8*)buffer.data());
 		if (success && !mResource.IsLoaded())
 		{
 			// try to load original path
@@ -555,7 +426,7 @@ namespace ResourceManager
 			if (!sources.empty()) {
 				mResource.SetSourceFiles(sources);
 			}
-			mResource.SetCompiledSize(file.Size());
+			mResource.SetCompiledSize(buffer.size());
 			mResource.OnLoaded(true);
 		}
 		if (!success)
@@ -611,12 +482,6 @@ namespace ResourceManager
 		mImpl->mResourceFactoires.erase(type.Type());
 	}
 
-	DynamicArray<ResConverterPlugin*>& GetPlugins()
-	{
-		Debug::CheckAssertion(IsInitialized());
-		return mImpl->mConverterPlugins;
-	}
-
 	Resource* LoadResource(ResourceType type, const Path& inPath, bool isImmediate)
 	{
 		Debug::CheckAssertion(IsInitialized());
@@ -642,193 +507,62 @@ namespace ResourceManager
 			return nullptr;
 		}
 
-		// 如果当前类型不需要转换，则直接加载inPath，否则尝试加载Converted inPath
-		// 一般来说所有的资源都需要Conversion,这仅仅只是一个提供的选项
-		if (!factory->IsNeedConvert())
+		// acquire resource
+		Resource* ret = mImpl->AcquireResource(inPath, type);
+		if (ret == nullptr)
 		{
-			// acquire resource
-			Resource* ret = mImpl->AcquireResource(inPath, type);
-			if (ret == nullptr)
-			{
-				ret = factory->CreateResource();
-				if (ret == nullptr) {
-					return nullptr;
-				}
-				mImpl->RecordResource(inPath, type, *ret);
-				ret->SetPath(inPath);
+			ret = factory->CreateResource();
+			if (ret == nullptr) {
+				return nullptr;
+			}
+			mImpl->RecordResource(inPath, type, *ret);
+			ret->SetPath(inPath);
+		}
+
+		if (ret->IsNeedLoad())
+		{
+			// onBeforeLoad
+			LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
+			if (mImpl->mLoadHook != nullptr) {
+				hookRet = mImpl->mLoadHook->OnBeforeLoad(ret);
 			}
 
-			if (ret->IsNeedLoad())
+			if (hookRet == LoadHook::HookResult::DEFERRED)
 			{
-				// if loadHook exists, do loadHook::OnBeforeLoad first
-				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
-				if (mImpl->mLoadHook != nullptr) {
-					hookRet = mImpl->mLoadHook->OnBeforeLoad(ret);
-				}
+				ret->SetDesiredState(Resource::ResState::LOADED);
+				mImpl->AcquireResource(ret);	// for hook
+				Concurrency::AtomicIncrement(&mImpl->mPendingResJobs); // for hook
+				return ret;
+			}
 
-				if (hookRet == LoadHook::HookResult::DEFERRED)
-				{
-					ret->SetDesiredState(Resource::ResState::LOADED);
-					mImpl->AcquireResource(ret);	// for hook
-					Concurrency::AtomicIncrement(&mImpl->mPendingResJobs); // for hook
-					return ret;
-				}
+			// converted full path
+			Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
+			ret->SetConvertedPath(convertedfullPath);
 
-				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, inPath.c_str(), inPath.c_str(), inPath.c_str());
+			if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
+			{
+				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, inPath.c_str(), convertedfullPath.c_str(), inPath.c_str());
 				if (isImmediate) {
 					loadJob->RunTaskImmediate(0);
 				}
 				else {
 					loadJob->RunTask(0, JobSystem::Priority::LOW);
 				}
+				return ret;
 			}
-			return ret;
+			else
+			{
+				mImpl->ReleaseResource(ret);
+				Logger::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
+				return nullptr;
+			}
 		}
-		else
-		{
-			// acquire resource
-			Resource* ret = mImpl->AcquireResource(inPath, type);
-			if (ret == nullptr)
-			{
-				ret = factory->CreateResource();
-				if (ret == nullptr) {
-					return nullptr;
-				}
-				mImpl->RecordResource(inPath, type, *ret);
-				ret->SetPath(inPath);
-			}
-
-			if (ret->IsNeedLoad())
-			{
-				// onBeforeLoad
-				LoadHook::HookResult hookRet = LoadHook::HookResult::IMMEDIATE;
-				if (mImpl->mLoadHook != nullptr) {
-					hookRet = mImpl->mLoadHook->OnBeforeLoad(ret);
-				}
-
-				if (hookRet == LoadHook::HookResult::DEFERRED)
-				{
-					ret->SetDesiredState(Resource::ResState::LOADED);
-					mImpl->AcquireResource(ret);	// for hook
-					Concurrency::AtomicIncrement(&mImpl->mPendingResJobs); // for hook
-					return ret;
-				}
-
-				// converted full path
-				Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
-				ret->SetConvertedPath(convertedfullPath);
-
-				if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
-				{
-					auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *ret, inPath.c_str(), convertedfullPath.c_str(), inPath.c_str());
-					if (isImmediate) {
-						loadJob->RunTaskImmediate(0);
-					}
-					else {
-						loadJob->RunTask(0, JobSystem::Priority::LOW);
-					}
-					return ret;
-				}
-				else
-				{
-					mImpl->ReleaseResource(ret);
-					Logger::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
-					return nullptr;
-				}
-			}
-			return ret;
-		}                                                                                           
+		return ret;                                                                                        
 	}
 
 	Path GetResourceConvertedPath(const Path& inPath)
 	{
 		return mImpl->GetResourceConvertedPath(inPath);
-	}
-
-	bool CheckResourceNeedConvert(const Path& inPath, Path* outPath)
-	{
-		// converted full path
-		Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
-		bool needConvert = true;
-		if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
-		{
-			// 仅当系统支持converting操作才检查, TODO: use macro?
-			MaxPathString metaPath(inPath.c_str());
-			metaPath.append(".metadata");
-
-			if (mImpl->mFilesystem->IsFileExists(metaPath.c_str()))
-			{
-				// check res metadata last modified time
-				U64 srcModTime = mImpl->mFilesystem->GetLastModTime(inPath.c_str());
-				U64 metaModTime = mImpl->mFilesystem->GetLastModTime(metaPath.c_str());
-
-				if (metaModTime >= srcModTime) {
-					needConvert = false;
-				}
-
-				// check source files is out of date
-				DynamicArray<String> sources;
-				JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, mImpl->mFilesystem);
-				archive.Read("sources", sources);
-
-				for (const auto& sourceFile : sources)
-				{
-					U64 modTime = 0;
-					if (Path::IsAbsolutePath(sourceFile)) {
-						modTime = Platform::GetLastModTime(sourceFile);
-					}
-					else {
-						modTime = mImpl->mFilesystem->GetLastModTime(sourceFile.c_str());
-					}
-					if (modTime > metaModTime)
-					{
-						needConvert = true;
-						break;
-					}
-				}
-			}
-		}
-
-		if (outPath != nullptr) {
-			*outPath = convertedfullPath;
-		}
-
-		return needConvert;
-	}
-
-	bool ConvertResource(Resource* resource, ResourceType type, const Path& inPath, bool isImmediate)
-	{
-		ResourceFactory* factory = mImpl->GetFactory(type);
-		if (factory == nullptr)
-		{
-			Logger::Warning("Invalid res type:%d", type.Type());
-			return false;
-		}
-
-		Path convertedPath;
-		if (!CheckResourceNeedConvert(inPath, &convertedPath)) {
-			return true;
-		}
-	
-		// create target dir
-		MaxPathString dirPath;
-		if (!convertedPath.SplitPath(dirPath.data(), dirPath.size())) {
-			return false;
-		}
-		if (!mImpl->mFilesystem->IsDirExists(dirPath.c_str())) {
-			mImpl->mFilesystem->CreateDir(dirPath.c_str());
-		}
-
-		auto* convertJob = CJING_NEW(ResourceConvertJob)(resource, type, inPath.c_str(), convertedPath.c_str());
-		convertJob->SetIsImmediate(isImmediate);
-		if (isImmediate) {
-			convertJob->RunTaskImmediate(0);
-		}
-		else {
-			convertJob->RunTask(0, JobSystem::Priority::LOW);
-		}
-
-		return true;
 	}
 
 	void ReloadResource(Resource* resource)
@@ -1103,10 +837,15 @@ namespace ResourceManager
 			return;
 		}
 
-		if (!factory->IsNeedConvert())
+		const Path& inPath = res->GetPath();
+
+		// converted full path
+		Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
+		res->SetConvertedPath(convertedfullPath);
+
+		if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
 		{
-			const char* inPath = res->GetPath().c_str();
-			auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *res, inPath, inPath, inPath);
+			auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *res, inPath.c_str(), convertedfullPath.c_str(), inPath.c_str());
 			if (isImmediate) {
 				loadJob->RunTaskImmediate(0);
 			}
@@ -1116,28 +855,9 @@ namespace ResourceManager
 		}
 		else
 		{
-			const Path& inPath = res->GetPath();
-
-			// converted full path
-			Path convertedfullPath = mImpl->GetResourceConvertedPath(inPath);
-			res->SetConvertedPath(convertedfullPath);
-
-			if (mImpl->mFilesystem->IsFileExists(convertedfullPath.c_str()))
-			{
-				auto* loadJob = CJING_NEW(ResourceLoadJob)(*factory, *res, inPath.c_str(), convertedfullPath.c_str(), inPath.c_str());
-				if (isImmediate) {
-					loadJob->RunTaskImmediate(0);
-				}
-				else {
-					loadJob->RunTask(0, JobSystem::Priority::LOW);
-				}
-			}
-			else
-			{
-				mImpl->ReleaseResource(res);
-				Logger::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
-				return;
-			}
+			mImpl->ReleaseResource(res);
+			Logger::Warning("The convert_output of \'%s\' is not exists", inPath.c_str());
+			return;
 		}
 	}
 }

@@ -14,6 +14,7 @@ namespace Cjing3D
 {
 namespace Renderer
 {
+	// render instance for DrawInstanced
 	struct RenderInstance
 	{
 		F32x4 mMat0;
@@ -30,17 +31,16 @@ namespace Renderer
 		}
 	};
 
+	// Object render batch  for object rendering
 	struct ObjectRenderBatch
 	{
 		U64 mHash = 0;
 		U32 mObjectIndex = 0;
-		F32 mDistance = 0.0f;
 
 		void Setup(U32 meshIndex, U32 objectIndex, F32 distance)
 		{
 			mHash = ((U64)distance) << 32 | (U64)meshIndex;
 			mObjectIndex = objectIndex;
-			mDistance = distance;
 		}
 
 		U32 GetMeshIndex()
@@ -217,6 +217,7 @@ namespace Renderer
 		I32 instanceSize = queue.mRenderBatches.size() * sizeof(RenderInstance);
 		GPU::GPUAllocation instanceAllocation = cmd.GPUAlloc(instanceSize);
 
+		// InstancedBatch combines ObjectRenderBatch by the same meshIndex
 		struct InstancedBatch
 		{
 			U32 mMeshIndex = 0;

@@ -4,11 +4,12 @@
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
+#include "core\helper\enumTraits.h"
+#include "core\helper\stream.h"
+#include "renderer\textureImpl.h"
 #include "renderer\texture.h"
 #include "imguiRhi\manager.h"
 #include "imguiRhi\imguiEx.h"
-#include "core\helper\enumTraits.h"
-#include "renderer\textureImpl.h"
 
 #include "nvtt\include\nvtt.h"
 
@@ -31,15 +32,15 @@ namespace Cjing3D
 	struct ImageOuputHander : nvtt::OutputHandler
 	{
 	private:
-		File& mFile;
+		MemoryStream& mStream;
 
 	public:
-		ImageOuputHander(File& file) : 
+		ImageOuputHander(MemoryStream& stream) : 
 			nvtt::OutputHandler(),
-			mFile(file) {}
+			mStream(stream) {}
 
 		bool writeData(const void* data, int size) override { 
-			return mFile.Write(data, size);
+			return mStream.Write(data, size);
 		}
 		void beginImage(int size, int width, int height, int depth, int face, int miplevel) override {}
 		void endImage() override {}
@@ -84,13 +85,8 @@ namespace Cjing3D
 		// Converted file format:
 		// | texture desc
 		// | texture data
-
-		File file;
-		if (!fileSystem.OpenFile(dest, file, FileFlags::DEFAULT_WRITE))
-		{
-			Logger::Warning("[TextureConverter] failed to write dest file:%s.", dest);
-			return false;
-		}
+		MemoryStream stream;
+		stream.Reserve(256);
 
 		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(img.GetFormat());
 		bool hasAlpah = formatInfo.mABits > 0;
@@ -110,7 +106,7 @@ namespace Cjing3D
 		TextureGeneralHeader header;
 		header.mDesc = texDesc;
 		CopyString(header.mFileType, "dds");
-		file.Write(&header, sizeof(TextureGeneralHeader));
+		stream.Write(&header, sizeof(TextureGeneralHeader));
 
 		// 2. image data
 		// setup nvtt options
@@ -126,7 +122,7 @@ namespace Cjing3D
 		nvttInput.setTextureLayout(nvtt::TextureType_2D, img.GetWidth(), img.GetHeight(), img.GetDepth());
 		nvttInput.setMipmapData(img.GetMipData<U8>(0), img.GetWidth(), img.GetHeight());
 
-		ImageOuputHander nvttOutputHandler(file);
+		ImageOuputHander nvttOutputHandler(stream);
 		ImageErrorHandler nvttErrorHandler;
 		nvtt::OutputOptions nvttOuput;
 		nvttOuput.setSrgbFlag(false);
@@ -141,6 +137,11 @@ namespace Cjing3D
 		if (!nvttContext.process(nvttInput, compression, nvttOuput))
 		{
 			Logger::Warning("[TextureConverter] failed to compile image:%s.", src);
+			return false;
+		}
+
+		// write resource
+		if (!context.WriteResource(dest, stream.data(), stream.Size())) {
 			return false;
 		}
 

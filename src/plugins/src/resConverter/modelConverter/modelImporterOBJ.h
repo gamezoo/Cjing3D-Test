@@ -11,7 +11,7 @@ namespace Cjing3D
 		virtual ~ModelImporterOBJ();
 
 		bool Import(ResConverterContext& context, Span<char> memBuffer, const char* src)override;
-		void WriteModel(File& file)override;
+		void WriteModel(MemoryStream& stream)override;
 		bool SupportsFileExt(const char* ext)override;
 	};
 }

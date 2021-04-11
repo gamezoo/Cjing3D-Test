@@ -2,11 +2,13 @@
 #include "editor.h"
 #include "filesWatcher.h"
 #include "resource\resourceManager.h"
+#include "resource\converter.h"
 #include "core\concurrency\concurrency.h"
 #include "core\container\mpmc_bounded_queue.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\signal\connection.h"
 #include "core\string\stringUtils.h"
+#include "core\plugin\pluginManager.h"
 
 namespace Cjing3D
 {
@@ -86,6 +88,9 @@ namespace Cjing3D
 		Signal<void()> OnListChanged;
 		DynamicArray<Path> mChangedFiles;
 
+		// converter plugins
+		DynamicArray<ResConverterPlugin*> mConverterPlugins;
+
 		bool mIsExit = false;
 
 	public:
@@ -102,6 +107,9 @@ namespace Cjing3D
 		void OnFileChanged(const char* path);
 		void AddResource(const char* fullPath);
 		void AddResource(ResourceType type, const char* path);
+
+		Path GetResourceConvertedPath(const Path& inPath);
+		bool CheckResourceNeedConvert(const Path& inPath, Path* outPath);
 	};
 
 	ResourceManager::LoadHook::HookResult AssetCompilerHook::OnBeforeLoad(Resource* res)
@@ -144,6 +152,14 @@ namespace Cjing3D
 		mToCompileTasks(128),
 		mLoadHook(*this)
 	{
+		// acquire all converter plugins
+		DynamicArray<Plugin*> plugins;
+		PluginManager::GetPlugins<ResConverterPlugin>(plugins);
+		for (auto plugin : plugins) {
+			mConverterPlugins.push(reinterpret_cast<ResConverterPlugin*>(plugin));
+		}
+
+		// set loading hook
 		if (!mFileSystem.IsDirExists(COMPILED_PATH_NAME)) {
 			mFileSystem.CreateDir(COMPILED_PATH_NAME);
 		}
@@ -251,18 +267,101 @@ namespace Cjing3D
 		}
 	}
 
+
+	Path AssetCompilerImpl::GetResourceConvertedPath(const Path& inPath)
+	{
+		return ResourceManager::GetResourceConvertedPath(inPath);
+	}
+
+	bool AssetCompilerImpl::CheckResourceNeedConvert(const Path& inPath, Path* outPath)
+	{
+		// converted full path
+		Path convertedfullPath = GetResourceConvertedPath(inPath);
+		bool needConvert = true;
+		if (mFileSystem.IsFileExists(convertedfullPath.c_str()))
+		{
+			// 仅当系统支持converting操作才检查, TODO: use macro?
+			MaxPathString metaPath(inPath.c_str());
+			metaPath.append(".metadata");
+
+			if (mFileSystem.IsFileExists(metaPath.c_str()))
+			{
+				// check res metadata last modified time
+				U64 srcModTime = mFileSystem.GetLastModTime(inPath.c_str());
+				U64 metaModTime = mFileSystem.GetLastModTime(metaPath.c_str());
+
+				if (metaModTime >= srcModTime) {
+					needConvert = false;
+				}
+
+				// check source files is out of date
+				DynamicArray<String> sources;
+				JsonArchive archive(metaPath.c_str(), ArchiveMode::ArchiveMode_Read, &mFileSystem);
+				archive.Read("sources", sources);
+
+				for (const auto& sourceFile : sources)
+				{
+					U64 modTime = 0;
+					if (Path::IsAbsolutePath(sourceFile)) {
+						modTime = Platform::GetLastModTime(sourceFile);
+					}
+					else {
+						modTime = mFileSystem.GetLastModTime(sourceFile.c_str());
+					}
+					if (modTime > metaModTime)
+					{
+						needConvert = true;
+						break;
+					}
+				}
+			}
+		}
+
+		if (outPath != nullptr) {
+			*outPath = convertedfullPath;
+		}
+
+		return needConvert;
+	}
+
 	bool AssetCompilerImpl::Compile(const ResCompileTask& task)
 	{
 		if (task.mRes == nullptr) {
 			return false;
 		}
 		
-		// do task immediate
-		if (!ResourceManager::ConvertResource(task.mRes, task.mRes->GetType(), task.mInPath, true)) {
+		Path srcPath = task.mInPath;
+		MaxPathString mExt;
+		Path::GetPathExtension(srcPath.toSpan(), mExt.toSpan());
+		Path convertedPath = GetResourceConvertedPath(srcPath);
+
+		// create target dir
+		MaxPathString dirPath;
+		if (!convertedPath.SplitPath(dirPath.data(), dirPath.size())) {
 			return false;
 		}
+		if (!mFileSystem.IsDirExists(dirPath.c_str())) {
+			mFileSystem.CreateDir(dirPath.c_str());
+		}
 
-		return !task.mRes->IsFaild();
+		// find avaiable convertes to convert the resource
+		bool ret = false;
+		for (auto plugin : mConverterPlugins)
+		{
+			auto converter = plugin->CreateConverter();
+			if (converter && converter->SupportsType(mExt.c_str(), task.mRes->GetType()))
+			{
+				ResConverterContext context(mFileSystem);
+				ret = context.Convert(converter, task.mRes->GetType(), srcPath.c_str(), convertedPath.c_str());
+			}
+			plugin->DestroyConverter(converter);
+
+			if (ret) {
+				break;
+			}
+		}
+
+		return ret;
 	}
 
 	ResourceManager::LoadHook::HookResult AssetCompilerImpl::OnBeforeLoad(Resource* res)
@@ -270,7 +369,7 @@ namespace Cjing3D
 		// check res need to convert before load
 		Path inPath = res->GetPath();
 		Path convertedPath;
-		if (!ResourceManager::CheckResourceNeedConvert(inPath, &convertedPath)) {
+		if (!CheckResourceNeedConvert(inPath, &convertedPath)) {
 			return ResourceManager::LoadHook::IMMEDIATE;
 		}
 
@@ -425,7 +524,7 @@ namespace Cjing3D
 		for (const auto& kvp : mImpl->mResources)
 		{
 			Path convertedPath;
-			if (!ResourceManager::CheckResourceNeedConvert(kvp.second.mResPath, &convertedPath)) {
+			if (!mImpl->CheckResourceNeedConvert(kvp.second.mResPath, &convertedPath)) {
 				continue;
 			}
 

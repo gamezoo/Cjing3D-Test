@@ -1,6 +1,7 @@
 #pragma once
 
 #include "resource\converter.h"
+#include "core\helper\stream.h"
 
 namespace Cjing3D
 {
@@ -13,7 +14,7 @@ namespace Cjing3D
 		virtual ~ModelImporter() {}
 
 		virtual bool Import(ResConverterContext& context, Span<char> memBuffer, const char* src) = 0;
-		virtual void WriteModel(File& file) = 0;
+		virtual void WriteModel(MemoryStream& stream) = 0;
 		virtual bool SupportsFileExt(const char* ext) = 0;
 	};
 }

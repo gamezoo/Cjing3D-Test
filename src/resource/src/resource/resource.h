@@ -36,6 +36,28 @@ namespace Cjing3D
 		U32 mTypeValue = 0;
 	}; 
 
+	// Compiled resource header
+#pragma pack(1)
+	struct CompiledResourceHeader 
+	{
+		static const U32 MAGIC;
+		static const I32 MAJOR = 0;
+		static const I32 MINOR = 1;
+
+		U32 mMagic = MAGIC;
+		I32 mMajor = MAJOR;
+		I32 mMinor = MINOR;
+
+		enum Flags 
+		{
+			COMPRESSED_LZ4 = 1 << 0
+		};
+		U32 mFlags = 0;
+		U32 mPadding = 0;
+		U32 mDecompressedSize = 0;
+	};
+#pragma pack()
+
 	class Resource
 	{
 	public:
@@ -88,13 +110,11 @@ namespace Cjing3D
 		I32 GetRefCount()const {
 			return mRefCount;
 		}
-		bool SetConverting(bool isConverting);
 
 	protected:
 		volatile I32 mRefCount;
 		volatile I32 mEmpty;
 		volatile I32 mFailed;
-		volatile I32 mConverting;
 
 		void CheckState();
 		void OnStateChanged(ResState oldState, ResState newState);
@@ -119,10 +139,11 @@ namespace Cjing3D
 		virtual~ResourceFactory() {};
 
 		virtual Resource* CreateResource() = 0;
-		virtual bool LoadResource(Resource* resource, const char*name, File& file) = 0;
+		virtual bool LoadResource(Resource* resource, const char*name, U64 size, const U8* data) = 0;
 		virtual bool DestroyResource(Resource* resource) = 0;
-		virtual bool IsNeedConvert()const = 0;
 		virtual void RegisterExtensions() = 0;
+
+		bool LoadResourceFromFile(Resource* resource, const char* name, U64 size, const U8* data);
 	};
 
 #define DECLARE_RESOURCE(CLASS_NAME, NAME)                                                      \

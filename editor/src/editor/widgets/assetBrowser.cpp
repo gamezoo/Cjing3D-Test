@@ -5,6 +5,7 @@
 #include "resource\resource.h"
 #include "resource\converter.h"
 #include "core\string\stringUtils.h"
+#include "core\plugin\pluginManager.h"
 
 namespace Cjing3D
 {
@@ -225,11 +226,19 @@ namespace Cjing3D
 	{
 		auto fileSystem = mEditor.GetEngine()->GetFileSystem();
 		mResContext = CJING_MAKE_UNIQUE<ResConverterContext>(*fileSystem);
+
+		// acquire all converter plugins
+		DynamicArray<Plugin*> plugins;
+		PluginManager::GetPlugins<ResConverterPlugin>(plugins);
+		for (auto plugin : plugins) {
+			mConverterPlugins.push(reinterpret_cast<ResConverterPlugin*>(plugin));
+		}
 	}
 
 	void EditorWidgetAssetInspector::Uninitialize()
 	{
 		mResContext.Reset();
+		mConverterPlugins.clear();
 	}
 
 	void EditorWidgetAssetInspector::Update(F32 deltaTime)
@@ -279,8 +288,7 @@ namespace Cjing3D
 			MaxPathString ext;
 			Path::GetPathExtension(res->GetPath().toSpan(), ext.toSpan());
 			auto fileSystem = mEditor.GetEngine()->GetFileSystem();
-			auto& plugins = ResourceManager::GetPlugins();
-			for (auto plugin : plugins)
+			for (auto plugin : mConverterPlugins)
 			{
 				auto converter = plugin->CreateConverter();
 				if (converter && converter->SupportsType(ext.c_str(), res->GetType())) {

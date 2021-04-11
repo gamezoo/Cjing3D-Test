@@ -77,11 +77,11 @@ namespace Cjing3D
 		return false;
 	}
 
-	void ModelImporterOBJ::WriteModel(File& file)
+	void ModelImporterOBJ::WriteModel(MemoryStream& stream)
 	{
 		// ModelGeneralHeader
 		ModelGeneralHeader generalHeader;
-		file.Write(&generalHeader, sizeof(ModelGeneralHeader));
+		stream.Write(&generalHeader, sizeof(ModelGeneralHeader));
 
 	}
 }

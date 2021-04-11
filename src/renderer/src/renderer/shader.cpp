@@ -4,6 +4,7 @@
 #include "resource\resourceManager.h"
 #include "gpu\gpu.h"
 #include "core\container\hashMap.h"
+#include "core\helper\stream.h"
 
 namespace Cjing3D
 {
@@ -78,16 +79,18 @@ namespace Cjing3D
 			return shader;
 		}
 
-		virtual bool LoadResource(Resource* resource, const char* name, File& file)
+		virtual bool LoadResource(Resource* resource, const char* name, U64 size, const U8* data)
 		{
 			Shader* shader = reinterpret_cast<Shader*>(resource);
-			if (!shader || !file) {
+			if (!shader || size <= 0 || data == nullptr) {
 				return false;
 			}
 
 			if (!GPU::IsInitialized()) {
 				return false;
 			}
+
+			InputMemoryStream inputStream(data, (U32)size);
 
 			// Converted file format:
 			// | GeneralHeader 
@@ -103,7 +106,7 @@ namespace Cjing3D
 
 			// read shader general header
 			ShaderGeneralHeader generalHeader;
-			if (!file.Read(&generalHeader, sizeof(generalHeader)))
+			if (!inputStream.Read(&generalHeader, sizeof(generalHeader)))
 			{
 				Logger::Warning("Failed to read shader general header");
 				return false;
@@ -126,7 +129,7 @@ namespace Cjing3D
 			if (generalHeader.mNumBindingSets > 0)
 			{
 				shaderImpl->mBindingSetHeaders.resize(generalHeader.mNumBindingSets);
-				if (!file.Read(shaderImpl->mBindingSetHeaders.data(), generalHeader.mNumBindingSets * sizeof(ShaderBindingSetHeader)))
+				if (!inputStream.Read(shaderImpl->mBindingSetHeaders.data(), generalHeader.mNumBindingSets * sizeof(ShaderBindingSetHeader)))
 				{
 					Logger::Warning("Failed to read bindingSet headers");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -146,7 +149,7 @@ namespace Cjing3D
 			if (totalNumBinding > 0)
 			{
 				shaderImpl->mBindingHeaders.resize(totalNumBinding);
-				if (!file.Read(shaderImpl->mBindingHeaders.data(), totalNumBinding * sizeof(ShaderBindingHeader)))
+				if (!inputStream.Read(shaderImpl->mBindingHeaders.data(), totalNumBinding * sizeof(ShaderBindingHeader)))
 				{
 					Logger::Warning("Failed to read binding headers");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -158,7 +161,7 @@ namespace Cjing3D
 			if (generalHeader.mNumSamplerStates > 0)
 			{
 				shaderImpl->mSamplerStateHeaders.resize(generalHeader.mNumSamplerStates);
-				if (!file.Read(shaderImpl->mSamplerStateHeaders.data(), generalHeader.mNumSamplerStates * sizeof(ShaderSamplerStateHeader)))
+				if (!inputStream.Read(shaderImpl->mSamplerStateHeaders.data(), generalHeader.mNumSamplerStates * sizeof(ShaderSamplerStateHeader)))
 				{
 					Logger::Warning("Failed to read samlper state headers");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -170,7 +173,7 @@ namespace Cjing3D
 			if (generalHeader.mNumShaders > 0)
 			{
 				shaderImpl->mBytecodeHeaders.resize(generalHeader.mNumShaders);
-				if (!file.Read(shaderImpl->mBytecodeHeaders.data(), generalHeader.mNumShaders * sizeof(ShaderBytecodeHeader)))
+				if (!inputStream.Read(shaderImpl->mBytecodeHeaders.data(), generalHeader.mNumShaders * sizeof(ShaderBytecodeHeader)))
 				{
 					Logger::Warning("Failed to read shader bytecode header");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -182,7 +185,7 @@ namespace Cjing3D
 			if (generalHeader.mNumTechniques > 0)
 			{
 				shaderImpl->mTechniqueHeaders.resize(generalHeader.mNumTechniques);
-				if (!file.Read(shaderImpl->mTechniqueHeaders.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
+				if (!inputStream.Read(shaderImpl->mTechniqueHeaders.data(), generalHeader.mNumTechniques * sizeof(ShaderTechniqueHeader)))
 				{
 					Logger::Warning("Failed to read shader bytecode header");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -194,7 +197,7 @@ namespace Cjing3D
 			if (generalHeader.mNumRenderStates > 0)
 			{
 				shaderImpl->mRenderStateHeaders.resize(generalHeader.mNumRenderStates);
-				if (!file.Read(shaderImpl->mRenderStateHeaders.data(), generalHeader.mNumRenderStates * sizeof(RenderStateHeader)))
+				if (!inputStream.Read(shaderImpl->mRenderStateHeaders.data(), generalHeader.mNumRenderStates * sizeof(RenderStateHeader)))
 				{
 					Logger::Warning("Failed to read render state header");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -206,7 +209,7 @@ namespace Cjing3D
 				for (const auto& header : shaderImpl->mRenderStateHeaders)
 				{
 					renderStateBuffer.resize(header.mBytes);
-					if (!file.Read(renderStateBuffer.data(), header.mBytes))
+					if (!inputStream.Read(renderStateBuffer.data(), header.mBytes))
 					{
 						Logger::Warning("Failed to read render state bytecode");
 						CJING_SAFE_DELETE(shaderImpl);
@@ -223,7 +226,7 @@ namespace Cjing3D
 			if (generalHeader.mNumTechHashers > 0)
 			{
 				shaderImpl->mTechHasherHeaders.resize(generalHeader.mNumTechHashers);
-				if (!file.Read(shaderImpl->mTechHasherHeaders.data(), generalHeader.mNumTechHashers * sizeof(ShaderTechHasherHeader)))
+				if (!inputStream.Read(shaderImpl->mTechHasherHeaders.data(), generalHeader.mNumTechHashers * sizeof(ShaderTechHasherHeader)))
 				{
 					Logger::Warning("Failed to read technique hasher headers");
 					CJING_SAFE_DELETE(shaderImpl);
@@ -237,7 +240,7 @@ namespace Cjing3D
 				totalSize = std::max(totalSize, (U32)(header.mOffset + header.mBytes));
 			}
 			shaderImpl->mBytecodes.resize(totalSize);
-			if (!file.Read(shaderImpl->mBytecodes.data(), totalSize))
+			if (!inputStream.Read(shaderImpl->mBytecodes.data(), totalSize))
 			{
 				Logger::Warning("Failed to read shader bytecode header");
 				CJING_SAFE_DELETE(shaderImpl);
@@ -343,11 +346,6 @@ namespace Cjing3D
 
 			Shader* shader = reinterpret_cast<Shader*>(resource);
 			CJING_DELETE(shader);
-			return true;
-		}
-
-		virtual bool IsNeedConvert()const
-		{
 			return true;
 		}
 	};

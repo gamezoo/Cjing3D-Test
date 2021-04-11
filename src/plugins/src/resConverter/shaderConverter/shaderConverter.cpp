@@ -5,6 +5,7 @@
 #include "core\memory\linearAllocator.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
+#include "core\helper\stream.h"
 #include "core\string\stringUtils.h"
 #include "renderer\shaderImpl.h"
 
@@ -510,12 +511,8 @@ namespace Cjing3D
 		// | bytecodes
 
 		ShaderSerializer serializer;
-		File* file = CJING_NEW(File);
-		if (!fileSystem.OpenFile(dest, *file, FileFlags::DEFAULT_WRITE)) 
-		{
-			CJING_SAFE_DELETE(file);
-			return false;
-		}
+		MemoryStream stream;
+		stream.Reserve(256);
 
 		// general header
 		ShaderGeneralHeader generalHeader;
@@ -526,21 +523,21 @@ namespace Cjing3D
 		generalHeader.mNumRenderStates = renderStates.size();
 		generalHeader.mNumTechHashers = techHasherHeaders.size();
 
-		file->Write(&generalHeader, sizeof(generalHeader));
+		stream.Write(&generalHeader, sizeof(generalHeader));
 		if (!bindingSetHeaders.empty()) {
-			file->Write(bindingSetHeaders.data(), bindingSetHeaders.size() * sizeof(ShaderBindingSetHeader));
+			stream.Write(bindingSetHeaders.data(), bindingSetHeaders.size() * sizeof(ShaderBindingSetHeader));
 		}
 		if (!bindingHeaders.empty()) {
-			file->Write(bindingHeaders.data(), bindingHeaders.size() * sizeof(ShaderBindingHeader));
+			stream.Write(bindingHeaders.data(), bindingHeaders.size() * sizeof(ShaderBindingHeader));
 		}
 		if (!samplerStateHeaders.empty()) {
-			file->Write(samplerStateHeaders.data(), samplerStateHeaders.size() * sizeof(ShaderSamplerStateHeader));
+			stream.Write(samplerStateHeaders.data(), samplerStateHeaders.size() * sizeof(ShaderSamplerStateHeader));
 		}
 		if (!bytecodeHeaders.empty()) {
-			file->Write(bytecodeHeaders.data(), bytecodeHeaders.size() * sizeof(ShaderBytecodeHeader));
+			stream.Write(bytecodeHeaders.data(), bytecodeHeaders.size() * sizeof(ShaderBytecodeHeader));
 		}
 		if (!techniqueHeaders.empty()) {
-			file->Write(techniqueHeaders.data(), techniqueHeaders.size() * sizeof(ShaderTechniqueHeader));
+			stream.Write(techniqueHeaders.data(), techniqueHeaders.size() * sizeof(ShaderTechniqueHeader));
 		}
 		if (!renderStates.empty())
 		{
@@ -566,22 +563,26 @@ namespace Cjing3D
 				offset = mOutputRenderStates.size();
 			}
 
-			file->Write(renderStateHeaders.data(), renderStateHeaders.size() * sizeof(RenderStateHeader));
-			file->Write(mOutputRenderStates.data(), mOutputRenderStates.size());
+			stream.Write(renderStateHeaders.data(), renderStateHeaders.size() * sizeof(RenderStateHeader));
+			stream.Write(mOutputRenderStates.data(), mOutputRenderStates.size());
 		}
 		if (!techHasherHeaders.empty()) {
-			file->Write(techHasherHeaders.data(), techHasherHeaders.size() * sizeof(ShaderTechHasherHeader));
+			stream.Write(techHasherHeaders.data(), techHasherHeaders.size() * sizeof(ShaderTechHasherHeader));
 		}
 
 		// write bytecode
 		for (const auto& compileInfo : compileOutput) {
-			file->Write(compileInfo.mByteCode, compileInfo.mByteCodeSize);
+			stream.Write(compileInfo.mByteCode, compileInfo.mByteCodeSize);
+		}
+
+		// write resource
+		if (!context.WriteResource(dest, stream.data(), stream.Size())) {
+			return false;
 		}
 
 		context.AddOutput(dest);
 		context.SetMetaData<ShaderMetaObject>(data);
 
-		CJING_SAFE_DELETE(file);
 		return true;
 	}
 

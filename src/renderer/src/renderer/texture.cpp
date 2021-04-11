@@ -2,6 +2,7 @@
 #include "textureImpl.h"
 #include "resource\resourceManager.h"
 #include "core\helper\enumTraits.h"
+#include "core\helper\stream.h"
 
 #define TINYDDSLOADER_IMPLEMENTATION
 #include "tiny\tinyddsloader.h"
@@ -77,12 +78,12 @@ namespace Cjing3D
 			return targetFormat;
 		}
 
-		GPU::ResHandle LoadDDS(Resource* resource, GPU::TextureDesc& texDesc, File& file, const char* name)
+		GPU::ResHandle LoadDDS(Resource* resource, GPU::TextureDesc& texDesc, InputMemoryStream& inputStream, const char* name)
 		{
 			// TODO: create a mapping file to get data address?
-			I64 bytes = file.Size() - file.Tell();
+			I64 bytes = inputStream.Size() - inputStream.Offset();
 			U8* texData = CJING_NEW_ARR(U8, bytes);
-			if (!file.Read(texData, bytes))
+			if (!inputStream.Read(texData, (U32)bytes))
 			{
 				CJING_SAFE_DELETE_ARR(texData, bytes);
 				return GPU::ResHandle::INVALID_HANDLE;
@@ -142,10 +143,10 @@ namespace Cjing3D
 			return ret;
 		}
 
-		virtual bool LoadResource(Resource* resource, const char* name, File& file)
+		virtual bool LoadResource(Resource* resource, const char* name, U64 size, const U8* data)
 		{
 			Texture* texture = reinterpret_cast<Texture*>(resource);
-			if (!texture || !file) {
+			if (!texture || size <= 0 || data == nullptr) {
 				return false;
 			}
 
@@ -153,9 +154,11 @@ namespace Cjing3D
 				return false;
 			}
 
+			InputMemoryStream inputStream(data, (U32)size);
+
 			// load texture general header
 			TextureGeneralHeader generalHeader;
-			if (!file.Read(&generalHeader, sizeof(TextureGeneralHeader)))
+			if (!inputStream.Read(&generalHeader, sizeof(TextureGeneralHeader)))
 			{
 				Logger::Warning("[Resource] Failed to load texture");
 				return false;
@@ -173,7 +176,7 @@ namespace Cjing3D
 			GPU::ResHandle texHandle;
 			if (EqualString(generalHeader.mFileType, "dds"))
 			{
-				texHandle = LoadDDS(resource, texDesc, file, name);
+				texHandle = LoadDDS(resource, texDesc, inputStream, name);
 			}
 			else
 			{
@@ -201,11 +204,6 @@ namespace Cjing3D
 
 			Texture* texture = reinterpret_cast<Texture*>(resource);
 			CJING_DELETE(texture);
-			return true;
-		}
-
-		virtual bool IsNeedConvert()const
-		{
 			return true;
 		}
 	};

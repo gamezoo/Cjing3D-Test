@@ -270,7 +270,7 @@ namespace Platform {
 			return;
 		}
 
-		size_t len = StringLength(txt);	
+		size_t len = StringLength(txt) + 1;	
 		// alloc global mem
 		HGLOBAL memHandle = ::GlobalAlloc(GMEM_MOVEABLE, len * sizeof(char));
 		if (!memHandle) {
