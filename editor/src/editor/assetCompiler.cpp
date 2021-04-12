@@ -12,6 +12,9 @@
 
 namespace Cjing3D
 {
+	// PS: AssetCompiler主要设置LoadingHook于ResourceManager(AssetCompilerHook)
+	// 在LoadingHook会在resource load之前先执行Compile工作
+
 	/// //////////////////////////////////////////////////////////////////////////////////
 	/// Utils
 	static const char* FilterPath[] = {
@@ -71,27 +74,29 @@ namespace Cjing3D
 		GameEditor& mGameEditor;
 		BaseFileSystem& mFileSystem;
 		AssetCompilerHook mLoadHook;
+		bool mIsExit = false;
+
+		// file list watcher
 		FilesWatcher* mFilesWatcher = nullptr;
 		ScopedConnection mFileChangedConn;
+		Signal<void()> OnListChanged;
+		DynamicArray<Path> mChangedFiles;
 
+		// compile job thread
 		Concurrency::Thread mCompileThread;
 		Concurrency::Semaphore mCompileSemaphore;
 
+		// resource infos
 		Concurrency::RWLock mRWLock;
 		MPMCBoundedQueue<ResCompileTask> mToCompileTasks;
 		MPMCBoundedQueue<ResCompileTask> mCompiledTasks;
 		HashMap<U32, ResUpdate> mResUpdates;
 		volatile I32 mPendingTasks = 0;
 		Concurrency::SpinLock mResUpdateLock;
-
 		HashMap<U32, AssetCompiler::ResourceItem> mResources;
-		Signal<void()> OnListChanged;
-		DynamicArray<Path> mChangedFiles;
 
 		// converter plugins
 		DynamicArray<ResConverterPlugin*> mConverterPlugins;
-
-		bool mIsExit = false;
 
 	public:
 		AssetCompilerImpl(GameEditor& gameEditor);
@@ -230,6 +235,7 @@ namespace Cjing3D
 
 	void AssetCompilerImpl::ScanDirectory(const char* dir, U64 lastModTime)
 	{
+		// scan directory and add support resources
 		auto files = mFileSystem.EnumerateFiles(dir, EnumrateMode_ALL);
 		for (const auto path : files)
 		{

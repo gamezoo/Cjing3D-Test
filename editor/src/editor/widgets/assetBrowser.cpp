@@ -77,6 +77,7 @@ namespace Cjing3D
 
 	void EditorWidgetAssetBrowser::SetCurrentDir(const char* path)
 	{
+		// set browser current dir and get resources from current dir
 		mIsDirty = false;
 		mCurrentSubDirs.clear();
 		mAssetFileInfos.clear();

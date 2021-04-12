@@ -30,7 +30,7 @@ namespace Cjing3D
 
 		if (!mFileSystem.IsFileExists(metaPath.c_str()))
 		{
-			Logger::Warning("The metadata of target path '%s'is dose not exist.");
+			Logger::Warning("The metadata '%s' is not existed.", metaPath.c_str());
 			return;
 		}
 		mSrcPath = srcPath;

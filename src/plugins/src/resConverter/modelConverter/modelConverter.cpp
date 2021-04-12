@@ -34,7 +34,7 @@ namespace Cjing3D
 		MaxPathString srcExt;
 		Path::GetPathExtension(Span(src, StringLength(src)), srcExt.toSpan());
 		ModelImporter* importer = GetImporter(srcExt);
-		if (importer) {
+		if (!importer) {
 			return false;
 		}
 
@@ -49,9 +49,13 @@ namespace Cjing3D
 			return false;
 		}
 
-		// 3. write
+		// 3. write model
 		MemoryStream stream;
-		importer->WriteModel(stream);
+		if (!importer->WriteModel(stream))
+		{
+			Logger::Warning("Failed to write model:%s", dest);
+			return false;
+		}
 
 		// write resource
 		if (!context.WriteResource(dest, stream.data(), stream.Size())) {

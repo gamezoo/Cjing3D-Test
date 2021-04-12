@@ -448,21 +448,22 @@ namespace GPU {
 		F32 mMaxDepth = 1.0f;
 	};
 
+	static const U32 APPEND_ALIGNED_ELEMENT = 0xffffffff;
+
+	struct VertexElement
+	{
+		const char* mSemanticName = nullptr;
+		U32 mSemanticIndex = 0;
+		FORMAT mFormat = FORMAT_UNKNOWN;
+		U32 mInputSlot = 0;
+		U32 mAlignedByteOffset = APPEND_ALIGNED_ELEMENT;
+		InputClassification mInputSlotClass = InputClassification::INPUT_PER_VERTEX_DATA;
+		U32 mInstanceDataStepRate = 0;
+	};
+
 	struct InputLayoutDesc
 	{
-		static const U32 APPEND_ALIGNED_ELEMENT = 0xffffffff;
-
-		struct Element
-		{
-			const char* mSemanticName = nullptr;
-			U32 mSemanticIndex = 0;
-			FORMAT mFormat = FORMAT_UNKNOWN;
-			U32 mInputSlot = 0;
-			U32 mAlignedByteOffset = APPEND_ALIGNED_ELEMENT;
-			InputClassification mInputSlotClass = InputClassification::INPUT_PER_VERTEX_DATA;
-			U32 mInstanceDataStepRate = 0;
-		};
-		static Element VertexData(
+		static VertexElement VertexData(
 			const char* semanticName,
 			U32 semanticIndex,
 			FORMAT format,
@@ -470,7 +471,7 @@ namespace GPU {
 			return { semanticName, semanticIndex, format, inputSlot, APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA, 0u };
 		}
 
-		DynamicArray<Element> mElements;
+		DynamicArray<VertexElement> mElements;
 	};
 
 	struct DepthStencilOpDesc

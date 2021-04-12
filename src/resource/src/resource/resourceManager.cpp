@@ -720,6 +720,7 @@ namespace ResourceManager
 
 	ResourceType GetResourceType(const char* path)
 	{
+		// need register resourceType by extension (RegisterExtension)
 		MaxPathString ext;
 		Path::GetPathExtension(Span(path, StringLength(path)), ext.toSpan());
 		auto it = mImpl->mRegisteredExt.find(StringUtils::StringToHash(ext.c_str()));

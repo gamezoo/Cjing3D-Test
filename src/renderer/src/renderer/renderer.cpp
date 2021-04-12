@@ -389,6 +389,8 @@ namespace Renderer
 		// register render res factories
 		Shader::RegisterFactory();
 		Texture::RegisterFactory();
+		Model::RegisterFactory();
+		Material::RegisterFactory();
 
 		// initialize impl
 		mImpl = CJING_NEW(RendererImpl);
@@ -425,6 +427,8 @@ namespace Renderer
 
 		// unregister render res factories
 		ResourceManager::ProcessReleasedResources();
+		Material::UnregisterFactory();
+		Model::UnregisterFactory();
 		Texture::UnregisterFactory();
 		Shader::UnregisterFactory();
 

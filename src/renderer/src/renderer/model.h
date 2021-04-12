@@ -6,6 +6,12 @@
 
 namespace Cjing3D
 {
+	struct ModelSubMesh
+	{
+		I32 mIndexOffset = 0;
+		I32 mIndices = 0;
+	};
+
 	class Model : public Resource
 	{
 	public:

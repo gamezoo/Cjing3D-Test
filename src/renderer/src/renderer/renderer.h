@@ -5,6 +5,7 @@
 #include "core\common\common.h"
 #include "gpu\gpu.h"
 #include "renderer\shader.h"
+#include "renderer\model.h"
 #include "math\intersectable.h"
 
 namespace Cjing3D

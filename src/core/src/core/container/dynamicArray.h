@@ -460,6 +460,12 @@ namespace Cjing3D
 			return mData;
 		}
 
+
+		const T* data()const
+		{
+			return mData;
+		}
+
 		const T& operator[](U32 index) const
 		{
 			assert(index < mSize);
