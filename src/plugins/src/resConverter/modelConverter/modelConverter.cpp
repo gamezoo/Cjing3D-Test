@@ -32,7 +32,9 @@ namespace Cjing3D
 
 		// 1. get taget model importer
 		MaxPathString srcExt;
+		MaxPathString dirPath;
 		Path::GetPathExtension(Span(src, StringLength(src)), srcExt.toSpan());
+		Path::GetPathParentPath(src, dirPath.toSpan());
 		ModelImporter* importer = GetImporter(srcExt);
 		if (!importer) {
 			return false;
@@ -54,6 +56,11 @@ namespace Cjing3D
 		if (!importer->WriteModel(stream))
 		{
 			Logger::Warning("Failed to write model:%s", dest);
+			return false;
+		}
+		if (!importer->WriteMaterials(dirPath.c_str())) 
+		{
+			Logger::Warning("Failed to write materials:%s", dest);
 			return false;
 		}
 

@@ -15,6 +15,7 @@ namespace Cjing3D
 
 		virtual bool Import(ResConverterContext& context, Span<char> memBuffer, const char* src) = 0;
 		virtual bool WriteModel(MemoryStream& stream) = 0;
+		virtual bool WriteMaterials(const char* dirPath) = 0;
 		virtual bool SupportsFileExt(const char* ext) = 0;
 	};
 }

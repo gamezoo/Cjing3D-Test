@@ -125,9 +125,9 @@ namespace ImGuiRHI
 			mRasterizerState.mDepthClipEnable = true;
 
 			// inputLayout
-			mInputLayout.mElements.push(GPU::InputLayoutDesc::VertexData("POSITION", 0u, GPU::FORMAT_R32G32_FLOAT, 0u));
-			mInputLayout.mElements.push(GPU::InputLayoutDesc::VertexData("TEXCOORD", 0u, GPU::FORMAT_R32G32_FLOAT, 0u));
-			mInputLayout.mElements.push(GPU::InputLayoutDesc::VertexData("COLOR",    0u, GPU::FORMAT_R8G8B8A8_UNORM, 0u));
+			mInputLayout.mElements.push(GPU::VertexElement::VertexData("POSITION", 0u, GPU::FORMAT_R32G32_FLOAT,   0u));
+			mInputLayout.mElements.push(GPU::VertexElement::VertexData("TEXCOORD", 0u, GPU::FORMAT_R32G32_FLOAT,   0u));
+			mInputLayout.mElements.push(GPU::VertexElement::VertexData("COLOR",    0u, GPU::FORMAT_R8G8B8A8_UNORM, 0u));
 
 			// shaders
 			ShaderFactory factory;

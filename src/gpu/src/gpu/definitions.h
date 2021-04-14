@@ -438,6 +438,29 @@ namespace GPU {
 		IMAGE_LAYOUT_SHADING_RATE_SOURCE,		// shading rate control per tile
 	};
 
+	enum OBJECT_VERTEXUSAGE
+	{
+		VERTEX_USAGE_INVALID = -1,
+		VERTEX_USAGE_POSITION,
+		VERTEX_USAGE_POSITION_NORMAL,
+		VERTEX_USAGE_UV,
+		VERTEX_USAGE_NORMAL,
+		VERTEX_USAGE_COLOR,
+		VERTEX_USAGE_TANGENT,
+
+		VERTEX_USAGE_COUNT
+	};
+
+	enum OBJECT_VERTEXINPUT
+	{
+		INPUT_SLOT_POSITION_NORMAL,
+		INPUT_SLOT_UV0,
+		INPUT_SLOT_COLOR,
+		INPUT_SLOT_TANGENT,
+		INPUT_SLOT_INSTANCEDATA,
+		INPUT_SLOT_COUNT,
+	};
+
 	struct ViewPort
 	{
 		F32 mTopLeftX = 0.0f;
@@ -459,18 +482,25 @@ namespace GPU {
 		U32 mAlignedByteOffset = APPEND_ALIGNED_ELEMENT;
 		InputClassification mInputSlotClass = InputClassification::INPUT_PER_VERTEX_DATA;
 		U32 mInstanceDataStepRate = 0;
-	};
+		OBJECT_VERTEXUSAGE mVertexUsage = VERTEX_USAGE_INVALID;
 
-	struct InputLayoutDesc
-	{
 		static VertexElement VertexData(
 			const char* semanticName,
 			U32 semanticIndex,
 			FORMAT format,
 			U32 inputSlot) {
-			return { semanticName, semanticIndex, format, inputSlot, APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA, 0u };
+			return { semanticName, semanticIndex, format, inputSlot, APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA, 0u, VERTEX_USAGE_INVALID };
 		}
 
+		static VertexElement VertexData(
+			OBJECT_VERTEXUSAGE vertexUsage,
+			FORMAT format) {
+			return { nullptr, 0, format, 0, APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA, 0u, vertexUsage };
+		}
+	};
+
+	struct InputLayoutDesc
+	{
 		DynamicArray<VertexElement> mElements;
 	};
 

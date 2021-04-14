@@ -290,6 +290,22 @@ namespace Cjing3D
 			++mSize;
 		}
 
+		void insert(const T* begin, const T* end)
+		{
+			I32 num = (I32)(end - begin);
+			if (num <= 0) {
+				return;
+			}
+			if (mSize + num > mCapacity) {
+				reserve((mSize + num) * 2);
+			}
+
+			for (const T* it = begin; it != end; ++it)
+			{
+				new((char*)(mData + size)) T(*it);
+				++size;
+			}
+		}
 
 		void erase(U32 index)
 		{

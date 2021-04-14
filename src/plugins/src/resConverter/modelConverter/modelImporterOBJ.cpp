@@ -33,12 +33,15 @@ namespace Cjing3D
 		}
 	};
 
+	/// ///////////////////////////////////////////////////////////////////////
+	/// Impl
 	class ModelImporterOBJImpl
 	{
 	public:
 		struct ImportMaterial
 		{
 			String mPath;
+			tinyobj::material_t* mTinyMaterial = nullptr;
 		};
 
 		struct ImportMesh
@@ -50,40 +53,106 @@ namespace Cjing3D
 			MemoryStream mVertexData;
 			DynamicArray<I32> mIndices;
 			DynamicArray<ModelSubMesh> mSubMeshes;
+
+			tinyobj::shape_t* mTinyObjShape = nullptr;
 		};
 		DynamicArray<ImportMesh> mMeshes;
 		DynamicArray<ImportMaterial> mMaterials;
 		DynamicArray<MeshInstData> mMeshInstDatas;
 
-	private:
-		ImportMesh& GetImportMesh(GPU::VertexElement* elements, I32 num, I32 indexStride);
-		void GatherVertice(tinyobj::index_t& index, GPU::VertexElement* elements, I32 num, MemoryStream& vertexData);
+		// tiny obj objects
+		tinyobj::attrib_t objAttrib;
+		std::vector<tinyobj::shape_t> objShapes;
+		std::vector<tinyobj::material_t> objMaterials;
 
 	public:
 		bool Import(ResConverterContext& context, Span<char> memBuffer, const char* src);
+		void PostprocessMeshes();
 		bool WriteModel(MemoryStream& stream);
+		bool WriteMaterials(const char* dirPath);
 	};
 
-	ModelImporterOBJImpl::ImportMesh& ModelImporterOBJImpl::GetImportMesh(GPU::VertexElement* elements, I32 num, I32 indexStride)
+	void ModelImporterOBJImpl::PostprocessMeshes()
 	{
-		// TODO: 在此处插入 return 语句
-	}
-
-	void ModelImporterOBJImpl::GatherVertice(tinyobj::index_t& index, GPU::VertexElement* elements, I32 num, MemoryStream& vertexData)
-	{
-	/*	for (int i = 0; i < num; i++)
+		// TODO: use jobsystem
+		for (ImportMesh& importMesh : mMeshes)
 		{
-			GPU::VertexElement& element = elements[i];
-			U32 stride = GPU::GetFormatInfo(element.mFormat).mBlockBits / 8;
-		}*/
+			tinyobj::shape_t& shape = *importMesh.mTinyObjShape;
+			MemoryStream& vertexData = importMesh.mVertexData;
+
+			for (auto& shape : objShapes)
+			{
+				HashMap<U32, U32> uniqueVertices;
+				HashMap<I32, bool> registeredMaterialIndices;
+				I32 currentSubMesh = -1;
+
+				for (I32 i = 0; i < shape.mesh.indices.size(); i += 3)
+				{
+					tinyobj::index_t reorderedIndices[] = {
+						shape.mesh.indices[i + 0],
+						shape.mesh.indices[i + 1],
+						shape.mesh.indices[i + 2],
+					};
+
+					for (auto& index : reorderedIndices)
+					{
+						int materialIndex = std::max(0, shape.mesh.material_ids[i / 3]);
+						if (!registeredMaterialIndices.find(materialIndex))
+						{
+							registeredMaterialIndices.insert(materialIndex, true);
+							currentSubMesh++;
+						}
+
+						// obj only support vertex/normal/texcoord
+						U32 vertexHash = 0;
+						HashCombine(vertexHash, index.vertex_index);
+						HashCombine(vertexHash, index.normal_index);
+						HashCombine(vertexHash, index.texcoord_index);
+						HashCombine(vertexHash, materialIndex);
+
+						if (uniqueVertices.find(vertexHash) == nullptr)
+						{
+							uniqueVertices.insert(vertexHash, (U32)importMesh.mVertices++);
+							
+							// position
+							F32x3 pos = F32x3(
+								objAttrib.vertices[index.vertex_index * 3 + 0],
+								objAttrib.vertices[index.vertex_index * 3 + 1],
+								objAttrib.vertices[index.vertex_index * 3 + 2]
+							);
+							vertexData.Write(pos);
+
+							// normal
+							if (!objAttrib.normals.empty())
+							{
+								F32x3 nor = F32x3(
+									objAttrib.normals[index.normal_index * 3 + 0],
+									objAttrib.normals[index.normal_index * 3 + 1],
+									objAttrib.normals[index.normal_index * 3 + 2]
+								);
+								vertexData.Write(nor);
+							}
+							// texcoord
+							if (index.texcoord_index >= 0 && !objAttrib.texcoords.empty())
+							{
+								F32x2 tex = F32x2(
+									objAttrib.texcoords[index.texcoord_index * 2 + 0],
+									1 - objAttrib.texcoords[index.texcoord_index * 2 + 1]
+								);
+								vertexData.Write(tex);
+							}
+						}
+						importMesh.mIndices.push(uniqueVertices[vertexHash]);
+						importMesh.mSubMeshes[currentSubMesh].mIndices++;
+					}
+				}
+			}
+		}
 	}
 
 	bool ModelImporterOBJImpl::Import(ResConverterContext& context, Span<char> memBuffer, const char* src)
 	{
 		// tiny objects
-		tinyobj::attrib_t objAttrib;
-		std::vector <tinyobj::shape_t> objShapes;
-		std::vector<tinyobj::material_t> objMaterials;
 		std::string objErrors;
 
 		// mem buffer
@@ -98,19 +167,46 @@ namespace Cjing3D
 			return false;
 		}
 
+		// load vertex elements
+		StaticArray<GPU::VertexElement, GPU::VERTEX_USAGE_COUNT> elements;
+		I32 numElements = 0;
+		// positoin
+		elements[numElements++] = GPU::VertexElement::VertexData(GPU::VERTEX_USAGE_POSITION, GPU::FORMAT::FORMAT_R32G32B32_FLOAT);
+		// normals
+		if (!objAttrib.normals.empty()) {
+			elements[numElements++] = GPU::VertexElement::VertexData(GPU::VERTEX_USAGE_NORMAL, GPU::FORMAT::FORMAT_R8G8B8A8_SNORM);
+		}
+		// texcoords
+		if (objAttrib.texcoords.empty()) {
+			elements[numElements++] = GPU::VertexElement::VertexData(GPU::VERTEX_USAGE_UV, GPU::FORMAT::FORMAT_R16G16_FLOAT);
+		}
+		// colors
+		if (!objAttrib.colors.empty()) {
+			elements[numElements++] = GPU::VertexElement::VertexData(GPU::VERTEX_USAGE_COLOR, GPU::FORMAT::FORMAT_R8G8B8A8_UNORM);
+		}
+
 		// load materials
 		for (auto& objMaterial : objMaterials)
 		{
+			ImportMaterial& mat = mMaterials.emplace();
+			mat.mPath = objMaterial.name;
+			mat.mTinyMaterial = &objMaterial;
+
+			// gather textures
+			auto gatherTexture = [this, &mat, src]() {
+
+			};
+
 		}
 
 		// load meshes
 		for (auto& shape : objShapes)
 		{
-			HashMap<I32, I32> registeredMaterialIndices;
-			HashMap<U32, U32> uniqueVertices;
+			ImportMesh& mesh = mMeshes.emplace();
+			mesh.mTinyObjShape = &shape;
+			mesh.mVertexElements.insert(elements.data(), elements.data() + numElements);
 
-			DynamicArray<GPU::VertexElement> elements;
-			ImportMesh& mesh = GetImportMesh(elements.data(), elements.size(), 4);
+			HashMap<I32, I32> registeredMaterialIndices;
 
 			for (I32 i = 0; i < shape.mesh.indices.size(); i += 3)
 			{
@@ -126,7 +222,7 @@ namespace Cjing3D
 					int materialIndex = std::max(0, shape.mesh.material_ids[i / 3]);
 					if (!registeredMaterialIndices.find(materialIndex))
 					{
-						registeredMaterialIndices.insert(materialIndex, (I32)mMeshes.size());
+						registeredMaterialIndices.insert(materialIndex, (I32)mesh.mSubMeshes.size());
 						mesh.mSubMeshes.push(ModelSubMesh());
 						mesh.mSubMeshes.back().mIndexOffset = (uint32_t)mesh.mIndices.size();
 
@@ -136,22 +232,6 @@ namespace Cjing3D
 						meshInst.mSubMeshIndex = mesh.mSubMeshes.size() - 1;
 						CopyString(meshInst.mMaterial, mMaterials[materialIndex].mPath.c_str());
 					}
-
-					// obj only support vertex/normal/texcoord
-					U32 vertexHash = 0;
-					HashCombine(vertexHash, index.vertex_index);
-					HashCombine(vertexHash, index.normal_index);
-					HashCombine(vertexHash, index.texcoord_index);
-					HashCombine(vertexHash, materialIndex);
-
-					if (uniqueVertices.find(vertexHash) == nullptr)
-					{
-						uniqueVertices.insert(vertexHash, (U32)mesh.mVertices);
-						GatherVertice(index, elements.data(), elements.size(), mesh.mVertexData);
-						mesh.mVertices++;
-					}
-					mesh.mIndices.push(uniqueVertices[vertexHash]);
-					mesh.mSubMeshes.back().mIndices++;
 				}
 			}
 		}
@@ -161,6 +241,10 @@ namespace Cjing3D
 
 	bool ModelImporterOBJImpl::WriteModel(MemoryStream& stream)
 	{
+		// 1. postprocess meshes
+		PostprocessMeshes();
+
+		// 2. write model datas
 		// header
 		ModelGeneralHeader generalHeader;
 		generalHeader.mNumMeshes = mMeshes.size();
@@ -223,9 +307,24 @@ namespace Cjing3D
 			stream.Write(mesh.mIndices.data(), sizeof(I32) * mesh.mIndices.size());
 		}
 
+		// 3. clear tiny objs
+		objShapes.clear();
+		objMaterials.clear();
+
 		return true;
 	}
 
+	bool ModelImporterOBJImpl::WriteMaterials(const char* dirPath)
+	{
+		for (const auto& material : mMaterials)
+		{
+
+		}
+		return true;
+	}
+
+	/// ///////////////////////////////////////////////////////////////////////
+	/// ModelImporter
 	ModelImporterOBJ::ModelImporterOBJ()
 	{
 		mImpl = CJING_NEW(ModelImporterOBJImpl)();
@@ -249,5 +348,10 @@ namespace Cjing3D
 	bool ModelImporterOBJ::WriteModel(MemoryStream& stream)
 	{
 		return mImpl->WriteModel(stream);
+	}
+
+	bool ModelImporterOBJ::WriteMaterials(const char* dirPath)
+	{
+		return mImpl->WriteMaterials(dirPath);
 	}
 }
