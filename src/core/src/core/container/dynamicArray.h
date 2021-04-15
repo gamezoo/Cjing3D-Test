@@ -302,8 +302,8 @@ namespace Cjing3D
 
 			for (const T* it = begin; it != end; ++it)
 			{
-				new((char*)(mData + size)) T(*it);
-				++size;
+				new((char*)(mData + mSize)) T(*it);
+				++mSize;
 			}
 		}
 

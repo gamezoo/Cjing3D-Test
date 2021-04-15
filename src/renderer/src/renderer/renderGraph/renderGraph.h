@@ -129,8 +129,9 @@ namespace Cjing3D
 		}
 
 		void AddRenderPass(const char* name, RenderPass* renderPass);
+		bool Execute();
 		bool Execute(RenderGraphResource finalRes);
-		bool ExecuteWithoutSubmit(Span<RenderGraphResource> finalResources);
+		bool Execute(Span<RenderGraphResource> finalResources);
 		void Clear();
 		I32  GetPassCount()const;
 

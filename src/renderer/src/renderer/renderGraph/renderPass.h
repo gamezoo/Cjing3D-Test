@@ -1,6 +1,6 @@
 #pragma once
 
-#include "definitions.h"
+#include "renderer\definitions.h"
 #include "gpu\commandList.h"
 #include "core\container\span.h"
 #include "core\helper\function.h"

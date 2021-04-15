@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer\renderGraph.h"
+#include "renderer\renderGraph\renderGraph.h"
 #include "core\container\hashMap.h"
 
 namespace Cjing3D

@@ -1,6 +1,6 @@
 #include "renderPipeline3D.h"
 #include "renderer\renderer.h"
-#include "renderer\renderGraph.h"
+#include "renderer\renderGraph\renderGraph.h"
 #include "gpu\commandList.h"
 #include "gpu\gpu.h"
 

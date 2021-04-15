@@ -1,7 +1,7 @@
 #pragma once
 
 #include "renderPath.h"
-#include "renderer\renderGraph.h"
+#include "renderer\renderGraph\renderGraph.h"
 #include "renderer\texture.h"
 #include "core\event\eventSystem.h"
 
