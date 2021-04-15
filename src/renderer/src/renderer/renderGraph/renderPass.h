@@ -94,4 +94,24 @@ namespace Cjing3D
 		ExecuteFn mExecuteFunc;
 		DataT mData;
 	};
+
+	class PresentRenderPass : public RenderPass
+	{
+	public:
+		using SetupFn = Function<void(RenderGraphResBuilder& builder)>;
+
+		PresentRenderPass(RenderGraphResBuilder& builder, RenderGraph& renderGraph, SetupFn&& setupFunc) :
+			RenderPass(builder),
+			mRenderGraph(renderGraph) 
+		{
+			if (setupFunc != nullptr) {
+				setupFunc(builder);
+			}
+		}
+
+		void Execute(RenderGraphResources& resources, GPU::CommandList& cmd)override;
+
+	private:
+		RenderGraph& mRenderGraph;
+	};
 }

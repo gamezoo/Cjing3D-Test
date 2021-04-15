@@ -25,28 +25,22 @@ namespace Cjing3D
 		mFinalResources.push(res);
 	}
 
-	void RenderGraphPath::Update(F32 dt)
-	{
-	}
-
 	void RenderGraphPath::Render()
 	{
-		mMainGraph.Clear();
 		mFinalResources.clear();
+		
+		// update pipelines
+		UpdatePipelines(mMainGraph);
 
-		UpdatePipelines();
+		// compile render graph
+		mMainGraph.Compile();
 
-		if (mMainGraph.GetPassCount() > 0 && mFinalResources.size() > 0)
-		{
-			if (!mMainGraph.ExecuteWithoutSubmit(Span(mFinalResources.data(), mFinalResources.size()))) {
-				Logger::Warning("Render graph failed to executed");
-			}
-		}
+		// execute render graph
+		mMainGraph.Execute();
+
+		// clear render graph
+		mMainGraph.Clear();
 
 		RenderPath::Render();
-	}
-
-	void RenderGraphPath::Compose(GPU::CommandList& cmd)
-	{
 	}
 }

@@ -80,4 +80,30 @@ namespace Cjing3D
 		return true;
 	}
 
+	bool TextureHelper::CreateTexture(Texture& texture, const GPU::TextureDesc& desc, const U8* data, const char* name)
+	{
+		if (data != nullptr)
+		{
+			GPU::SubresourceData initData;
+			initData.mSysMem = data;
+			initData.mSysMemPitch = desc.mWidth * GPU::GetFormatStride(desc.mFormat);
+
+			auto resHandle = GPU::CreateTexture(&desc, &initData, name);
+			if (!resHandle) {
+				return false;
+			}
+			texture.SetTexture(resHandle, desc);
+		}
+		else
+		{
+			auto resHandle = GPU::CreateTexture(&desc, nullptr, name);
+			if (!resHandle) {
+				return false;
+			}
+			texture.SetTexture(resHandle, desc);
+		}
+		
+		return true;
+	}
+
 }

@@ -1,5 +1,6 @@
 #include "renderGraph.h"
 #include "renderPassImpl.h"
+#include "denpendencyGraph.h"
 #include "core\memory\memory.h"
 #include "core\memory\linearAllocator.h"
 #include "core\container\dynamicArray.h"
@@ -61,6 +62,8 @@ namespace Cjing3D
 		Set<I32> mNeededResources;
 		DynamicArray<ResourceInst> mResources;
 		DynamicArray<ResourceInst> mTransientResources;
+
+		DenpendencyGraph mDenpendencyGraph;
 
 		volatile I32 mCompileFailCount = 0;
 
@@ -338,17 +341,20 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resource = mImpl.mResources[res.mIndex];
-		switch (resource.mType)
+		if (bindFlag != GPU::BIND_NOTHING)
 		{
-		case GPU::RESOURCETYPE_BUFFER:
-			resource.mBufferDesc.mBindFlags |= bindFlag;
-			break;
-		case GPU::RESOURCETYPE_TEXTURE:
-			resource.mTexDesc.mBindFlags |= bindFlag;
-			break;
-		default:
-			break;
+			auto& resource = mImpl.mResources[res.mIndex];
+			switch (resource.mType)
+			{
+			case GPU::RESOURCETYPE_BUFFER:
+				resource.mBufferDesc.mBindFlags |= bindFlag;
+				break;
+			case GPU::RESOURCETYPE_TEXTURE:
+				resource.mTexDesc.mBindFlags |= bindFlag;
+				break;
+			default:
+				break;
+			}
 		}
 
 		mRenderPass->AddInput(res);
@@ -361,17 +367,20 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resource = mImpl.mResources[res.mIndex];
-		switch (resource.mType)
+		if (bindFlag != GPU::BIND_NOTHING)
 		{
-		case GPU::RESOURCETYPE_BUFFER:
-			resource.mBufferDesc.mBindFlags |= bindFlag;
-			break;
-		case GPU::RESOURCETYPE_TEXTURE:
-			resource.mTexDesc.mBindFlags |= bindFlag;
-			break;
-		default:
-			break;
+			auto& resource = mImpl.mResources[res.mIndex];
+			switch (resource.mType)
+			{
+			case GPU::RESOURCETYPE_BUFFER:
+				resource.mBufferDesc.mBindFlags |= bindFlag;
+				break;
+			case GPU::RESOURCETYPE_TEXTURE:
+				resource.mTexDesc.mBindFlags |= bindFlag;
+				break;
+			default:
+				break;
+			}
 		}
 
 		// update version for trace renderPass resource dependencies
@@ -496,6 +505,7 @@ namespace Cjing3D
 	RenderGraph::~RenderGraph()
 	{
 		Clear();
+
 		for (auto& resInst : mImpl->mTransientResources) {
 			if (resInst.mHandle != GPU::ResHandle::INVALID_HANDLE) 
 			{
@@ -530,11 +540,6 @@ namespace Cjing3D
 		return RenderGraphResource(resInst.mIndex);
 	}
 
-	I32 RenderGraph::GetPassCount()const
-	{
-		return mImpl->mRenderPasses.size();
-	}
-
 	void RenderGraph::AddRenderPass(const char* name, RenderPass* renderPass)
 	{
 		auto it = mImpl->mRenderPassIndexMap.find(name);
@@ -555,19 +560,103 @@ namespace Cjing3D
 		mImpl->mRenderPassIndexMap.insert(name, index);
 	}
 
+	void RenderGraph::Present(RenderGraphResource res)
+	{
+		AddPresentRenderPass(nullptr, [res](RenderGraphResBuilder& builder) {
+			builder.AddInput(res);
+		});
+	}
+
+	bool RenderGraph::Compile()
+	{
+		PROFILE_CPU_BLOCK("RenderGraphCompile");
+
+		mImpl->mExecuteRenderPasses.clear();
+		mImpl->mExecuteCmds.clear();
+		mImpl->mNeededResources.clear();
+
+		
+	
+		
+
+		return true;
+	}
+
 	bool RenderGraph::Execute()
 	{
-		// compile render graph
-		{
-			PROFILE_CPU_BLOCK("RenderGraphCompile");
+		PROFILE_CPU_BLOCK("RenderGraphExecute");
 
-		}
-		// execute render graph
+		// execute all renderPasses by jobsystem
+		I32 renderPassCount = mImpl->mExecuteRenderPasses.size();
+		if (mImpl->mExecuteCmds.size() < renderPassCount)
 		{
-			PROFILE_CPU_BLOCK("RenderGraphExecute");
+			mImpl->mExecuteCmds.resize(renderPassCount);
+			for (int i = 0; i < renderPassCount; i++) {
+				mImpl->mExecuteCmds[i] = GPU::CreateCommandlist();
+			}
 		}
 
-		return false;
+		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
+		DynamicArray<JobSystem::JobInfo> passJobs;
+		passJobs.reserve(renderPassCount);
+		for (int i = 0; i < renderPassCount; i++)
+		{
+			auto& jobInfo = passJobs.emplace();
+			jobInfo.jobName = mImpl->mExecuteRenderPasses[i]->mName;
+			jobInfo.userParam_ = i;
+			jobInfo.userData_ = mImpl;
+			jobInfo.jobFunc_ = [](I32 param, void* data)
+			{
+				RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
+				if (!impl) {
+					return;
+				}
+
+				// execute render pass
+				RenderPassInst* renderPassInst = impl->mExecuteRenderPasses[param];
+				GPU::CommandList* cmd = impl->mExecuteCmds[param];
+				{
+					auto ent = cmd->Event(renderPassInst->mName);
+					RenderGraphResources resources(*impl, renderPassInst->mRenderPass);
+					renderPassInst->mRenderPass->Execute(resources, *cmd);
+				}
+
+				// compile cmd
+				if (!cmd->GetCommands().empty())
+				{
+					if (!GPU::CompileCommandList(*cmd))
+					{
+						Concurrency::AtomicIncrement(&impl->mCompileFailCount);
+						Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
+					}
+				}
+			};
+		}
+
+		JobSystem::RunJobs(passJobs.data(), passJobs.size(), &jobHandle);
+		JobSystem::Wait(&jobHandle);
+
+		if (mImpl->mCompileFailCount > 0) {
+			return false;
+		}
+
+		// submit all cmd of render pass
+		DynamicArray<GPU::CommandList*> cmdsToSubmit;
+		for (int i = 0; i < renderPassCount; i++)
+		{
+			GPU::CommandList* cmd = mImpl->mExecuteCmds[i];
+			if (!cmd->GetCommands().empty()) {
+				cmdsToSubmit.push(cmd);
+			}
+		}
+
+		if (!GPU::SubmitCommandList(Span(cmdsToSubmit.data(), cmdsToSubmit.size())))
+		{
+			Logger::Warning("Failed to submit command lists.");
+			return false;
+		}
+
+		return true;
 	}
 
 	bool RenderGraph::Execute(RenderGraphResource finalRes)

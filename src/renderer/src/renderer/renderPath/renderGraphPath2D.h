@@ -14,7 +14,7 @@ namespace Cjing3D
 		void Start()override;
 		void Stop()override;
 		void Update(F32 dt)override;
-		void UpdatePipelines()override;
+		void UpdatePipelines(RenderGraph& renderGraph)override;
 		void Compose(GPU::CommandList& cmd)override;
 
 		void ResizeBuffers();

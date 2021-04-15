@@ -1,5 +1,6 @@
 #include "renderGraphPath2D.h"
 #include "renderer\renderImage.h"
+#include "renderer\textureHelper.h"
 
 namespace Cjing3D
 {
@@ -22,8 +23,7 @@ namespace Cjing3D
 		desc.mHeight = resolution[1];
 		desc.mFormat = GPU::GetBackBufferFormat();
 		desc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;
-		GPU::ResHandle rtMain = GPU::CreateTexture(&desc, nullptr, "rtMain2D");
-		mRtMain.SetTexture(rtMain, desc);
+		TextureHelper::CreateTexture(mRtMain, desc, nullptr, "rtMain");
 	}
 
 	void RenderGraphPath2D::Start()
@@ -51,15 +51,15 @@ namespace Cjing3D
 		RenderGraphPath::Update(dt);
 	}
 
-	void RenderGraphPath2D::UpdatePipelines()
+	void RenderGraphPath2D::UpdatePipelines(RenderGraph& renderGraph)
 	{
-		auto rtMainRes = mMainGraph.ImportTexture(RT_MAIN_NAME, mRtMain.GetHandle(), &mRtMain.GetDesc());
+		PROFILE_FUNCTION();
+
+		auto rtMainRes = renderGraph.ImportTexture(RT_MAIN_NAME, mRtMain.GetHandle(), &mRtMain.GetDesc());
 		mRenderPipeline2D.SetResource("rtMain", rtMainRes);
-		mRenderPipeline2D.Setup(mMainGraph);
+		mRenderPipeline2D.Setup(renderGraph);
 
 		AddFinalResource(rtMainRes);
-
-		RenderGraphPath::UpdatePipelines();
 	}
 
 	void RenderGraphPath2D::Compose(GPU::CommandList& cmd)
@@ -72,7 +72,6 @@ namespace Cjing3D
 
 			RenderImage::Draw(mRtMain.GetHandle(), params, cmd);
 		}
-
 		RenderPath::Compose(cmd);
 	}
 }

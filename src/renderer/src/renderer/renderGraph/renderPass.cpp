@@ -45,4 +45,9 @@ namespace Cjing3D
 	{
 		return Span<const RenderGraphResource>(mImpl->mOutputs.data(), mImpl->mOutputCount);
 	}
+
+	void PresentRenderPass::Execute(RenderGraphResources& resources, GPU::CommandList& cmd)
+	{
+		// do nothing...
+	}
 }

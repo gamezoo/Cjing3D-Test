@@ -1,6 +1,7 @@
 #include "renderGraphPath3D.h"
 #include "gpu\gpu.h"
 #include "renderer\renderImage.h"
+#include "renderer\textureHelper.h"
 
 namespace Cjing3D
 {
@@ -25,9 +26,8 @@ namespace Cjing3D
 			desc.mWidth = resolution[0];
 			desc.mHeight = resolution[1];
 			desc.mFormat = GPU::FORMAT_R8G8B8A8_UNORM;
-			desc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;
-			GPU::ResHandle rtMain = GPU::CreateTexture(&desc, nullptr, "rtMain");
-			mRtMain.SetTexture(rtMain, desc);
+			desc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;			
+			TextureHelper::CreateTexture(mRtMain, desc, nullptr, "rtMain");
 		}
 		// depthBuffers
 		{
@@ -36,10 +36,8 @@ namespace Cjing3D
 			desc.mHeight = resolution[1];
 			desc.mFormat = GPU::FORMAT_R32G8X24_TYPELESS;
 			desc.mBindFlags = GPU::BIND_DEPTH_STENCIL | GPU::BIND_SHADER_RESOURCE;
-			GPU::ResHandle dpbMain = GPU::CreateTexture(&desc, nullptr, "dpbMain");
-			mDpbMain.SetTexture(dpbMain, desc);
+			TextureHelper::CreateTexture(mRtMain, desc, nullptr, "dbpMain");
 		}
-
 	}
 
 	void RenderGraphPath3D::Start()
@@ -78,18 +76,19 @@ namespace Cjing3D
 		mViewport.Update();
 	}
 
-	void RenderGraphPath3D::UpdatePipelines()
+	void RenderGraphPath3D::UpdatePipelines(RenderGraph& renderGraph)
 	{
-		auto rtMainRes = mMainGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), &mRtMain.GetDesc());
-		auto dbMainRes = mMainGraph.ImportTexture("dbMain", mDpbMain.GetHandle(), &mDpbMain.GetDesc());
+		PROFILE_FUNCTION();
+
+		auto rtMainRes = renderGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), &mRtMain.GetDesc());
+		auto dbMainRes = renderGraph.ImportTexture("dbMain", mDpbMain.GetHandle(), &mDpbMain.GetDesc());
 
 		mRenderPipeline3D.SetResource("rtMain", rtMainRes);
 		mRenderPipeline3D.SetResource("dbMain", dbMainRes);
 
 		//setup pipelines
-		mRenderPipeline3D.Setup(mMainGraph, mViewport, mFrameCB, mVisibility);
+		mRenderPipeline3D.Setup(renderGraph, mViewport, mFrameCB, mVisibility);
 		AddFinalResource(rtMainRes);
-		RenderGraphPath2D::UpdatePipelines();
 	}
 
 	void RenderGraphPath3D::Compose(GPU::CommandList& cmd)

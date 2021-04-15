@@ -56,7 +56,7 @@ namespace Cjing3D
 		RenderGraphImpl& mImpl;
 	};
 
-	// RenderGraph resource builder(called by renderPass:setup)
+	// RenderGraph resource builder(Called by RenderPass::Setup)
 	class RenderGraphResBuilder
 	{
 	public:
@@ -66,8 +66,8 @@ namespace Cjing3D
 		RenderGraphResource CreateTexture(const char* name, const GPU::TextureDesc* desc);
 		RenderGraphResource CreateBuffer(const char* name, const GPU::BufferDesc* desc);
 
-		RenderGraphResource AddInput(RenderGraphResource res, GPU::BIND_FLAG bindFlag);
-		RenderGraphResource AddOutput(RenderGraphResource res, GPU::BIND_FLAG bindFlag);
+		RenderGraphResource AddInput(RenderGraphResource res,  GPU::BIND_FLAG bindFlag = GPU::BIND_NOTHING);
+		RenderGraphResource AddOutput(RenderGraphResource res, GPU::BIND_FLAG bindFlag = GPU::BIND_NOTHING);
 		RenderGraphResource AddRTV(RenderGraphResource res, RenderGraphFrameAttachment attachment);
 		RenderGraphResource SetDSV(RenderGraphResource res, RenderGraphFrameAttachment attachment);
 
@@ -94,7 +94,6 @@ namespace Cjing3D
 		RenderGraphImpl& mImpl;
 	};
 
-	// render graph, manage
 	class RenderGraph
 	{
 	public:
@@ -103,6 +102,27 @@ namespace Cjing3D
 
 		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc* desc = nullptr);
 		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc* desc = nullptr);
+
+		template<typename DataT>
+		DataRenderPass<DataT>&
+			AddDataRenderPass(const char* name, typename DataRenderPass<DataT>::SetupFn&& setupFunc, typename DataRenderPass<DataT>::ExecuteFn&& executeFunc)
+		{
+			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, std::move(setupFunc), std::move(executeFunc));
+			return renderPass;
+		}
+
+		CallbackRenderPass& 
+			AddCallbackRenderPass(const char* name, typename CallbackRenderPass::SetupFn&& setupFunc, typename CallbackRenderPass::ExecuteFn&& executeFunc)
+		{
+			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, std::move(setupFunc), std::move(executeFunc));
+			return renderPass;
+		}
+
+		PresentRenderPass& AddPresentRenderPass(const char* name, typename PresentRenderPass::SetupFn&& setupFunc)
+		{
+			PresentRenderPass& renderPass = AddRenderPass<PresentRenderPass>(name, *this, std::move(setupFunc));
+			return renderPass;
+		}
 
 		template<typename RenderPassT, typename... Args>
 		std::enable_if_t<std::is_base_of<RenderPass, RenderPassT>::value, RenderPassT>&
@@ -115,27 +135,29 @@ namespace Cjing3D
 			return *ret;
 		}
 
-		template<typename DataT>
-		DataRenderPass<DataT>& AddDataRenderPass(const char* name, typename DataRenderPass<DataT>::SetupFn&& setupFunc, typename DataRenderPass<DataT>::ExecuteFn&& executeFunc)
-		{
-			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, std::move(setupFunc), std::move(executeFunc));
-			return renderPass;
-		}
-
-		CallbackRenderPass& AddCallbackRenderPass(const char* name, typename CallbackRenderPass::SetupFn&& setupFunc, typename CallbackRenderPass::ExecuteFn&& executeFunc)
-		{
-			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, std::move(setupFunc), std::move(executeFunc));
-			return renderPass;
-		}
-
 		void AddRenderPass(const char* name, RenderPass* renderPass);
+		
+		void Present(RenderGraphResource res);
+		bool Compile();
 		bool Execute();
 		bool Execute(RenderGraphResource finalRes);
 		bool Execute(Span<RenderGraphResource> finalResources);
 		void Clear();
-		I32  GetPassCount()const;
 
 		RenderGraphResource GetResource(const char* name)const;
+
+
+	/// ////////////////////////////////////////////////////
+	/// Refector Begin
+		template<typename ResourceT>
+		RenderGraphResource ImportResource(typename ResourceT::Descriptor const& desc, const ResourceT& resource)
+		{
+			return RenderGraphResource();
+		}
+
+			
+	/// Refector End
+	/// ////////////////////////////////////////////////////
 
 	private:
 		void* Allocate(size_t size);

@@ -15,15 +15,13 @@ namespace Cjing3D
 
 		void Start()override;
 		void Stop()override;
-		void Update(F32 dt)override;
 		void Render()override;
-		void Compose(GPU::CommandList& cmd)override;
 
-		virtual void UpdatePipelines() {};
+		virtual void UpdatePipelines(RenderGraph& renderGraph) = 0;
+
 		void AddFinalResource(RenderGraphResource res);
-		RenderGraph& GetRenderGraph() { return mMainGraph; }
 
-	protected:
+	private:
 		RenderGraph mMainGraph;
 		DynamicArray<RenderGraphResource> mFinalResources;
 	};
