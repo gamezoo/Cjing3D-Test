@@ -15,6 +15,8 @@ class Context:
     input = None  
     output = '.'
     records = []
+    force_update = False
+    implicit_write = False
     support_types = ('INT', 'FLOAT', 'STRING', 'BOOL')  # 当前支持的表格格式
 
 class SheetType(Enum):
@@ -23,10 +25,11 @@ class SheetType(Enum):
     GlobalTable  = 2
 
 class Record:
-    def __init__(self, path, sheet, export_path, export_name, export_obj):
+    def __init__(self, path, sheet, dir_path, export_path, export_name, export_obj):
         self.path = path 
         self.sheet = sheet 
         self.export_path = export_path 
+        self.dir_path    = dir_path
         self.export_name = export_name 
         self.export_obj  = export_obj
 
@@ -204,8 +207,8 @@ def parse_global_table(path, sheet):
     return data_obj
 
 def write_file(context, record):
-    if not os.path.isdir(context.output):
-        os.makedirs(context.output)
+    if not os.path.isdir(record.dir_path):
+        os.makedirs(record.dir_path)
 
     jsonstr = json.dumps(record.export_obj, ensure_ascii = False, indent = 2)
     with codecs.open(record.export_path, 'w', 'utf-8') as f:
@@ -233,7 +236,14 @@ def export_excel(context, path):
         sheet_type = parse_sheet_type(sheet)
         if sheet_type != SheetType.UnknownTable:
             # 导出路径
-            export_path = os.path.join(context.output, export_name + '.json')
+            if context.implicit_write:
+                if sheet_type == SheetType.DesignTable:
+                    dir_path = os.path.join(context.output, "DesignTable")
+                else:
+                    dir_path = os.path.join(context.output, "GlobalTable")
+            else:
+                dir_path = os.path.join(context.output)
+            export_path = os.path.join(dir_path, export_name + '.json')
 
             # 检查当前表名是否已经导出
             r = next((r for r in context.records if r.root == root), False)
@@ -241,7 +251,7 @@ def export_excel(context, path):
                 raise ValueError('%s in %s is already defined in %s' % (root, path, r.path))
             
             # 仅当原数据表修改后才去分析表
-            if not isoutofdate(path, export_path):
+            if not context.force_update and not isoutofdate(path, export_path):
                 continue
 
             # 根据sheet_type分析对应的表项
@@ -251,7 +261,7 @@ def export_excel(context, path):
                 export_obj = parse_global_table(path, sheet)
 
             # 记录当前导出项
-            context.records.append(Record(path, sheet, export_path, export_name, export_obj))
+            context.records.append(Record(path, sheet, dir_path, export_path, export_name, export_obj))
 
     # write exported files
     write_files(context)
@@ -273,7 +283,7 @@ def export_excels(context):
         export_excel(context, path)
 
 def main():
-    opst, args = getopt.getopt(sys.argv[1:], 'i:o:h')
+    opst, args = getopt.getopt(sys.argv[1:], 'i:o:h;f;w')
 
     global context
     context = Context()
@@ -283,9 +293,13 @@ def main():
     for op, v in opst:
         if op == "-i":
             context.input = re.split(r'[,]+', v.strip());
-        if op == "-o":
+        elif op == "-o":
             context.output = v;
-        if op == "-h":
+        elif op == "-f":
+            context.force_update = True
+        elif op == "-w":
+            context.implicit_write = True
+        elif op == "-h":
             display_help();
             sys.exit()
 
