@@ -1,6 +1,5 @@
 #include "renderGraph.h"
 #include "renderPassImpl.h"
-#include "denpendencyGraph.h"
 #include "core\memory\memory.h"
 #include "core\memory\linearAllocator.h"
 #include "core\container\dynamicArray.h"
@@ -47,6 +46,10 @@ namespace Cjing3D
 
 		GPU::TextureDesc mTexDesc;
 		GPU::BufferDesc mBufferDesc;
+
+		// new
+		DynamicArray<I32> mWrittenPasses;
+		DynamicArray<I32> mReadPasses;
 	};
 	
 	class RenderGraphImpl
@@ -63,10 +66,14 @@ namespace Cjing3D
 		DynamicArray<ResourceInst> mResources;
 		DynamicArray<ResourceInst> mTransientResources;
 
-		DenpendencyGraph mDenpendencyGraph;
-
 		volatile I32 mCompileFailCount = 0;
 
+		// Refactor begin
+		RenderGraphResource mFinalRes;
+		HashMap<RenderGraphResource, I32> mResourceIndexMap;
+		DynamicArray<I32> mPassStack;	// used for filter passes by finalRes
+
+	public:
 		RenderGraphImpl() {
 			mAllocator.Reserve(1024 * 1024);
 		}
@@ -96,6 +103,17 @@ namespace Cjing3D
 			}
 			return resInst.mHandle;
 		}
+
+		//////////////////////////////////////////////////////
+		// new begin
+		bool Compile();
+		bool Execute();
+		bool ValidatePasses();
+
+		void TraverseRenderPassDependency(const RenderPassInst& renderPass, U32 stackCount);
+		void DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount);
+		void FilterRenderPass(DynamicArray<I32>& renderPasses);
+		void ReorderRenderPass(DynamicArray<I32>& renderPasses);
 	};
 
 	void RenderGraphImpl::AddDependentRenderPass(DynamicArray<RenderPassInst*>& outRenderPasses, const Span<const RenderGraphResource>& resources)
@@ -251,7 +269,7 @@ namespace Cjing3D
 				}
 
 				auto& graphAttachment = renderPass->mRTVAttachments[i];
-				attachment.mLoadOperator = graphAttachment.mLoadOperator;
+				attachment.mLoadOp = graphAttachment.mLoadOp;
 				attachment.mType = GPU::BindingFrameAttachment::RENDERTARGET;
 				frameBindingSetDesc.mAttachments.push(attachment);
 			}
@@ -260,7 +278,7 @@ namespace Cjing3D
 			if (renderPass->mDSV)
 			{
 				GPU::BindingFrameAttachment attachment;
-				attachment.mLoadOperator = renderPass->mDSVAttachment.mLoadOperator;
+				attachment.mLoadOp = renderPass->mDSVAttachment.mLoadOp;
 				attachment.mType = GPU::BindingFrameAttachment::DEPTH_STENCIL;
 				attachment.mResource = GetTexture(renderPass->mDSV);
 				frameBindingSetDesc.mAttachments.push(attachment);
@@ -270,6 +288,99 @@ namespace Cjing3D
 				renderPass->mFrameBindingSet = GPU::CreateFrameBindingSet(&frameBindingSetDesc);
 			}
 		}
+	}
+
+	bool RenderGraphImpl::ValidatePasses()
+	{
+		return false;
+	}
+
+	void RenderGraphImpl::TraverseRenderPassDependency(const RenderPassInst& renderPass, U32 stackCount)
+	{
+		// TODO: in dev
+		auto inputs = renderPass.mRenderPass->GetInputs();
+		for (const RenderGraphResource& res : inputs)
+		{
+			auto resIndex = mResourceIndexMap.find(res);
+			if (resIndex != nullptr)
+			{
+				ResourceInst& res = mResources[*resIndex];
+				DependRenderPassRecursive(renderPass, res.mWrittenPasses, stackCount);
+			}
+		}
+	}
+
+	void RenderGraphImpl::DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount)
+	{
+		stackCount++;
+
+		for (auto& passIndex : writtenPasses)
+		{
+			mPassStack.push(passIndex);
+			TraverseRenderPassDependency(mRenderPasses[passIndex], stackCount);
+		}
+	}
+
+	void RenderGraphImpl::FilterRenderPass(DynamicArray<I32>& renderPasses)
+	{
+		// first reverse render passes
+		std::reverse(renderPasses.begin(), renderPasses.end());
+	}
+
+	void RenderGraphImpl::ReorderRenderPass(DynamicArray<I32>& renderPasses)
+	{
+	}
+
+	bool RenderGraphImpl::Compile()
+	{
+		PROFILE_CPU_BLOCK("RenderGraphCompile");
+
+		// 0. clear datas
+		mPassStack.clear();
+		mExecuteRenderPasses.clear();
+		mExecuteCmds.clear();
+		mNeededResources.clear();
+
+		// 1. validate the graph
+		if (!ValidatePasses()) {
+			return false;
+		}
+
+		// 2. check final res
+		auto it = mResourceIndexMap.find(mFinalRes);
+		if (it == nullptr)
+		{
+			Logger::Error("[RenderGraph] The final resource dose not exist.");
+			return false;
+		}
+		ResourceInst& finalRes = mResources[*it];
+		if (finalRes.mWrittenPasses.empty())
+		{
+			Logger::Error("[RenderGraph] The final resource dose not written by any passes.");
+			return false;
+		}
+
+		// 3. get all passes by traverse dependencies
+		for (auto& passIndex : finalRes.mWrittenPasses) {
+			mPassStack.push(passIndex);
+		}
+		auto tempStack = mPassStack;
+		for (auto& passIndex : tempStack) {
+			TraverseRenderPassDependency(mRenderPasses[passIndex], 0);
+		}
+		FilterRenderPass(mPassStack);
+
+		// 4. reorder passes
+
+		return true;
+	}
+
+	bool RenderGraphImpl::Execute()
+	{
+		PROFILE_CPU_BLOCK("RenderGraphExecute");
+
+
+		return true;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -540,7 +651,7 @@ namespace Cjing3D
 		return RenderGraphResource(resInst.mIndex);
 	}
 
-	void RenderGraph::AddRenderPass(const char* name, RenderPass* renderPass)
+	void RenderGraph::AddRenderPass(const char* name, RenderGraphQueueFlag queueFlag, RenderPass* renderPass)
 	{
 		auto it = mImpl->mRenderPassIndexMap.find(name);
 		if (it != nullptr)
@@ -560,103 +671,14 @@ namespace Cjing3D
 		mImpl->mRenderPassIndexMap.insert(name, index);
 	}
 
-	void RenderGraph::Present(RenderGraphResource res)
-	{
-		AddPresentRenderPass(nullptr, [res](RenderGraphResBuilder& builder) {
-			builder.AddInput(res);
-		});
-	}
-
 	bool RenderGraph::Compile()
 	{
-		PROFILE_CPU_BLOCK("RenderGraphCompile");
-
-		mImpl->mExecuteRenderPasses.clear();
-		mImpl->mExecuteCmds.clear();
-		mImpl->mNeededResources.clear();
-
-		
-	
-		
-
-		return true;
+		return mImpl->Compile();
 	}
 
 	bool RenderGraph::Execute()
 	{
-		PROFILE_CPU_BLOCK("RenderGraphExecute");
-
-		// execute all renderPasses by jobsystem
-		I32 renderPassCount = mImpl->mExecuteRenderPasses.size();
-		if (mImpl->mExecuteCmds.size() < renderPassCount)
-		{
-			mImpl->mExecuteCmds.resize(renderPassCount);
-			for (int i = 0; i < renderPassCount; i++) {
-				mImpl->mExecuteCmds[i] = GPU::CreateCommandlist();
-			}
-		}
-
-		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
-		DynamicArray<JobSystem::JobInfo> passJobs;
-		passJobs.reserve(renderPassCount);
-		for (int i = 0; i < renderPassCount; i++)
-		{
-			auto& jobInfo = passJobs.emplace();
-			jobInfo.jobName = mImpl->mExecuteRenderPasses[i]->mName;
-			jobInfo.userParam_ = i;
-			jobInfo.userData_ = mImpl;
-			jobInfo.jobFunc_ = [](I32 param, void* data)
-			{
-				RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
-				if (!impl) {
-					return;
-				}
-
-				// execute render pass
-				RenderPassInst* renderPassInst = impl->mExecuteRenderPasses[param];
-				GPU::CommandList* cmd = impl->mExecuteCmds[param];
-				{
-					auto ent = cmd->Event(renderPassInst->mName);
-					RenderGraphResources resources(*impl, renderPassInst->mRenderPass);
-					renderPassInst->mRenderPass->Execute(resources, *cmd);
-				}
-
-				// compile cmd
-				if (!cmd->GetCommands().empty())
-				{
-					if (!GPU::CompileCommandList(*cmd))
-					{
-						Concurrency::AtomicIncrement(&impl->mCompileFailCount);
-						Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
-					}
-				}
-			};
-		}
-
-		JobSystem::RunJobs(passJobs.data(), passJobs.size(), &jobHandle);
-		JobSystem::Wait(&jobHandle);
-
-		if (mImpl->mCompileFailCount > 0) {
-			return false;
-		}
-
-		// submit all cmd of render pass
-		DynamicArray<GPU::CommandList*> cmdsToSubmit;
-		for (int i = 0; i < renderPassCount; i++)
-		{
-			GPU::CommandList* cmd = mImpl->mExecuteCmds[i];
-			if (!cmd->GetCommands().empty()) {
-				cmdsToSubmit.push(cmd);
-			}
-		}
-
-		if (!GPU::SubmitCommandList(Span(cmdsToSubmit.data(), cmdsToSubmit.size())))
-		{
-			Logger::Warning("Failed to submit command lists.");
-			return false;
-		}
-
-		return true;
+		return mImpl->Execute();
 	}
 
 	bool RenderGraph::Execute(RenderGraphResource finalRes)
@@ -888,6 +910,15 @@ namespace Cjing3D
 		return true;
 	}
 
+	void RenderGraph::SetFinalResource(const RenderGraphResource& res)
+	{
+		// It is must be called before Compile()
+		if (!mImpl->mFinalRes.IsEmpty()) {
+			Logger::Warning("[RenderGraph] The final res is already set and is will be overlaped.");
+		}
+		mImpl->mFinalRes = res;
+	}
+
 	void RenderGraph::Clear()
 	{
 		for (auto& renderPassInst : mImpl->mRenderPasses) {
@@ -907,8 +938,14 @@ namespace Cjing3D
 		}
 		mImpl->mNeededResources.clear();
 		mImpl->mResources.clear();
+		mImpl->mResourceIndexMap.clear();
 
 		mImpl->mAllocator.Reset();
+	}
+
+	String RenderGraph::ExportGraphviz()
+	{
+		return String();
 	}
 
 	void* RenderGraph::Allocate(size_t size)

@@ -28,6 +28,7 @@ namespace GPU
 		bool CompileCommand(const CommandEndFrameBindingSet* cmd);
 		bool CompileCommand(const CommandUpdateBuffer* cmd);
 		bool CompileCommand(const CommandBindResource* cmd);
+		bool CompileCommand(const CommandBarrier* cmd);
 
 	private:
 		GraphicsDeviceDx11& mDevice;

@@ -49,6 +49,7 @@ is_static_plugin = true
 work_dir = nil
 build_editor = true
 build_app = false
+build_tests = false
 all_plugins = {}
 
 function setup_project_confgiurations()
@@ -134,6 +135,9 @@ function setup_env_from_options()
     end 
     if _OPTIONS["net_lib"] then 
         net_lib = _OPTIONS["net_lib"]
+    end 
+    if _OPTIONS["build_tests"] then 
+        build_tests = true
     end 
 end
 

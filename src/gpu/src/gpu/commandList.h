@@ -48,6 +48,8 @@ namespace GPU {
 		void BeginFrameBindingSet(ResHandle handle);
 		void EndFrameBindingSet();
 
+		void Barrier(const GPU::GPUBarrier* barriers, U32 num);
+
 		struct ScopedFrameBindingSet
 		{
 		public:

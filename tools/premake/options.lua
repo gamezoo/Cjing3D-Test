@@ -60,6 +60,12 @@ newoption
 
 newoption 
 {
+	trigger = "build_tests",
+	description = "build tests projects."
+}
+
+newoption 
+{
 	trigger = "build_app",
 	description = "build default app."
 }

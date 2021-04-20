@@ -439,6 +439,20 @@ namespace GPU {
 		IMAGE_LAYOUT_SHADING_RATE_SOURCE,		// shading rate control per tile
 	};
 
+	enum BUFFER_STATE
+	{
+		BUFFER_STATE_UNDEFINED,					// invalid state
+		BUFFER_STATE_VERTEX_BUFFER,				// vertex buffer, read only
+		BUFFER_STATE_INDEX_BUFFER,				// index buffer, read only
+		BUFFER_STATE_CONSTANT_BUFFER,			// constant buffer, read only
+		BUFFER_STATE_INDIRECT_ARGUMENT,			// argument buffer to DrawIndirect() or DispatchIndirect()
+		BUFFER_STATE_SHADER_RESOURCE,			// shader resource, read only
+		BUFFER_STATE_UNORDERED_ACCESS,			// shader resource, write enabled
+		BUFFER_STATE_COPY_SRC,					// copy from
+		BUFFER_STATE_COPY_DST,					// copy to
+		BUFFER_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
+	};
+
 	enum OBJECT_VERTEXUSAGE
 	{
 		VERTEX_USAGE_INVALID = -1,

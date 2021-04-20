@@ -16,7 +16,7 @@ namespace Cjing3D
 	{
 		RenderGraphResource rtRes = graph.GetResource(RenderGraphPath2D::RT_MAIN_NAME);
 
-		graph.AddCallbackRenderPass("ImGuiPass",
+		/*graph.AddCallbackRenderPass("ImGuiPass",
 			[&](RenderGraphResBuilder& builder) {
 
 				builder.AddRTV(rtRes, RenderGraphFrameAttachment::RenderTarget());
@@ -31,6 +31,6 @@ namespace Cjing3D
 					ImGuiRHI::Manager::Render(cmd);
 				}
 			}
-		);
+		);*/
 	}
 }

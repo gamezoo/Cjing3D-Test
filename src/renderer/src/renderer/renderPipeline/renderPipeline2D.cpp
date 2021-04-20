@@ -12,23 +12,23 @@ namespace Cjing3D
 
 	void RenderPipeline2D::Setup(RenderGraph& graph)
 	{
-		auto rtMain = GetResource("rtMain");
+		//auto rtMain = GetResource("rtMain");
 
-		graph.AddCallbackRenderPass("Render2D",
-			[&](RenderGraphResBuilder& builder) {
+		//graph.AddCallbackRenderPass("Render2D",
+		//	[&](RenderGraphResBuilder& builder) {
 
-				builder.AddRTV(rtMain, RenderGraphFrameAttachment::RenderTarget(GPU::BindingFrameAttachment::LOAD_CLEAR));
-			},
-			[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				auto fbs = resources.GetFrameBindingSet();
-				if (fbs == GPU::ResHandle::INVALID_HANDLE) {
-					return;
-				}
+		//		builder.AddRTV(rtMain, RenderGraphFrameAttachment::RenderTarget(GPU::BindingFrameAttachment::LOAD_CLEAR));
+		//	},
+		//	[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+		//		auto fbs = resources.GetFrameBindingSet();
+		//		if (fbs == GPU::ResHandle::INVALID_HANDLE) {
+		//			return;
+		//		}
 
-				if (auto binding = cmd.BindScopedFrameBindingSet(fbs)) {
-					
-				}
-			}
-			);
+		//		if (auto binding = cmd.BindScopedFrameBindingSet(fbs)) {
+		//			
+		//		}
+		//	}
+		//);
 	}
 }

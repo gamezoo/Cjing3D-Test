@@ -60,4 +60,14 @@ if build_app then
         "WindowedApp"
     )
 end 
+
+if build_tests then 
+    create_example_app(
+        "tests", 
+        "src/tests", 
+        get_current_script_path(), 
+        "ConsoleApp",
+        all_plugins
+    )
+end 
 print("-------------------------------------------------------------")

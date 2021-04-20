@@ -157,6 +157,15 @@ namespace GPU {
         mCommands.push(command);
     }
 
+    void CommandList::Barrier(const GPU::GPUBarrier* barriers, U32 num)
+    {
+        auto* command = Alloc<CommandBarrier>();
+        for (I32 i = 0; i < num; i++) {
+            command->mBarriers.push(barriers[i]);
+        }
+        mCommands.push(command);
+    }
+
     CommandList::ScopedFrameBindingSet CommandList::BindScopedFrameBindingSet(ResHandle handle)
     {
         BeginFrameBindingSet(handle);

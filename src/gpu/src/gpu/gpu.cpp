@@ -54,10 +54,10 @@ namespace GPU
 				switch (handle.GetType())
 				{
 				case RESOURCETYPE_BUFFER:
-					mBufferDescMap.erase(handle.GetValue());
+					mBufferDescMap.erase(handle.GetHash());
 					break;
 				case RESOURCETYPE_TEXTURE:
-					mTextureDescMap.erase(handle.GetValue());
+					mTextureDescMap.erase(handle.GetHash());
 					break;
 				}
 
@@ -308,7 +308,7 @@ namespace GPU
 		mImpl->mDevice->ResetCommandList(cmd->GetHanlde());
 
 		mImpl->mUsedCmdList[mImpl->mUsedCmdCount] = cmdIndex;
-		mImpl->mUsedIndexMap.insert(cmd->GetHanlde().GetValue(), mImpl->mUsedCmdCount);
+		mImpl->mUsedIndexMap.insert(cmd->GetHanlde().GetHash(), mImpl->mUsedCmdCount);
 		mImpl->mUsedCmdCount++;
 
 		return cmd;
@@ -332,7 +332,7 @@ namespace GPU
 		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
 		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
 
-		auto usedIndex = mImpl->mUsedIndexMap.find(cmd.GetHanlde().GetValue());
+		auto usedIndex = mImpl->mUsedIndexMap.find(cmd.GetHanlde().GetHash());
 		if (usedIndex == nullptr) {
 			return false;
 		}
@@ -344,7 +344,7 @@ namespace GPU
 		for (int i = *usedIndex; i < mImpl->mUsedCmdCount; i++) {
 			mImpl->mUsedCmdList[i] = mImpl->mUsedCmdList[i + 1];
 		}
-		mImpl->mUsedIndexMap.erase(cmd.GetHanlde().GetValue());
+		mImpl->mUsedIndexMap.erase(cmd.GetHanlde().GetHash());
 		mImpl->mAvaiableCmdList[mImpl->mAvaiableCmdCount++] = cmdIndex;
 
 		// submit cmd
@@ -372,7 +372,7 @@ namespace GPU
 		// update cmd list
 		for (const auto& handle : handles)
 		{
-			auto usedIndex = mImpl->mUsedIndexMap.find(handle.GetValue());
+			auto usedIndex = mImpl->mUsedIndexMap.find(handle.GetHash());
 			if (usedIndex == nullptr) {
 				return false;
 			}
@@ -382,7 +382,7 @@ namespace GPU
 			for (int i = *usedIndex; i < mImpl->mUsedCmdCount; i++) {
 				mImpl->mUsedCmdList[i] = mImpl->mUsedCmdList[i + 1];
 			}
-			mImpl->mUsedIndexMap.erase(handle.GetValue());
+			mImpl->mUsedIndexMap.erase(handle.GetHash());
 			mImpl->mAvaiableCmdList[mImpl->mAvaiableCmdCount++] = cmdIndex;
 		}
 
@@ -409,7 +409,7 @@ namespace GPU
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTexture(handle, desc, initialData));
 		SET_DEBUG_NAME(name);
 		if (handle != ResHandle::INVALID_HANDLE) {
-			mImpl->mTextureDescMap.insert(handle.GetValue(), *desc);
+			mImpl->mTextureDescMap.insert(handle.GetHash(), *desc);
 		}
 		return handle;
 	}
@@ -420,7 +420,7 @@ namespace GPU
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateBuffer(handle, desc, initialData));
 		SET_DEBUG_NAME(name);
 		if (handle != ResHandle::INVALID_HANDLE) {
-			mImpl->mBufferDescMap.insert(handle.GetValue(), *desc);
+			mImpl->mBufferDescMap.insert(handle.GetHash(), *desc);
 		}
 		return handle;
 	}
@@ -524,12 +524,12 @@ namespace GPU
 
 	const BufferDesc* GetBufferDesc(ResHandle handle)
 	{
-		return mImpl->mBufferDescMap.find(handle.GetValue());
+		return mImpl->mBufferDescMap.find(handle.GetHash());
 	}
 
 	const TextureDesc* GetTextureDesc(ResHandle handle)
 	{
-		return mImpl->mTextureDescMap.find(handle.GetValue());
+		return mImpl->mTextureDescMap.find(handle.GetHash());
 	}
 
 	FORMAT GetBackBufferFormat()

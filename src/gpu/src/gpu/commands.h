@@ -25,6 +25,7 @@ namespace GPU {
 		BEGIN_FRAME_BINDING_SET,
 		END_FRAME_BINDING_SET,
 		UPDATE_BUFFER,
+		BARRIER
 
 	};
 
@@ -135,6 +136,11 @@ namespace GPU {
 		SHADERSTAGES mStage = SHADERSTAGES_VS;
 		I32 mSlot = 0;
 		I32 mSubresourceIndex = -1;
+	};
+
+	struct CommandBarrier : CommandTyped<CommandType::BARRIER>
+	{
+		DynamicArray<GPU::GPUBarrier> mBarriers;
 	};
 }
 }

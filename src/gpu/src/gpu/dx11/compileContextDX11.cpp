@@ -48,6 +48,7 @@ namespace GPU
             GPU_COMMAND_CASE(CommandEndFrameBindingSet);
             GPU_COMMAND_CASE(CommandUpdateBuffer);
             GPU_COMMAND_CASE(CommandBindResource);
+            GPU_COMMAND_CASE(CommandBarrier);
 
             case CommandBeginEvent::TYPE:
             {
@@ -339,7 +340,7 @@ namespace GPU
             {
                 ID3D11RenderTargetView* rtv = attachment.mSubresourceIndex < 0 ? texture->mRTV.Get() : texture->mSubresourceRTVs[attachment.mSubresourceIndex].Get();     
                 // clear rtv when rtv loaded
-                if (attachment.mLoadOperator == BindingFrameAttachment::LOAD_CLEAR) {
+                if (attachment.mLoadOp == BindingFrameAttachment::LOAD_CLEAR) {
                     mCommandList.GetContext()->ClearRenderTargetView(rtv, texture->mDesc.mClearValue.mColor);
                 }
                 rtvs[rtvIndex++] = rtv;
@@ -349,7 +350,7 @@ namespace GPU
             {
                 dsv = attachment.mSubresourceIndex < 0 ? texture->mDSV.Get() : texture->mSubresourceDSVs[attachment.mSubresourceIndex].Get();
                 // clear dsv when dsv loaded
-                if (attachment.mLoadOperator == BindingFrameAttachment::LOAD_CLEAR) 
+                if (attachment.mLoadOp == BindingFrameAttachment::LOAD_CLEAR) 
                 {
                     U32 flag = D3D11_CLEAR_DEPTH;
                     if (GPU::IsFormatSupportStencil(texture->mDesc.mFormat)) {
@@ -471,6 +472,12 @@ namespace GPU
             break;
         }
 
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandBarrier* cmd)
+    {
+        // D3D11 dose not support barrier cmd, just return true
         return true;
     }
 }

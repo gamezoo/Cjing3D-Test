@@ -24,11 +24,11 @@ namespace Cjing3D
 		RenderGraphPath2D::Stop();
 	}
 
-	void GameEditorRenderer::UpdatePipelines()
+	void GameEditorRenderer::UpdatePipelines(RenderGraph& renderGraph)
 	{
-		RenderGraphPath2D::UpdatePipelines();
+		RenderGraphPath2D::UpdatePipelines(renderGraph);
 
-		mImGuiPipeline.Setup(mMainGraph);
+		mImGuiPipeline.Setup(renderGraph);
 	}
 
 	GameEditor::GameEditor(const std::shared_ptr<Engine>& engine) :

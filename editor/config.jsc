@@ -101,6 +101,7 @@
                 "--sdk_version=%{windows_sdk_version}",
                 "--build_app",     // create default app project
                 "--net_lib=asio",
+                "--build_tests",
                 // "--no_editor",  // does not create default editor project
             ]
         },

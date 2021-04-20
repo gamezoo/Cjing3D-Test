@@ -23,6 +23,8 @@ namespace GPU
 		RESOURCETYPE_COUNT
 	};
 
+	using ResHandleHash = U32;
+
 	class ResHandle : public Handle
 	{
 	public:
@@ -259,39 +261,106 @@ namespace GPU
 		} 
 		mType = RENDERTARGET;
 
-		enum LoadOperation
+		enum LoadOp
 		{
 			LOAD_DEFAULT,
 			LOAD_CLEAR,
 		}
-		mLoadOperator = LOAD_DEFAULT;
+		mLoadOp = LOAD_DEFAULT;
+
+		enum StoreOp
+		{
+			STOREOP_STORE,
+			STOREOP_DONTCARE
+		}
+		mStoreOp = STOREOP_STORE;
 
 		I32 mSubresourceIndex = -1;
 		ResHandle mResource;
 
 		bool operator!=(const BindingFrameAttachment& rhs)const {
 			return mType != rhs.mType ||
-				mLoadOperator != rhs.mLoadOperator ||
+				mLoadOp != rhs.mLoadOp ||
 				mSubresourceIndex != rhs.mSubresourceIndex ||
 				mResource != rhs.mResource;
 		}
 
-		static BindingFrameAttachment RenderTarget(ResHandle res, LoadOperation loadOp = LOAD_DEFAULT)
+		static BindingFrameAttachment RenderTarget(ResHandle res, LoadOp loadOp = LOAD_DEFAULT, StoreOp storeOp = STOREOP_STORE)
 		{
 			BindingFrameAttachment attachment;
 			attachment.mType = RENDERTARGET;
-			attachment.mLoadOperator = loadOp;
+			attachment.mLoadOp = loadOp;
+			attachment.mStoreOp = storeOp;
 			attachment.mResource = res;
 			return attachment;
 		}
 
-		static BindingFrameAttachment DepthStencil(ResHandle res, LoadOperation loadOp = LOAD_DEFAULT)
+		static BindingFrameAttachment DepthStencil(ResHandle res, LoadOp loadOp = LOAD_DEFAULT, StoreOp storeOp = STOREOP_STORE)
 		{
 			BindingFrameAttachment attachment;
 			attachment.mType = DEPTH_STENCIL;
-			attachment.mLoadOperator = loadOp;
+			attachment.mLoadOp = loadOp;
+			attachment.mStoreOp = storeOp;
 			attachment.mResource = res;
 			return attachment;
+		}
+	};
+
+	struct GPUBarrier
+	{
+		enum TYPE
+		{
+			MEMORY_BARRIER,		// UAV accesses
+			IMAGE_BARRIER,		// image layout transition
+			BUFFER_BARRIER,		// buffer state transition
+		}
+		mType = MEMORY_BARRIER;
+
+		struct Memory
+		{
+			ResHandleHash mResHash;
+		};
+		struct Image
+		{
+			ResHandleHash mResHash;
+			IMAGE_LAYOUT mLayoutBefore;
+			IMAGE_LAYOUT mLayoutAfter;
+		};
+		struct Buffer
+		{
+			ResHandleHash mResHash;
+			BUFFER_STATE mStateBefore;
+			BUFFER_STATE mStateAfter;
+		};
+		union
+		{
+			Memory mMemory;
+			Image  mImage;
+			Buffer mBuffer;
+		};
+
+		static GPUBarrier Memory(const ResHandle& resource = ResHandle::INVALID_HANDLE)
+		{
+			GPUBarrier barrier;
+			barrier.mType = MEMORY_BARRIER;
+
+			return barrier;
+		}
+
+		static GPUBarrier Image(const ResHandle& resource = ResHandle::INVALID_HANDLE)
+		{
+			GPUBarrier barrier;
+			barrier.mType = IMAGE_BARRIER;
+
+			return barrier;
+		}
+
+		static GPUBarrier Buffer(const ResHandle& resource = ResHandle::INVALID_HANDLE)
+		{
+			GPUBarrier barrier;
+			barrier.mType = BUFFER_BARRIER;
+
+			return barrier;
 		}
 	};
 

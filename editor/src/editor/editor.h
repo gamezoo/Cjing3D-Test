@@ -18,7 +18,7 @@ namespace Cjing3D
 	public:
 		void Start()override;
 		void Stop()override;
-		void UpdatePipelines()override;
+		void UpdatePipelines(RenderGraph& renderGraph)override;
 
 	private:
 		ImGuiPipeline mImGuiPipeline;

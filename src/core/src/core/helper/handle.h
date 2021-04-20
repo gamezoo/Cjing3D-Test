@@ -19,7 +19,7 @@ namespace Cjing3D
 		U32 GetType()const {
 			return mType;
 		}
-		U32 GetValue()const {
+		U32 GetHash()const {
 			return mValue;
 		}
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderPass.h"
+#include "resource.h"
 
 #include <type_traits>
 
@@ -9,35 +10,10 @@ namespace Cjing3D
 	class RenderGraph;
 	class RenderGraphImpl;
 
-	class RenderGraphResource
+	enum RenderGraphQueueFlag
 	{
-	public:
-		RenderGraphResource() = default;
-		RenderGraphResource(I32 index, I32 version = 0) :mIndex(index), mVersion(version) {}
-
-		bool operator==(const RenderGraphResource& rhs) const {
-			return mIndex == rhs.mIndex;
-		}
-		bool operator!=(const RenderGraphResource& rhs) const {
-			return mIndex != rhs.mIndex;
-		}
-		bool operator< (const RenderGraphResource& rhs) const {
-			return mIndex < rhs.mIndex;
-		}
-		operator bool()const { 
-			return mIndex != -1;
-		}
-
-		I32 Index()const {
-			return mIndex;
-		}
-		I32 Hash()const {
-			// TODO
-			return mIndex * 10000 + mVersion;
-		}
-
-		I32 mIndex = -1;
-		I32 mVersion = 0;
+		RENDER_GRAPH_QUEUE_GRAPHICS_BIT = 1 << 0,
+		RENDER_GRAPH_QUEUE_COMPUTE_BIT = 1 << 1,
 	};
 
 	// RenderGraph resources(called by renderPass:execute)
@@ -105,59 +81,51 @@ namespace Cjing3D
 
 		template<typename DataT>
 		DataRenderPass<DataT>&
-			AddDataRenderPass(const char* name, typename DataRenderPass<DataT>::SetupFn&& setupFunc, typename DataRenderPass<DataT>::ExecuteFn&& executeFunc)
+			AddDataRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename DataRenderPass<DataT>::SetupFn&& setupFunc, typename DataRenderPass<DataT>::ExecuteFn&& executeFunc)
 		{
-			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, std::move(setupFunc), std::move(executeFunc));
+			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, queueFlag, std::move(setupFunc), std::move(executeFunc));
 			return renderPass;
 		}
 
 		CallbackRenderPass& 
-			AddCallbackRenderPass(const char* name, typename CallbackRenderPass::SetupFn&& setupFunc, typename CallbackRenderPass::ExecuteFn&& executeFunc)
+			AddCallbackRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename CallbackRenderPass::SetupFn&& setupFunc, typename CallbackRenderPass::ExecuteFn&& executeFunc)
 		{
-			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, std::move(setupFunc), std::move(executeFunc));
+			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, queueFlag, std::move(setupFunc), std::move(executeFunc));
 			return renderPass;
 		}
 
-		PresentRenderPass& AddPresentRenderPass(const char* name, typename PresentRenderPass::SetupFn&& setupFunc)
+		PresentRenderPass& AddPresentRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename PresentRenderPass::SetupFn&& setupFunc)
 		{
-			PresentRenderPass& renderPass = AddRenderPass<PresentRenderPass>(name, *this, std::move(setupFunc));
+			PresentRenderPass& renderPass = AddRenderPass<PresentRenderPass>(name, queueFlag, *this, std::move(setupFunc));
 			return renderPass;
 		}
 
 		template<typename RenderPassT, typename... Args>
 		std::enable_if_t<std::is_base_of<RenderPass, RenderPassT>::value, RenderPassT>&
-			AddRenderPass(const char* name, Args&&... args)
+			AddRenderPass(const char* name, RenderGraphQueueFlag queueFlag, Args&&... args)
 		{
 			RenderPassT* passMem = Allocate<RenderPassT>();
 			RenderGraphResBuilder builder(*mImpl, passMem);
 			RenderPassT* ret = new(passMem) RenderPassT(builder, std::forward<Args>(args)...);
-			AddRenderPass(name, ret);
+			AddRenderPass(name, queueFlag, ret);
 			return *ret;
 		}
 
-		void AddRenderPass(const char* name, RenderPass* renderPass);
+		void AddRenderPass(const char* name, RenderGraphQueueFlag queueFlag, RenderPass* renderPass);
 		
-		void Present(RenderGraphResource res);
 		bool Compile();
 		bool Execute();
-		bool Execute(RenderGraphResource finalRes);
-		bool Execute(Span<RenderGraphResource> finalResources);
 		void Clear();
 
+		String ExportGraphviz();
 		RenderGraphResource GetResource(const char* name)const;
 
+		// To Remove
+		bool Execute(RenderGraphResource finalRes);
+		bool Execute(Span<RenderGraphResource> finalResources);
 
-	/// ////////////////////////////////////////////////////
-	/// Refector Begin
-		template<typename ResourceT>
-		RenderGraphResource ImportResource(typename ResourceT::Descriptor const& desc, const ResourceT& resource)
-		{
-			return RenderGraphResource();
-		}
-
-			
-	/// Refector End
-	/// ////////////////////////////////////////////////////
+		// New
+		void SetFinalResource(const RenderGraphResource& res);
 
 	private:
 		void* Allocate(size_t size);
