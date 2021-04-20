@@ -3,20 +3,20 @@ import os
 import string
 import collections
 import codecs
-import getopt
 import re
 import json
-from enum import Enum
-import xlrd
 import getopt
+import xlrd
+from enum import Enum
 
 # global context
 class Context:
-    input = None  
-    output = '.'
+    input_list = None  
+    output_dir = '.'
     records = []
     force_update = False
     implicit_write = False
+    code_generate_path = None
     support_types = ('INT', 'FLOAT', 'STRING', 'BOOL')  # 当前支持的表格格式
 
 class SheetType(Enum):
@@ -25,13 +25,14 @@ class SheetType(Enum):
     GlobalTable  = 2
 
 class Record:
-    def __init__(self, path, sheet, dir_path, export_path, export_name, export_obj):
+    def __init__(self, path, sheet, dir_path, export_path, export_name, export_obj, schema_obj):
         self.path = path 
         self.sheet = sheet 
         self.export_path = export_path 
         self.dir_path    = dir_path
         self.export_name = export_name 
         self.export_obj  = export_obj
+        self.schema_obj  = schema_obj
 
 def fillvalue(parent, name, value):
     if isinstance(parent, list):
@@ -51,11 +52,15 @@ def isoutofdate(srcfile, tarfile):
 
 def display_help():
     print(
-    '''usage python exporter.py [-p filelist] [-f outfolder]
+    '''usage python exporter.py [-p filelist] [-f outfolder] [-c codeGeneratePath] [-h|-w|-f]
     Arguments
-        -i      : input excel files, use ',' to separate
+        -i      : input_list excel files, use ',' to separate
         -o      : out folder
-        -h      : print this help message and exit'''
+        -c      : code generated path (dose not generate if is null)
+        -h      : print this help message and exit
+        -f      ：force update exported ignoring time diff
+        -w      : implicit write dir according by sheetType
+    '''
     );
 
 def parse_sheet_type(sheet):
@@ -74,16 +79,26 @@ def parse_type(type_):
         return type_
     raise ValueError('%s is not a invalid type' % type_)
 
-def parse_list_value(parent, type_, name, value):
+def parse_list_value(parent, type_, name, value, is_scheme):
     typename = parse_type(type_[:-2])
     # TODO: 支持多维数组
     list_ = []
-    values = value.strip('[]').split(',')
-    for v in values:
-        parse_base_value(list_, typename, name, v)
-    fillvalue(parent, name, value)
+    if is_scheme:
+        parse_base_value(list_, typename, name, None, is_scheme)
+        list_ = [list_[0]]
+    else:
+        values = value.strip('[]').split(',')
+        for v in values:
+            parse_base_value(list_, typename, name, v, is_scheme)
 
-def parse_base_value(parent, typename, name, value):
+    fillvalue(parent, name + "s", list_)
+
+def parse_base_value(parent, type_, name, value, is_scheme):
+    typename = parse_type(type_)
+    if is_scheme:
+        fillvalue(parent, name, [typename])
+        return
+
     if typename == 'INT':
         value = int(float(value))
     elif typename == 'FLOAT':
@@ -105,12 +120,12 @@ def parse_base_value(parent, typename, name, value):
 
     fillvalue(parent, name, value)
 
-def parse_value(item, type_, name, value):
+def parse_value(item, type_, name, value, is_scheme):
     typename = parse_type(type_)
     if typename == 'list':
-        parse_list_value(item, type_, name, value)
+        parse_list_value(item, type_, name, value, is_scheme)
     else:
-        parse_base_value(item, typename, name, value)
+        parse_base_value(item, typename, name, value, is_scheme)
     pass
 
 def parse_design_table(path, sheet):
@@ -122,6 +137,7 @@ def parse_design_table(path, sheet):
     names = sheet.row_values(1)
     types = sheet.row_values(2)
 
+    schema_obj = collections.OrderedDict()
     # collect header infos
     header_infos = []
     try:
@@ -135,6 +151,12 @@ def parse_design_table(path, sheet):
                 raise ValueError('%s or %s is a illegal identifier' % (type_, name_))
 
             header_infos.append((type_, name_, col_index))
+
+            # 是否生成Schema代码文件
+            if context.code_generate_path:
+                if type_ and name_:
+                    parse_value(schema_obj, type_, name_, None, True)  
+
     except Exception as e: 
         e.args += ('%s has a error, %s at %d column in %s' % (sheet.name, (type_, name_), col_index + 1, path), '')
         raise e
@@ -161,7 +183,7 @@ def parse_design_table(path, sheet):
                     value_ = str(row[col_index])
 
                     if type_ and name_ and value_:
-                        parse_value(item, type_, name_, value_)  
+                        parse_value(item, type_, name_, value_, False)  
 
                 if item:
                     items.append(item)
@@ -169,7 +191,8 @@ def parse_design_table(path, sheet):
         except Exception as e: 
             e.args += ('%s has a error, %s at %d column in %s' % (sheet.name, (type_, name_), col_index + 1, path) , '')
             raise e
-    return items
+
+    return items, schema_obj
 
 def parse_global_table(path, sheet):
     # Global Table Format:
@@ -182,6 +205,7 @@ def parse_global_table(path, sheet):
     if name_index == -1 or value_index == -1 or type_index == -1:
         raise ValueError('%s:%s is a invalid globalTable' % (path, sheet.name))
        
+    schema_obj = collections.OrderedDict()
     data_obj = collections.OrderedDict()
     try:
         # parse row from 4th row
@@ -198,28 +222,47 @@ def parse_global_table(path, sheet):
             value_ = str(row[value_index]).strip()
             type_  = str(row[type_index]).strip()
             if name_ and type_ and value_:
-                parse_value(data_obj, type_, name_, value_)  
+                parse_value(data_obj, type_, name_, value_, False)  
+      
+            # 是否生成Schema代码文件
+            if context.code_generate_path:
+                if type_ and name_:
+                    parse_value(schema_obj, type_, name_, None, True)  
                 
     except Exception as e: 
         e.args += ('%s has a error, %s at %d column in %s' % (sheet.name, (type_, name_), row_index + 1, path) , '')
         raise e
 
-    return data_obj
-
-def write_file(context, record):
-    if not os.path.isdir(record.dir_path):
-        os.makedirs(record.dir_path)
-
-    jsonstr = json.dumps(record.export_obj, ensure_ascii = False, indent = 2)
-    with codecs.open(record.export_path, 'w', 'utf-8') as f:
-        f.write(jsonstr)
-
-    print('Write export file %s from %s in %s successfully' % (record.path, record.sheet.name, record.export_path))
+    return data_obj, schema_obj
 
 def write_files(context):
+    # write talbe files
     for r in context.records:
         if r.export_obj:
-            write_file(context, r)
+            if not os.path.isdir(r.dir_path):
+                os.makedirs(r.dir_path)
+
+            jsonstr = json.dumps(r.export_obj, ensure_ascii = False, indent = 2)
+            with codecs.open(r.export_path, 'w', 'utf-8') as f:
+                f.write(jsonstr)
+
+            print('Write export file %s from %s in %s successfully' % (r.path, r.sheet.name, r.export_path))
+
+    # 统一写入schema文件
+    schemas = []
+    for r in context.records:
+        if r.schema_obj and context.code_generate_path:
+            schemas.append({'name' : r.export_name, 'schema' : r.schema_obj})
+    if len(schemas) > 0:
+        dir_path = os.path.dirname(context.code_generate_path)
+        if dir_path and not os.path.isdir(dir_path):
+            os.makedirs(dir_path)
+
+        jsonstr = json.dumps(schemas, ensure_ascii = False, indent = 2)
+        with codecs.open(context.code_generate_path, 'w', 'utf-8') as f:
+            f.write(jsonstr)
+
+        print('Write schema file %s successfully' % (context.code_generate_path))
 
 def export_excel(context, path):
     data = xlrd.open_workbook(path)
@@ -235,14 +278,14 @@ def export_excel(context, path):
         export_name = p.group(1);
         sheet_type = parse_sheet_type(sheet)
         if sheet_type != SheetType.UnknownTable:
-            # 导出路径
+            # 根据SheetType获取导出路径
             if context.implicit_write:
                 if sheet_type == SheetType.DesignTable:
-                    dir_path = os.path.join(context.output, "DesignTable")
+                    dir_path = os.path.join(context.output_dir, "DesignTable")
                 else:
-                    dir_path = os.path.join(context.output, "GlobalTable")
+                    dir_path = os.path.join(context.output_dir, "GlobalTable")
             else:
-                dir_path = os.path.join(context.output)
+                dir_path = os.path.join(context.output_dir)
             export_path = os.path.join(dir_path, export_name + '.json')
 
             # 检查当前表名是否已经导出
@@ -256,19 +299,19 @@ def export_excel(context, path):
 
             # 根据sheet_type分析对应的表项
             if sheet_type == SheetType.DesignTable:
-                export_obj = parse_design_table(path, sheet)
+                export_obj, schema_obj = parse_design_table(path, sheet)
             else:
-                export_obj = parse_global_table(path, sheet)
+                export_obj, schema_obj = parse_global_table(path, sheet)
 
             # 记录当前导出项
-            context.records.append(Record(path, sheet, dir_path, export_path, export_name, export_obj))
+            context.records.append(Record(path, sheet, dir_path, export_path, export_name, export_obj, schema_obj))
 
     # write exported files
     write_files(context)
     
 
 def export_excels(context):
-    for path in context.input:
+    for path in context.input_list:
         if not path:
             continue
 
@@ -283,27 +326,27 @@ def export_excels(context):
         export_excel(context, path)
 
 def main():
-    opst, args = getopt.getopt(sys.argv[1:], 'i:o:h;f;w')
+    opst, args = getopt.getopt(sys.argv[1:], 'i:o:c:fwh')
 
     global context
     context = Context()
-    context.input = None
-    context.output = '.'
 
     for op, v in opst:
         if op == "-i":
-            context.input = re.split(r'[,]+', v.strip());
+            context.input_list = re.split(r'[,]+', v.strip());
         elif op == "-o":
-            context.output = v;
+            context.output_dir = v;
+        elif op == "-c":
+            context.code_generate_path = v
         elif op == "-f":
             context.force_update = True
         elif op == "-w":
             context.implicit_write = True
         elif op == "-h":
             display_help();
-            sys.exit()
+            sys.exit()  
 
-    if context.input == None or len(context.input) <= 0:
+    if context.input_list == None or len(context.input_list) <= 0:
         display_help()
         exit(0)
 
