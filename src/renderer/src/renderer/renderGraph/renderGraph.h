@@ -81,22 +81,16 @@ namespace Cjing3D
 
 		template<typename DataT>
 		DataRenderPass<DataT>&
-			AddDataRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename DataRenderPass<DataT>::SetupFn&& setupFunc, typename DataRenderPass<DataT>::ExecuteFn&& executeFunc)
+			AddDataRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename DataRenderPass<DataT>::SetupFn&& setupFunc)
 		{
-			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, queueFlag, std::move(setupFunc), std::move(executeFunc));
+			DataRenderPass<DataT>& renderPass = AddRenderPass<DataRenderPass<DataT>>(name, queueFlag, std::move(setupFunc));
 			return renderPass;
 		}
 
 		CallbackRenderPass& 
-			AddCallbackRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename CallbackRenderPass::SetupFn&& setupFunc, typename CallbackRenderPass::ExecuteFn&& executeFunc)
+			AddCallbackRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename CallbackRenderPass::SetupFn&& setupFunc)
 		{
-			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, queueFlag, std::move(setupFunc), std::move(executeFunc));
-			return renderPass;
-		}
-
-		PresentRenderPass& AddPresentRenderPass(const char* name, RenderGraphQueueFlag queueFlag, typename PresentRenderPass::SetupFn&& setupFunc)
-		{
-			PresentRenderPass& renderPass = AddRenderPass<PresentRenderPass>(name, queueFlag, *this, std::move(setupFunc));
+			CallbackRenderPass& renderPass = AddRenderPass<CallbackRenderPass>(name, queueFlag, std::move(setupFunc));
 			return renderPass;
 		}
 
@@ -116,16 +110,10 @@ namespace Cjing3D
 		bool Compile();
 		bool Execute();
 		void Clear();
+		void SetFinalResource(const RenderGraphResource& res);
 
 		String ExportGraphviz();
 		RenderGraphResource GetResource(const char* name)const;
-
-		// To Remove
-		bool Execute(RenderGraphResource finalRes);
-		bool Execute(Span<RenderGraphResource> finalResources);
-
-		// New
-		void SetFinalResource(const RenderGraphResource& res);
 
 	private:
 		void* Allocate(size_t size);

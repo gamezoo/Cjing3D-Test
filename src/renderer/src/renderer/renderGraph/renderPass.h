@@ -20,6 +20,8 @@ namespace Cjing3D
 
 		Span<const RenderGraphResource> GetInputs()const;
 		Span<const RenderGraphResource> GetOutputs()const;
+		Span<RenderGraphResource> GetInputs();
+		Span<RenderGraphResource> GetOutputs();
 
 		virtual void Execute(RenderGraphResources& resources, GPU::CommandList& cmd) = 0;
 
@@ -40,15 +42,14 @@ namespace Cjing3D
 	class CallbackRenderPass : public RenderPass
 	{
 	public:
-		using SetupFn = Function<void(RenderGraphResBuilder& builder)>;
 		using ExecuteFn = Function<void(RenderGraphResources& resources, GPU::CommandList& cmd)>;
+		using SetupFn = Function<ExecuteFn(RenderGraphResBuilder& builder)>;
 
-		CallbackRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc, ExecuteFn&& executeFunc) :
-			RenderPass(builder),
-			mExecuteFunc(executeFunc)
+		CallbackRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc) :
+			RenderPass(builder)
 		{
 			if (setupFunc != nullptr) {
-				setupFunc(builder);
+				mExecuteFunc = std::move(setupFunc(builder));
 			}
 		}
 
@@ -67,15 +68,14 @@ namespace Cjing3D
 	class DataRenderPass : public RenderPass
 	{
 	public:
-		using SetupFn = Function<void(RenderGraphResBuilder& builder, DataT& data)>;
 		using ExecuteFn = Function<void(RenderGraphResources& resources, GPU::CommandList& cmd, DataT& data)>;
-
-		DataRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc, ExecuteFn&& executeFunc) :
-			RenderPass(builder),
-			mExecuteFunc(executeFunc)
+		using SetupFn = Function<ExecuteFn(RenderGraphResBuilder& builder, DataT& data)>;
+		
+		DataRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc) :
+			RenderPass(builder)
 		{
 			if (setupFunc != nullptr) {
-				setupFunc(builder, mData);
+				mExecuteFunc = std::move(setupFunc(builder, mData));
 			}
 		}
 
@@ -93,25 +93,5 @@ namespace Cjing3D
 	private:
 		ExecuteFn mExecuteFunc;
 		DataT mData;
-	};
-
-	class PresentRenderPass : public RenderPass
-	{
-	public:
-		using SetupFn = Function<void(RenderGraphResBuilder& builder)>;
-
-		PresentRenderPass(RenderGraphResBuilder& builder, RenderGraph& renderGraph, SetupFn&& setupFunc) :
-			RenderPass(builder),
-			mRenderGraph(renderGraph) 
-		{
-			if (setupFunc != nullptr) {
-				setupFunc(builder);
-			}
-		}
-
-		void Execute(RenderGraphResources& resources, GPU::CommandList& cmd)override;
-
-	private:
-		RenderGraph& mRenderGraph;
 	};
 }

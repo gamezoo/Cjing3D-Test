@@ -14,21 +14,18 @@ TEST_CASE("RenderGraphTest", "[Render]")
 {
 	RenderGraph graph;
 
-	struct TestData
-	{
-
-	};
-
 	// predepth
-	auto& renderPass = graph.AddDataRenderPass<TestData>(
+	auto& renderPass = graph.AddCallbackRenderPass(
 		"PreDepthPass",
 		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-		[&](RenderGraphResBuilder& builder, TestData& data) {
+		[&](RenderGraphResBuilder& builder) {
 			// setup
-			
-		},
-		[&](RenderGraphResources& resources, GPU::CommandList& cmd, TestData& data) {
+
+
 			// execute	
+			return [&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+			};
 		}
 	);
 
@@ -38,7 +35,7 @@ TEST_CASE("RenderGraphTest", "[Render]")
 
 	// composite + UI
 
-	graph.Compile();
+	// graph.Compile();
 
 }
 

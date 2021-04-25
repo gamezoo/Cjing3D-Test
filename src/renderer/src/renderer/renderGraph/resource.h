@@ -4,6 +4,13 @@
 
 namespace Cjing3D
 {
+	class RenderGraphResource;
+
+	struct RenderGraphResourceDimension
+	{
+		bool mIsTransient = false;
+	};
+
 	class RenderGraphResource
 	{
 	public:
