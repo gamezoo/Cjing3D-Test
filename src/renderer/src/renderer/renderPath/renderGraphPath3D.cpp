@@ -80,15 +80,14 @@ namespace Cjing3D
 	{
 		PROFILE_FUNCTION();
 
-		auto rtMainRes = renderGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), &mRtMain.GetDesc());
-		auto dbMainRes = renderGraph.ImportTexture("dbMain", mDpbMain.GetHandle(), &mDpbMain.GetDesc());
+		//auto rtMainRes = renderGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), &mRtMain.GetDesc());
+		//auto dbMainRes = renderGraph.ImportTexture("dbMain", mDpbMain.GetHandle(), &mDpbMain.GetDesc());
 
-		mRenderPipeline3D.SetResource("rtMain", rtMainRes);
-		mRenderPipeline3D.SetResource("dbMain", dbMainRes);
+		//mRenderPipeline3D.SetResource("rtMain", rtMainRes);
+		//mRenderPipeline3D.SetResource("dbMain", dbMainRes);
 
 		//setup pipelines
 		mRenderPipeline3D.Setup(renderGraph, mViewport, mFrameCB, mVisibility);
-		AddFinalResource(rtMainRes);
 	}
 
 	void RenderGraphPath3D::Compose(GPU::CommandList& cmd)

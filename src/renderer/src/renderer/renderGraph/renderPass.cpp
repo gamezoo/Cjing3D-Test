@@ -6,7 +6,7 @@
 
 namespace Cjing3D
 {
-	RenderPass::RenderPass(RenderGraphResBuilder& builder)
+	RenderPass::RenderPass()
 	{
 		mImpl = CJING_NEW(RenderPassImpl);
 	}
@@ -26,14 +26,24 @@ namespace Cjing3D
 		mImpl->AddOutput(res);
 	}
 
-	void RenderPass::AddRTV(const RenderGraphResource& res, const RenderGraphFrameAttachment& attachment)
+	void RenderPass::AddRTV(const RenderGraphResource& res, const RenderGraphAttachment& attachment)
 	{
 		mImpl->AddRTV(res, attachment);
 	}
 
-	void RenderPass::SetDSV(const RenderGraphResource& res, const RenderGraphFrameAttachment& attachment)
+	void RenderPass::SetDSV(const RenderGraphResource& res, const RenderGraphAttachment& attachment)
 	{
 		mImpl->SetDSV(res, attachment);
+	}
+
+	void RenderPass::SetIndex(U32 index)
+	{
+		mImpl->mIndex = index;
+	}
+
+	void RenderPass::AddQueueFlag(RenderGraphQueueFlag queueFlag)
+	{
+		mImpl->mQueueFlags |= queueFlag;
 	}
 
 	Span<const RenderGraphResource> RenderPass::GetInputs() const
@@ -54,5 +64,15 @@ namespace Cjing3D
 	Span<RenderGraphResource> RenderPass::GetOutputs()
 	{
 		return Span<RenderGraphResource>(mImpl->mOutputs.data(), mImpl->mOutputCount);
+	}
+
+	U32 RenderPass::GetIndex() const
+	{
+		return mImpl->mIndex;
+	}
+
+	RenderGraphQueueFlags RenderPass::GetQueueFlags() const
+	{
+		return mImpl->mQueueFlags;
 	}
 }

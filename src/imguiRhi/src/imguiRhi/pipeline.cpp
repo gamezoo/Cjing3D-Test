@@ -19,7 +19,7 @@ namespace Cjing3D
 		/*graph.AddCallbackRenderPass("ImGuiPass",
 			[&](RenderGraphResBuilder& builder) {
 
-				builder.AddRTV(rtRes, RenderGraphFrameAttachment::RenderTarget());
+				builder.AddRTV(rtRes, RenderGraphAttachment::RenderTarget());
 			},
 			[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
 				auto fbs = resources.GetFrameBindingSet();

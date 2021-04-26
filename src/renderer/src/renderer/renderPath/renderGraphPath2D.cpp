@@ -55,11 +55,11 @@ namespace Cjing3D
 	{
 		PROFILE_FUNCTION();
 
-		auto rtMainRes = renderGraph.ImportTexture(RT_MAIN_NAME, mRtMain.GetHandle(), &mRtMain.GetDesc());
-		mRenderPipeline2D.SetResource("rtMain", rtMainRes);
+		//auto rtMainRes = renderGraph.ImportTexture(RT_MAIN_NAME, mRtMain.GetHandle(), &mRtMain.GetDesc());
+		//mRenderPipeline2D.SetResource("rtMain", rtMainRes);
 		mRenderPipeline2D.Setup(renderGraph);
 
-		AddFinalResource(rtMainRes);
+		//AddFinalResource(rtMainRes);
 	}
 
 	void RenderGraphPath2D::Compose(GPU::CommandList& cmd)

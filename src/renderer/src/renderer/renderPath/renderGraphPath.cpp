@@ -20,15 +20,11 @@ namespace Cjing3D
 		RenderPath::Stop();
 	}
 
-	void RenderGraphPath::AddFinalResource(RenderGraphResource res)
-	{
-		mFinalResources.push(res);
-	}
-
 	void RenderGraphPath::Render()
 	{
-		mFinalResources.clear();
-		
+		// clear render graph
+		mMainGraph.Clear();
+
 		// update pipelines
 		UpdatePipelines(mMainGraph);
 
@@ -37,9 +33,6 @@ namespace Cjing3D
 
 		// execute render graph
 		mMainGraph.Execute();
-
-		// clear render graph
-		mMainGraph.Clear();
 
 		RenderPath::Render();
 	}

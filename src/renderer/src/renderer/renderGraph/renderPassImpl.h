@@ -11,6 +11,9 @@ namespace Cjing3D
 	class RenderPassImpl
 	{
 	public:
+		U32 mIndex = ~0;
+		RenderGraphQueueFlags mQueueFlags = 0;
+
 		I32 mInputCount = 0;
 		StaticArray<RenderGraphResource, MAX_RES_INPUTS> mInputs;
 		I32 mOutputCount = 0;
@@ -19,11 +22,11 @@ namespace Cjing3D
 		// rtv
 		I32 mRTVCount = 0;
 		StaticArray<RenderGraphResource, GPU::MAX_BOUND_RTVS> mRTVs;
-		StaticArray<RenderGraphFrameAttachment, GPU::MAX_BOUND_RTVS> mRTVAttachments;
+		StaticArray<RenderGraphAttachment, GPU::MAX_BOUND_RTVS> mRTVAttachments;
 
 		// dsv
 		RenderGraphResource mDSV;
-		RenderGraphFrameAttachment mDSVAttachment;
+		RenderGraphAttachment mDSVAttachment;
 
 		// frameBindingSet
 		GPU::ResHandle mFrameBindingSet;
@@ -49,7 +52,7 @@ namespace Cjing3D
 			mOutputs[mOutputCount++] = res;
 		}
 
-		void AddRTV(const RenderGraphResource& res, const RenderGraphFrameAttachment& attachment)
+		void AddRTV(const RenderGraphResource& res, const RenderGraphAttachment& attachment)
 		{
 			Debug::CheckAssertion(mRTVCount < GPU::MAX_BOUND_RTVS);
 			mRTVs[mRTVCount] = res;
@@ -57,7 +60,7 @@ namespace Cjing3D
 			mRTVCount++;
 		}
 
-		void SetDSV(const RenderGraphResource& res, const RenderGraphFrameAttachment& attachment)
+		void SetDSV(const RenderGraphResource& res, const RenderGraphAttachment& attachment)
 		{
 			mDSV = res;
 			mDSVAttachment = attachment;

@@ -73,7 +73,7 @@ namespace Cjing3D
 	//			data.mViewport.mWidth = (F32)texture->mWidth;
 	//			data.mViewport.mHeight = (F32)texture->mHeight;
 	//			
-	//			data.mOutDepth = builder.SetDSV(depthBufferMain, RenderGraphFrameAttachment::DepthStencil(
+	//			data.mOutDepth = builder.SetDSV(depthBufferMain, RenderGraphAttachment::DepthStencil(
 	//				GPU::BindingFrameAttachment::LOAD_CLEAR
 	//			));
 	//		},
@@ -125,8 +125,8 @@ namespace Cjing3D
 
 	//			data.mCullResult = cullResult;
 
-	//			builder.AddRTV(rtMain, RenderGraphFrameAttachment::RenderTarget());
-	//			builder.SetDSV(depthData.mOutDepth, RenderGraphFrameAttachment::DepthStencil(
+	//			builder.AddRTV(rtMain, RenderGraphAttachment::RenderTarget());
+	//			builder.SetDSV(depthData.mOutDepth, RenderGraphAttachment::DepthStencil(
 	//				GPU::BindingFrameAttachment::LOAD_DEFAULT
 	//			));
 	//		},

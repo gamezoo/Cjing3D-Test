@@ -10,28 +10,6 @@ namespace Cjing3D
 	class RenderGraph;
 	class RenderGraphImpl;
 
-	enum RenderGraphQueueFlag
-	{
-		RENDER_GRAPH_QUEUE_GRAPHICS_BIT = 1 << 0,
-		RENDER_GRAPH_QUEUE_COMPUTE_BIT = 1 << 1,
-	};
-
-	// RenderGraph resources(called by renderPass:execute)
-	class RenderGraphResources
-	{
-	public:
-		RenderGraphResources(RenderGraphImpl& renderGraph, RenderPass* renderPass);
-		~RenderGraphResources();
-
-		GPU::ResHandle GetFrameBindingSet()const;
-		GPU::ResHandle GetBuffer(RenderGraphResource res, GPU::BufferDesc* outDesc = nullptr);
-		GPU::ResHandle GetTexture(RenderGraphResource res, GPU::TextureDesc* outDesc = nullptr);
-
-	private:
-		RenderPass* mRenderPass = nullptr;
-		RenderGraphImpl& mImpl;
-	};
-
 	// RenderGraph resource builder(Called by RenderPass::Setup)
 	class RenderGraphResBuilder
 	{
@@ -42,10 +20,10 @@ namespace Cjing3D
 		RenderGraphResource CreateTexture(const char* name, const GPU::TextureDesc* desc);
 		RenderGraphResource CreateBuffer(const char* name, const GPU::BufferDesc* desc);
 
-		RenderGraphResource AddInput(RenderGraphResource res,  GPU::BIND_FLAG bindFlag = GPU::BIND_NOTHING);
-		RenderGraphResource AddOutput(RenderGraphResource res, GPU::BIND_FLAG bindFlag = GPU::BIND_NOTHING);
-		RenderGraphResource AddRTV(RenderGraphResource res, RenderGraphFrameAttachment attachment);
-		RenderGraphResource SetDSV(RenderGraphResource res, RenderGraphFrameAttachment attachment);
+		RenderGraphResource AddInput(RenderGraphResource res);
+		RenderGraphResource AddOutput(RenderGraphResource res);
+		RenderGraphResource AddRTV(RenderGraphResource res, RenderGraphAttachment attachment);
+		RenderGraphResource SetDSV(RenderGraphResource res, RenderGraphAttachment attachment);
 
 		const GPU::TextureDesc* GetTextureDesc(RenderGraphResource res)const;
 		const GPU::BufferDesc* GetBufferDesc(RenderGraphResource res)const;
@@ -70,14 +48,27 @@ namespace Cjing3D
 		RenderGraphImpl& mImpl;
 	};
 
+	// RenderGraph resources(called by renderPass:execute)
+	class RenderGraphResources
+	{
+	public:
+		RenderGraphResources(RenderGraphImpl& renderGraph, RenderPass* renderPass);
+		~RenderGraphResources();
+
+		GPU::ResHandle GetFrameBindingSet()const;
+		GPU::ResHandle GetBuffer(RenderGraphResource res, GPU::BufferDesc* outDesc = nullptr);
+		GPU::ResHandle GetTexture(RenderGraphResource res, GPU::TextureDesc* outDesc = nullptr);
+
+	private:
+		RenderPass* mRenderPass = nullptr;
+		RenderGraphImpl& mImpl;
+	};
+
 	class RenderGraph
 	{
 	public:
 		RenderGraph();
 		~RenderGraph();
-
-		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc* desc = nullptr);
-		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc* desc = nullptr);
 
 		template<typename DataT>
 		DataRenderPass<DataT>&
@@ -100,12 +91,12 @@ namespace Cjing3D
 		{
 			RenderPassT* passMem = Allocate<RenderPassT>();
 			RenderGraphResBuilder builder(*mImpl, passMem);
-			RenderPassT* ret = new(passMem) RenderPassT(builder, std::forward<Args>(args)...);
-			AddRenderPass(name, queueFlag, ret);
+			RenderPassT* ret = new(passMem) RenderPassT(std::forward<Args>(args)...);
+			AddRenderPass(name, queueFlag, ret, builder);
 			return *ret;
 		}
 
-		void AddRenderPass(const char* name, RenderGraphQueueFlag queueFlag, RenderPass* renderPass);
+		void AddRenderPass(const char* name, RenderGraphQueueFlag queueFlag, RenderPass* renderPass, RenderGraphResBuilder& builder);
 		
 		bool Compile();
 		bool Execute();

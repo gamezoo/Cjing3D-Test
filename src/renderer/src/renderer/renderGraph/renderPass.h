@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer\definitions.h"
+#include "resource.h"
 #include "gpu\commandList.h"
 #include "core\container\span.h"
 #include "core\helper\function.h"
@@ -15,14 +16,17 @@ namespace Cjing3D
 	class RenderPass
 	{
 	public:
-		RenderPass(RenderGraphResBuilder& builder);
+		RenderPass();
 		virtual ~RenderPass();
 
+		U32 GetIndex()const;
+		RenderGraphQueueFlags GetQueueFlags()const;
 		Span<const RenderGraphResource> GetInputs()const;
 		Span<const RenderGraphResource> GetOutputs()const;
 		Span<RenderGraphResource> GetInputs();
 		Span<RenderGraphResource> GetOutputs();
 
+		virtual void Setup(RenderGraphResBuilder& builder) = 0;
 		virtual void Execute(RenderGraphResources& resources, GPU::CommandList& cmd) = 0;
 
 	private:
@@ -31,10 +35,12 @@ namespace Cjing3D
 		friend class RenderGraphImpl;
 		friend class RenderGraphResources;
 
+		void SetIndex(U32 index);
+		void AddQueueFlag(RenderGraphQueueFlag queueFlag);
 		void AddInput(const RenderGraphResource& res);
 		void AddOutput(const RenderGraphResource& res);
-		void AddRTV(const RenderGraphResource& res, const RenderGraphFrameAttachment& attachment);
-		void SetDSV(const RenderGraphResource& res, const RenderGraphFrameAttachment& attachment);
+		void AddRTV(const RenderGraphResource& res, const RenderGraphAttachment& attachment);
+		void SetDSV(const RenderGraphResource& res, const RenderGraphAttachment& attachment);
 
 		class RenderPassImpl* mImpl = nullptr;
 	};
@@ -45,11 +51,16 @@ namespace Cjing3D
 		using ExecuteFn = Function<void(RenderGraphResources& resources, GPU::CommandList& cmd)>;
 		using SetupFn = Function<ExecuteFn(RenderGraphResBuilder& builder)>;
 
-		CallbackRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc) :
-			RenderPass(builder)
+		CallbackRenderPass(SetupFn&& setupFunc) :
+			RenderPass(),
+			mSetupFunc(std::move(setupFunc))
 		{
-			if (setupFunc != nullptr) {
-				mExecuteFunc = std::move(setupFunc(builder));
+		}
+
+		void Setup(RenderGraphResBuilder& builder)override
+		{
+			if (mSetupFunc != nullptr) {
+				mExecuteFunc = std::move(mSetupFunc(builder));
 			}
 		}
 
@@ -61,6 +72,7 @@ namespace Cjing3D
 		}
 
 	private:
+		SetupFn mSetupFunc;
 		ExecuteFn mExecuteFunc;
 	};
 
@@ -72,10 +84,15 @@ namespace Cjing3D
 		using SetupFn = Function<ExecuteFn(RenderGraphResBuilder& builder, DataT& data)>;
 		
 		DataRenderPass(RenderGraphResBuilder& builder, SetupFn&& setupFunc) :
-			RenderPass(builder)
+			RenderPass(),
+			mSetupFunc(std::move(setupFunc))
 		{
-			if (setupFunc != nullptr) {
-				mExecuteFunc = std::move(setupFunc(builder, mData));
+		}
+
+		void Setup(RenderGraphResBuilder& builder)override
+		{
+			if (mSetupFunc != nullptr) {
+				mExecuteFunc = std::move(mSetupFunc(builder, mData));
 			}
 		}
 
@@ -91,6 +108,7 @@ namespace Cjing3D
 		}
 
 	private:
+		SetupFn mSetupFunc;
 		ExecuteFn mExecuteFunc;
 		DataT mData;
 	};

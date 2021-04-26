@@ -19,10 +19,7 @@ namespace Cjing3D
 
 		virtual void UpdatePipelines(RenderGraph& renderGraph) = 0;
 
-		void AddFinalResource(RenderGraphResource res);
-
 	private:
 		RenderGraph mMainGraph;
-		DynamicArray<RenderGraphResource> mFinalResources;
 	};
 }

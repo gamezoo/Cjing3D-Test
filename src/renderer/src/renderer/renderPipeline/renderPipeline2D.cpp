@@ -17,7 +17,7 @@ namespace Cjing3D
 		//graph.AddCallbackRenderPass("Render2D",
 		//	[&](RenderGraphResBuilder& builder) {
 
-		//		builder.AddRTV(rtMain, RenderGraphFrameAttachment::RenderTarget(GPU::BindingFrameAttachment::LOAD_CLEAR));
+		//		builder.AddRTV(rtMain, RenderGraphAttachment::RenderTarget(GPU::BindingFrameAttachment::LOAD_CLEAR));
 		//	},
 		//	[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
 		//		auto fbs = resources.GetFrameBindingSet();

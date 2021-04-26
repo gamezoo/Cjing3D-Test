@@ -45,3 +45,4 @@ assets/imgui.ini
 tools/cjing_build/scripts/jsc/
 assets/Cjing3D.log
 assets/editor.ini
+editor/config_user.jsc

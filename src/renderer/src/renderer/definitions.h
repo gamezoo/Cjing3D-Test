@@ -54,34 +54,6 @@ namespace Cjing3D
 		CULLING_FLAG_ALL = ~0u,
 	};
 
-	struct RenderGraphFrameAttachment
-	{
-		GPU::BindingFrameAttachment::TYPE mType = GPU::BindingFrameAttachment::RENDERTARGET;
-		GPU::BindingFrameAttachment::LoadOp mLoadOp = GPU::BindingFrameAttachment::LOAD_DEFAULT;
-
-		I32 mSubresourceIndex = -1;
-
-		static RenderGraphFrameAttachment RenderTarget(
-			GPU::BindingFrameAttachment::LoadOp loadOp = GPU::BindingFrameAttachment::LOAD_DEFAULT
-		)
-		{
-			RenderGraphFrameAttachment attachment;
-			attachment.mType = GPU::BindingFrameAttachment::RENDERTARGET;
-			attachment.mLoadOp = loadOp;
-			return attachment;
-		}
-
-		static RenderGraphFrameAttachment DepthStencil(
-			GPU::BindingFrameAttachment::LoadOp loadOp = GPU::BindingFrameAttachment::LOAD_DEFAULT
-		)
-		{
-			RenderGraphFrameAttachment attachment;
-			attachment.mType = GPU::BindingFrameAttachment::DEPTH_STENCIL;
-			attachment.mLoadOp = loadOp;
-			return attachment;
-		}
-	};
-
 	struct ShaderTechHasher
 	{
 		RENDERPASS mRenderPass;
