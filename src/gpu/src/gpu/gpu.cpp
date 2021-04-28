@@ -26,7 +26,9 @@ namespace GPU
 		StaticArray<DynamicArray<ResHandle>, 4> mReleasedHandles;
 		Concurrency::Mutex mMutex;
 		U64 mCurrentFrameCount = 0;
+		DynamicArray<ResHandle> mTransientHandle;
 
+		// command lists
 		Concurrency::Mutex mCmdMutex;
 		StaticArray<CommandList, MAX_COMMANDLIST_COUNT> mAllCmdList;
 		StaticArray<I32, MAX_COMMANDLIST_COUNT> mUsedCmdList;
@@ -35,6 +37,7 @@ namespace GPU
 		I32 mAvaiableCmdCount = 0;
 		HashMap<I32, I32> mUsedIndexMap;
 
+		// desc map (TODO:Remove)
 		HashMap<I32, BufferDesc> mBufferDescMap;
 		HashMap<I32, TextureDesc> mTextureDescMap;
 
@@ -43,6 +46,24 @@ namespace GPU
 		{
 			Concurrency::ScopedMutex lock(mMutex);
 			return ResHandle(mHandleAllocator.Alloc((I32)type));
+		}
+		
+		ResHandle AllocTransientHandle(ResourceType type)
+		{
+			Concurrency::ScopedMutex lock(mMutex);
+			auto handle = ResHandle(mHandleAllocator.Alloc((I32)type));
+			mTransientHandle.push(handle);
+			return handle;
+		}
+
+		void ClearTransientHandles()
+		{
+			Concurrency::ScopedMutex lock(mMutex);
+			for (ResHandle handle : mTransientHandle)
+			{
+				mHandleAllocator.Free(handle);
+			}
+			mTransientHandle.clear();
 		}
 
 		void ProcessReleasedHandles()
@@ -183,6 +204,7 @@ namespace GPU
 		mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
 		mImpl->mUsedCmdCount = 0;
 		mImpl->mUsedIndexMap.clear();
+		mImpl->ClearTransientHandles();
 
 		for (int i = 0; i < MaxGPUFrames; i++) 
 		{
@@ -278,6 +300,7 @@ namespace GPU
 		mImpl->mCurrentFrameCount++;
 		mImpl->mDevice->EndFrame();
 		mImpl->ProcessReleasedHandles();
+		mImpl->ClearTransientHandles();
 	}
 
 	bool IsHandleValid(ResHandle handle)
@@ -468,6 +491,14 @@ namespace GPU
 		if (handle && IsHandleValid(handle)) {
 			mImpl->DestroyHandle(handle);
 		}
+	}
+
+	ResHandle CreateTransientTexture(const TextureDesc* desc)
+	{
+		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_TEXTURE);
+		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTexture(handle, desc, nullptr));
+
+		return handle;
 	}
 
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs)

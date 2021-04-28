@@ -41,6 +41,8 @@ namespace GPU
 	ResHandle CreateTempPipelineBindingSet(const PipelineBindingSetDesc* desc);
 	void      DestroyResource(ResHandle handle);
 
+	ResHandle CreateTransientTexture(const TextureDesc* desc);
+
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs);
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs);

@@ -22,11 +22,26 @@ namespace Cjing3D
 		{
 			return memcmp(&a, &b, sizeof(a)) == 0;
 		}
+
+
+		bool operator==(const RenderGraphResourceDimension& a, const RenderGraphResourceDimension& b)
+		{
+			return a.mType == b.mType &&
+				a.mIsTransient == b.mIsTransient &&
+				a.mTexDesc == b.mTexDesc &&
+				a.mBufferDesc == b.mBufferDesc;
+		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Impl
 	////////////////////////////////////////////////////////////////////////////////////////////
+	struct AliasTransfer
+	{
+		U32 mFrom;
+		U32 mTo;
+	};
+	
 	struct RenderPassInst
 	{
 		enum { Unused = ~0u };
@@ -40,6 +55,7 @@ namespace Cjing3D
 	struct PhysicalRenderPass
 	{
 		DynamicArray<I32> mPasses;
+		DynamicArray<AliasTransfer> mAliasTransfer;
 	};
 
 	struct ResourceInst
@@ -99,6 +115,94 @@ namespace Cjing3D
 		}
 	};
 
+	struct ResPassRange
+	{
+		U32 mFirstReadPass = ~0;
+		U32 mLastReadPass = 0;
+		U32 mFirstWritePass = ~0;
+		U32 mLastWritePass = 0;
+
+		bool HasReader()const { return mFirstReadPass <= mLastReadPass; }
+		bool HasWriter()const { return mFirstWritePass <= mLastWritePass; }
+		bool IsEmpty()const { return !HasReader() && !HasWriter(); }
+		bool CanAlias()const
+		{
+			if (HasReader() && HasWriter() && mFirstReadPass <= mFirstWritePass) {
+				return false;
+			}
+
+			return true;
+		}
+
+		U32 LastUsedPass() const
+		{
+			U32 lastPass = 0;
+			if (HasReader()) {
+				lastPass = std::max(lastPass, mLastReadPass);
+			}
+			if (HasWriter()) {
+				lastPass = std::max(lastPass, mLastWritePass);
+			}
+			return lastPass;
+		}
+
+		U32 FirstUsedPass() const
+		{
+			U32 firstReadPass = ~0u;
+			if (HasReader()) {
+				firstReadPass = std::min(firstReadPass, mFirstReadPass);
+			}
+			if (HasWriter()) {
+				firstReadPass = std::min(firstReadPass, mFirstWritePass);
+			}
+			return firstReadPass;
+		}
+
+		bool CheckRangeOverlop(const ResPassRange& rhs)
+		{
+			if (IsEmpty() || rhs.IsEmpty()) {
+				return false;
+			}
+			if (!CanAlias() || !rhs.CanAlias()) {
+				return false;
+			}
+
+			return (LastUsedPass() >= rhs.FirstUsedPass()) &&
+				   (rhs.LastUsedPass() >= FirstUsedPass());
+		}
+	};
+
+	struct Barrier
+	{
+		U32 mResPhysicalIndex = 0;
+	};
+
+	struct Barriers
+	{
+		DynamicArray<Barrier> mInvalidate;
+		DynamicArray<Barrier> mFlush;
+	};
+
+	struct ResourceCache
+	{
+		DynamicArray<GPU::BufferDesc> mBufferDescs;
+		DynamicArray<GPU::ResHandle> mBuffers;
+
+		DynamicArray<GPU::TextureDesc> mTextureDescs;
+		DynamicArray<GPU::ResHandle> mTextures;
+
+		void Clear()
+		{
+			for (auto& buffer : mBuffers) 
+			{
+				if (buffer != GPU::ResHandle::INVALID_HANDLE) {
+					GPU::DestroyResource(buffer);
+				}
+			}
+			mBuffers.clear();
+		}
+	};
+
 	class RenderGraphImpl
 	{
 	public:
@@ -115,8 +219,14 @@ namespace Cjing3D
 
 		// resource
 		DynamicArray<ResourceInst> mResources;
-		DynamicArray<ResourceInst> mTransientResources;
 		HashMap<StringID, I32> mResourceNameMap;
+		ResourceCache mResourceCache;
+
+		// barriers
+		DynamicArray<Barriers> mPassBarriers;
+
+		// aliases
+		DynamicArray<U32> mPhysicalAliases;
 
 		// physical res and passes
 		RenderGraphResource mFinalRes;
@@ -130,23 +240,31 @@ namespace Cjing3D
 		RenderGraphImpl() {
 			mAllocator.Reserve(1024 * 1024);
 		}
+		~RenderGraphImpl() {
+			mResourceCache.Clear();
+		}
 
 		void Clear();
 		bool Compile();
 		bool Execute();
+
 		void FilterRenderPass(DynamicArray<I32>& renderPasses);
 		void ReorderRenderPass(DynamicArray<I32>& renderPasses);
 		void BuildPhysicalResources();
 		void BuildPhysicalPasses();
 		void BuildTransients();
-		void BuildRenderPassInfos();
 		void BuildBarriers();
+		void BuildPhysicalBarriers();
 		void BuildAliases();
-		void CreateFrameBindingSets();
 
 		void TraverseRenderPassDependency(const RenderPassInst& renderPass, U32 stackCount);
 		void DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount, bool mergeDependency);
 		bool CheckPassDependent(I32 srcPass, I32 dstPass)const;
+
+		void CreateBuffer(I32 physicalIndex);
+		void CreateTexture(I32 physicalIndex);
+		void CreateResources();
+		void CreateFrameBindingSets();
 
 	public:
 		bool CreateResource(ResourceInst& resInst)
@@ -532,21 +650,182 @@ namespace Cjing3D
 		}
 	}
 
-	void RenderGraphImpl::BuildRenderPassInfos()
+	void RenderGraphImpl::BuildBarriers()
 	{
-		for(PhysicalRenderPass& pass : mPhysicalRenderPasses)
+		mPassBarriers.clear();
+		mPassBarriers.reserve(mPassIndexStack.size());
+
+		const auto GetBarrier = [&](DynamicArray<Barrier>& barriers, U32 index) -> Barrier& {
+			auto itr = std::find_if(barriers.begin(), barriers.end(), [index](const Barrier& b) {
+				return index == b.mResPhysicalIndex;
+			});
+			if (itr != barriers.end())
+				return *itr;
+			else
+			{
+				barriers.push({ index });
+				return barriers.back();
+			}
+		};
+
+		for (I32 index : mPassIndexStack)
 		{
-			
+			auto& renderPass = mRenderPasses[index];
+			Barriers barriers;
+
+			// input resources
+			auto inputs = renderPass.mRenderPass->GetInputs();
+			for (auto& input : inputs)
+			{
+				if (!input.IsEmpty())
+				{
+					GetBarrier(barriers.mInvalidate, mResources[input.mIndex].mPhysicalIndex);
+				}
+			}
+
+			// output resources
+			auto outputs = renderPass.mRenderPass->GetOutputs();
+			for (auto& output : outputs)
+			{
+				if (!output.IsEmpty())
+				{
+					GetBarrier(barriers.mFlush, mResources[output.mIndex].mPhysicalIndex);
+				}
+			}
+
+			mPassBarriers.push(std::move(barriers));
 		}
 	}
 
-	void RenderGraphImpl::BuildBarriers()
+	void RenderGraphImpl::BuildPhysicalBarriers()
 	{
+		I32 barrierIndex = 0;
+		for (PhysicalRenderPass& physicalPass : mPhysicalRenderPasses)
+		{
+			for (I32 i = 0; i < physicalPass.mPasses.size(); i++, barrierIndex)
+			{
+				Barriers& barriers = mPassBarriers[barrierIndex];
+				for (auto& invalidate : barriers.mInvalidate)
+				{
+					// ignore barriers for transients
+					if (mPhysicalResourceDimensions[invalidate.mResPhysicalIndex].mIsTransient) {
+						continue;
+					}
+				}
 
+				for (auto& flush : barriers.mFlush)
+				{
+					// ignore barriers for transients
+					if (mPhysicalResourceDimensions[flush.mResPhysicalIndex].mIsTransient) {
+						continue;
+					}
+				}
+			}
+		}
 	}
 
 	void RenderGraphImpl::BuildAliases()
 	{
+		// 获取每个Res的Range(第一个使用的Pass和最后一个使用的Pass)，如果有相同Dim的Res
+		// 且Range no overlap，则res可以Alias
+		
+		DynamicArray<ResPassRange> resPassRage(mPhysicalResourceDimensions.size());
+		auto RegisterReader = [&resPassRage](const ResourceInst& res, U32 passIndex)
+		{
+			if (res.mPhysicalIndex != ResourceInst::Unused)
+			{
+				auto& range = resPassRage[res.mPhysicalIndex];
+				range.mFirstReadPass = std::min(range.mFirstReadPass, passIndex);
+				range.mLastReadPass  = std::max(range.mLastReadPass,  passIndex);
+			}
+		};
+		auto RegisterWriter = [&resPassRage](const ResourceInst& res, U32 passIndex)
+		{
+			if (res.mPhysicalIndex != ResourceInst::Unused)
+			{
+				auto& range = resPassRage[res.mPhysicalIndex];
+				range.mFirstWritePass = std::min(range.mFirstWritePass, passIndex);
+				range.mLastWritePass = std::max(range.mLastWritePass, passIndex);
+			}
+		};
+
+		// 1. get pass range for each physical res
+		for (I32 index : mPassIndexStack)
+		{
+			auto& renderPass = mRenderPasses[index];
+
+			// input resources
+			auto inputs = renderPass.mRenderPass->GetInputs();
+			for (auto& input : inputs)
+			{
+				if (!input.IsEmpty()) {
+					RegisterReader(mResources[input.mIndex], renderPass.mPhysicalIndex);
+				}
+			}
+
+			// output resources
+			auto outputs = renderPass.mRenderPass->GetOutputs();
+			for (auto& output : outputs)
+			{
+				if (!output.IsEmpty()){
+					RegisterWriter(mResources[output.mIndex], renderPass.mPhysicalIndex);
+				}
+			}
+		}
+
+		// 2. clear physical aliases
+		mPhysicalAliases.resize(mPhysicalResourceDimensions.size());
+		for (U32& v : mPhysicalAliases) {
+			v = ~0;
+		}
+
+		// 3. find available aliases
+		DynamicArray<DynamicArray<U32>> aliasChains(mPhysicalResourceDimensions.size());
+		for (U32 i = 0; i < mPhysicalResourceDimensions.size(); i++)
+		{
+			auto& dim = mPhysicalResourceDimensions[i];
+
+			// no alias for buffer
+			if (dim.mType == GPU::ResourceType::RESOURCETYPE_BUFFER) {
+				continue;
+			}
+
+			for (U32 j = 0; j < i; j++)
+			{
+				if (mPhysicalResourceDimensions[j] == mPhysicalResourceDimensions[i])
+				{
+					if (!resPassRage[i].CheckRangeOverlop(resPassRage[j]))
+					{
+						mPhysicalAliases[i] = j;
+
+						if (aliasChains[j].empty()) {
+							aliasChains[j].push(j);
+						}
+						aliasChains[j].push(i);
+
+						break;
+					}
+				}
+			}
+		}
+
+		// 4. build alias transfer by alias chains
+		for (auto& chain : aliasChains)
+		{
+			if (chain.empty()) {
+				continue;
+			}
+
+			for (U32 i = 0; i < chain.size(); i ++)
+			{
+				if (i + 1 < chain.size()) {
+					mPhysicalRenderPasses[chain[i]].mAliasTransfer.push({chain[i], chain[i + 1]});
+				}
+				else {
+					mPhysicalRenderPasses[chain[i]].mAliasTransfer.push({ chain[i], chain[0] });
+				}
+			}
+		}
 	}
 
 	bool RenderGraphImpl::CheckPassDependent(I32 srcPass, I32 dstPass) const
@@ -575,11 +854,6 @@ namespace Cjing3D
 		mRenderPassIndexMap.clear();
 
 		// resources
-		for (auto& resInst : mTransientResources)
-		{
-			resInst.mIsUsed = false;
-			resInst.mVersion = 0;
-		}
 		mResources.clear();
 		mResourceNameMap.clear();
 		mFinalRes = RenderGraphResource();
@@ -636,11 +910,11 @@ namespace Cjing3D
 		// build barriers
 		BuildBarriers();
 
+		// build physical barriers
+		BuildPhysicalBarriers();
+
 		// build aliases
 		BuildAliases();
-
-		// create frame bindingSet	
-		CreateFrameBindingSets();
 
 		return true;
 	}
@@ -648,6 +922,12 @@ namespace Cjing3D
 	bool RenderGraphImpl::Execute()
 	{
 		PROFILE_CPU_BLOCK("RenderGraphExecute");
+
+		// create resources
+		CreateResources();
+
+		// create frame bindingSet	
+		CreateFrameBindingSets();
 
 		// execute all renderPasses by jobsystem
 		I32 renderPassCount = mPhysicalRenderPasses.size();
@@ -771,6 +1051,76 @@ namespace Cjing3D
         }, this, &jobHandle);
 
 		return true;
+	}
+
+	void RenderGraphImpl::CreateBuffer(I32 physicalIndex)
+	{
+		auto& dim = mPhysicalResourceDimensions[physicalIndex];
+		bool needCreate = true;
+		if (mResourceCache.mBuffers[physicalIndex] != GPU::ResHandle::INVALID_HANDLE)
+		{
+			if (dim.mPersistent &&
+				mResourceCache.mBufferDescs[physicalIndex] == dim.mBufferDesc) {
+				needCreate = false;
+			}
+		}
+
+		if (needCreate) 
+		{
+			mResourceCache.mBuffers[physicalIndex] = GPU::CreateBuffer(&dim.mBufferDesc, nullptr, dim.mName.c_str());
+			mResourceCache.mBufferDescs[physicalIndex] = dim.mBufferDesc;
+		}
+	}
+
+	void RenderGraphImpl::CreateTexture(I32 physicalIndex)
+	{
+		auto& dim = mPhysicalResourceDimensions[physicalIndex];
+
+		// if current res is aliase
+		if (mPhysicalAliases[physicalIndex] != ~0)
+		{
+			mResourceCache.mTextures[physicalIndex] = mResourceCache.mTextures[mPhysicalAliases[physicalIndex]];
+			return;
+		}
+
+		bool needCreate = true;
+		if (mResourceCache.mTextures[physicalIndex] != GPU::ResHandle::INVALID_HANDLE)
+		{
+			if (dim.mPersistent &&
+				mResourceCache.mTextureDescs[physicalIndex] == dim.mTexDesc) {
+				needCreate = false;
+			}
+		}
+
+		if (needCreate) 
+		{
+			mResourceCache.mTextures[physicalIndex] = GPU::CreateTexture(&dim.mTexDesc, nullptr, dim.mName.c_str());
+			mResourceCache.mTextureDescs[physicalIndex] = dim.mTexDesc;
+		}
+	}
+
+	void RenderGraphImpl::CreateResources()
+	{
+		for (U32 i = 0; i < mPhysicalResourceDimensions.size(); i++)
+		{
+			RenderGraphResourceDimension& dim = mPhysicalResourceDimensions[i];
+			if (dim.mType == GPU::ResourceType::RESOURCETYPE_BUFFER) {
+				CreateBuffer(i);
+			}
+			else
+			{
+				if (dim.mIsTransient)
+				{
+					// allocate transient obj?
+					mResourceCache.mTextures[i];
+					mResourceCache.mTextureDescs[i] = dim.mTexDesc;
+				}
+				else 
+				{
+					CreateTexture(i);
+				}
+			}
+		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -1000,13 +1350,6 @@ namespace Cjing3D
 
 	RenderGraph::~RenderGraph()
 	{
-		for (auto& resInst : mImpl->mTransientResources) {
-			if (resInst.mHandle != GPU::ResHandle::INVALID_HANDLE) 
-			{
-				GPU::DestroyResource(resInst.mHandle);
-				resInst.mHandle = GPU::ResHandle::INVALID_HANDLE;
-			}
-		}
 		CJING_SAFE_DELETE(mImpl);
 	}
 

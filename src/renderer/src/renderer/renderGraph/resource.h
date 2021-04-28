@@ -16,10 +16,12 @@ namespace Cjing3D
 	// TODO: is too similar to ResourceInst and it is cost too much mem.
 	struct RenderGraphResourceDimension
 	{
+		StaticString<64> mName;
 		GPU::ResourceType mType;
 		GPU::TextureDesc mTexDesc;
 		GPU::BufferDesc mBufferDesc;
 		bool mIsTransient = false;
+		bool mPersistent = true;
 	};
 
 	struct RenderGraphAttachment
