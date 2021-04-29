@@ -23,7 +23,7 @@ namespace GPU
 		GraphicsDeviceDx11(Platform::WindowType window, bool isFullScreen = false, bool isDebug = false);
 		virtual ~GraphicsDeviceDx11();
 
-		bool CreateCommandlist(ResHandle handle)override;
+		bool CreateCommandlist(ResHandle handle, GPU::CommandListType type)override;
 		bool CompileCommandList(ResHandle handle, CommandList& cmd)override;
 		bool SubmitCommandLists(Span<ResHandle> handles)override;
 		void ResetCommandList(ResHandle handle)override;

@@ -13,6 +13,8 @@ namespace Cjing3D
 		using JobHandle = U32;
 		constexpr JobHandle INVALID_HANDLE = 0xFFFFFFFF;
 
+		struct Counter;
+
 		struct JobGroupArgs
 		{
 			U32 groupID_;
@@ -32,11 +34,6 @@ namespace Cjing3D
 			MAX
 		};
 
-		struct Counter
-		{
-			volatile I32 value_ = 0;
-		};
-
 		// job description instance
 		struct JobInfo
 		{
@@ -46,25 +43,19 @@ namespace Cjing3D
 			I32 userParam_ = 0;
 			void* userData_ = nullptr;
 			JobHandle mHandle = INVALID_HANDLE;
-			bool mFreeHandle = false;
 			I32 mWorkerIndex = USE_ANY_WORKER;
-			// todo
 			JobHandle mPreconditon = INVALID_HANDLE;
-
-			// not use
-			Counter* mCounter = nullptr;
-			bool mFreeCounter = false;
 		};
 
 		void Initialize(I32 numThreads, I32 numFibers, I32 fiberStackSize);
 		void Uninitialize();
 		bool IsInitialized();
-		void BeginProfile();
-		void EndProfile();
 		void YieldCPU();
 
 		void RunJob(JobInfo jobInfo, JobHandle* jobHandle = nullptr);
+		void RunJob(const JobFunc& job, void* jobData, JobHandle* jobHandle, const std::string& jobName);
 		void RunJob(const JobFunc& job, void* jobData = nullptr, JobHandle* jobHandle = nullptr, Priority priority = Priority::NORMAL, I32 workerIndex = USE_ANY_WORKER, const std::string& jobName = "");
+		void RunJobEx(const JobFunc& job, void* jobData, JobHandle* jobHandle, JobHandle preConditon, const std::string& jobName);
 		void RunJobs(I32 jobCount, I32 groupSize, const JobGroupFunc& jobFunc, size_t sharedMemSize = 0, JobHandle* jobHandle = nullptr,  Priority priority = Priority::NORMAL, const std::string& jobName = "");
 		void RunJobs(JobInfo* jobInfos, I32 numJobs, JobHandle* jobHandle = nullptr);
 		void Wait(JobHandle* jobHandle, I32 value = 0);

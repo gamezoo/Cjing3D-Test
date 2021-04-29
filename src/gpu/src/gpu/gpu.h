@@ -25,7 +25,7 @@ namespace GPU
 	void EndFrame();
 	bool IsHandleValid(ResHandle handle);
 
-	CommandList* CreateCommandlist();
+	CommandList* CreateCommandlist(GPU::CommandListType type = GPU::COMMAND_LIST_GRAPHICS);
 	bool CompileCommandList(CommandList& cmd);
 	bool SubmitCommandList(const CommandList& cmd);
 	bool SubmitCommandList(Span<CommandList*> cmds);

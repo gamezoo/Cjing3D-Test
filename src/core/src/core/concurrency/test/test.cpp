@@ -193,4 +193,36 @@ TEST_CASE("jobsystem-worker-8-job-1000", "[jobsystem]")
     JobTest(1000, "jobsystem-worker-8-job-1000");
 }
 
+
+TEST_CASE("JobSystemPrecondition", "[JobSystem]")
+{
+    JobSystem::ScopedManager scoped(8, MAX_FIBER_COUNT, FIBER_STACK_SIZE);
+
+    I32 testValue = 0;
+    JobSystem::JobHandle handle = JobSystem::INVALID_HANDLE;
+    JobSystem::RunJob([&](I32 param, void* data) {
+        for (int i = 0; i < 100; i++)
+        {
+            testValue += 1;
+            Concurrency::Sleep(0.001f);
+            Logger::Info("Waiting!!!!");
+        }
+        testValue += 1;
+
+        }, nullptr, &handle, "TestA");
+
+    JobSystem::JobHandle handle2 = JobSystem::INVALID_HANDLE;
+    for (int i = 0; i < 10; i++)
+    {
+        JobSystem::RunJobEx([&](I32 param, void* data) {
+            if (testValue >= 100)
+                testValue += 100000;
+
+            }, nullptr, &handle2, handle, "TestB");
+    }
+    JobSystem::Wait(&handle2);
+
+    Logger::Print("RESULT:%d", testValue);
+}
+
 #endif

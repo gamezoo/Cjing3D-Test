@@ -50,6 +50,13 @@ namespace Cjing3D
 		RenderPass* mRenderPass = nullptr;
 		I32 mIndex = 0;
 		U32 mPhysicalIndex = Unused;
+
+		~RenderPassInst()
+		{
+			if (mRenderPass != nullptr) {
+				mRenderPass->~RenderPass();
+			}
+		}
 	};
 
 	struct PhysicalRenderPass
@@ -62,10 +69,8 @@ namespace Cjing3D
 	{
 		enum { Unused = ~0u };
 
-		GPU::ResHandle mHandle = GPU::ResHandle::INVALID_HANDLE;
 		I32 mIndex = -1;
 		GPU::ResourceType mType;
-
 		StaticString<64> mName;
 		I32 mVersion = 0;
 		bool mIsUsed = false;
@@ -83,6 +88,7 @@ namespace Cjing3D
 	RenderGraphResourceDimension CreateResDimension(const ResourceInst& res)
 	{
 		RenderGraphResourceDimension dim;
+		dim.mName = res.mName;
 		dim.mType = res.mType;
 	
 		switch (res.mType)
@@ -103,6 +109,7 @@ namespace Cjing3D
 	struct RenderPassExecuteState
 	{
 		GPU::CommandList* mCmd = nullptr;
+		GPU::CommandListType mType = GPU::COMMAND_LIST_GRAPHICS;
 		bool mActive = false;
 		bool mIsGraphics = true;
 
@@ -185,21 +192,92 @@ namespace Cjing3D
 
 	struct ResourceCache
 	{
-		DynamicArray<GPU::BufferDesc> mBufferDescs;
-		DynamicArray<GPU::ResHandle> mBuffers;
+		struct BufferPayload
+		{
+			GPU::BufferDesc mDesc;
+			GPU::ResHandle mHandle;
+			bool mIsUsed = false;
+		};
+		DynamicArray<BufferPayload> mBuffers;
 
-		DynamicArray<GPU::TextureDesc> mTextureDescs;
-		DynamicArray<GPU::ResHandle> mTextures;
+		struct TexturePayload
+		{
+			GPU::TextureDesc mDesc;
+			GPU::ResHandle mHandle;
+			bool mIsUsed = false;
+		};
+		DynamicArray<TexturePayload> mTextures;
+
+		void Resize(U32 newSize)
+		{
+			mBuffers.resize(newSize);
+			mTextures.resize(newSize);
+		}
+
+		void ClearUnusedRes()
+		{
+			// clear useless resources
+			{
+				auto it = mBuffers.begin();
+				while (it != mBuffers.end())
+				{
+					if (!it->mIsUsed)
+					{
+						if (it->mHandle != GPU::ResHandle::INVALID_HANDLE) {
+							GPU::DestroyResource(it->mHandle);
+						}
+						it = mBuffers.erase(it);
+					}
+					else {
+						it++;
+					}
+				}
+			}
+			{
+				auto it = mTextures.begin();
+				while (it != mTextures.end())
+				{
+					if (!it->mIsUsed)
+					{
+						if (it->mHandle != GPU::ResHandle::INVALID_HANDLE) {
+							GPU::DestroyResource(it->mHandle);
+						}
+						it = mTextures.erase(it);
+					}
+					else {
+						it++;
+					}
+				}
+			}
+		}
 
 		void Clear()
 		{
-			for (auto& buffer : mBuffers) 
+			for (auto& buffer : mBuffers) {
+				buffer.mIsUsed = false;
+			}
+			for (auto& texture : mTextures) {
+				texture.mIsUsed = false;
+			}
+		}
+
+		void Reset()
+		{
+			for (auto& buffer : mBuffers)
 			{
-				if (buffer != GPU::ResHandle::INVALID_HANDLE) {
-					GPU::DestroyResource(buffer);
+				if (buffer.mHandle != GPU::ResHandle::INVALID_HANDLE) {
+					GPU::DestroyResource(buffer.mHandle);
 				}
 			}
 			mBuffers.clear();
+
+			for (auto& texture : mTextures)
+			{
+				if (texture.mHandle != GPU::ResHandle::INVALID_HANDLE) {
+					GPU::DestroyResource(texture.mHandle);
+				}
+			}
+			mTextures.clear();
 		}
 	};
 
@@ -241,12 +319,12 @@ namespace Cjing3D
 			mAllocator.Reserve(1024 * 1024);
 		}
 		~RenderGraphImpl() {
-			mResourceCache.Clear();
+			mResourceCache.Reset();
 		}
 
 		void Clear();
 		bool Compile();
-		bool Execute();
+		bool Execute(JobSystem::JobHandle& jobHandle);
 
 		void FilterRenderPass(DynamicArray<I32>& renderPasses);
 		void ReorderRenderPass(DynamicArray<I32>& renderPasses);
@@ -267,40 +345,31 @@ namespace Cjing3D
 		void CreateFrameBindingSets();
 
 	public:
-		bool CreateResource(ResourceInst& resInst)
-		{
-			switch (resInst.mType)
-			{
-			case GPU::RESOURCETYPE_BUFFER:
-				resInst.mHandle = GPU::CreateBuffer(&resInst.mBufferDesc, nullptr, resInst.mName.c_str());
-				break;
-			case GPU::RESOURCETYPE_TEXTURE:
-				resInst.mHandle = GPU::CreateTexture(&resInst.mTexDesc, nullptr, resInst.mName.c_str());
-				break;
-			default:
-				break;
-			}
-			return resInst.mHandle != GPU::ResHandle::INVALID_HANDLE;
-		}
 
 		GPU::ResHandle GetTexture(const RenderGraphResource& res, GPU::TextureDesc* outDesc = nullptr)
 		{
 			const auto& resInst = mResources[res.mIndex];
 			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_TEXTURE);
+			if (resInst.mPhysicalIndex == ResourceInst::Unused) {
+				return GPU::ResHandle::INVALID_HANDLE;
+			}
 			if (outDesc != nullptr) {
 				*outDesc = resInst.mTexDesc;
 			}
-			return resInst.mHandle;
+			return mResourceCache.mTextures[resInst.mPhysicalIndex].mHandle;
 		}
 
 		GPU::ResHandle GetBuffer(const RenderGraphResource& res, GPU::BufferDesc* outDesc = nullptr)
 		{
 			const auto& resInst = mResources[res.mIndex];
 			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_BUFFER);
+			if (resInst.mPhysicalIndex == ResourceInst::Unused) {
+				return GPU::ResHandle::INVALID_HANDLE;
+			}
 			if (outDesc != nullptr) {
 				*outDesc = resInst.mBufferDesc;
 			}
-			return resInst.mHandle;
+			return mResourceCache.mBuffers[resInst.mPhysicalIndex].mHandle;
 		}
 
 		ResourceInst* GetResource(const StringID& name)
@@ -856,6 +925,7 @@ namespace Cjing3D
 		// resources
 		mResources.clear();
 		mResourceNameMap.clear();
+		mResourceCache.Clear();
 		mFinalRes = RenderGraphResource();
 
 		mAllocator.Reset();
@@ -919,7 +989,7 @@ namespace Cjing3D
 		return true;
 	}
 
-	bool RenderGraphImpl::Execute()
+	bool RenderGraphImpl::Execute(JobSystem::JobHandle& jobHandle)
 	{
 		PROFILE_CPU_BLOCK("RenderGraphExecute");
 
@@ -935,20 +1005,30 @@ namespace Cjing3D
 		mRenderPassExecuteStates.clear();
 		mRenderPassExecuteStates.resize(renderPassCount);
 
-		DynamicArray<JobSystem::JobInfo> passJobs;
-		passJobs.reserve(renderPassCount);
-		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
-
+		JobSystem::JobHandle executeJobHandle = JobSystem::INVALID_HANDLE;
 		for(I32 i = 0; i < renderPassCount; i++)
 		{
-			bool needExecute = true;
-			if (!needExecute)
-			{	
+			if (mPhysicalRenderPasses[i].mPasses.empty()) {
 				continue;
 			}
 
-			// setup 
 			mRenderPassExecuteStates[i].mActive = true;
+
+			RenderGraphQueueFlags flag = mRenderPasses[mPhysicalRenderPasses[i].mPasses[0]].mRenderPass->GetQueueFlags();
+			switch (flag)
+			{
+			case RENDER_GRAPH_QUEUE_GRAPHICS_BIT:
+				mRenderPassExecuteStates[i].mIsGraphics = true;
+				mRenderPassExecuteStates[i].mType = GPU::COMMAND_LIST_GRAPHICS;
+				break;
+			case RENDER_GRAPH_QUEUE_ASYNC_COMPUTE_BIT:
+				mRenderPassExecuteStates[i].mIsGraphics = false;
+				mRenderPassExecuteStates[i].mType = GPU::COMMAND_LIST_ASYNC_COMPUTE;
+				break;
+			default:
+				Logger::Warning("Unsupport render graph queue flag:%d.", flag);
+				break;
+			}
 		}
 
 		// execute render passes
@@ -967,7 +1047,7 @@ namespace Cjing3D
 				}
 
 				PhysicalRenderPass& physicalPass = impl->mPhysicalRenderPasses[param];
-				state.mCmd = GPU::CreateCommandlist();
+				state.mCmd = GPU::CreateCommandlist(state.mType);
 				state.emitPreBarriers();
 				{	
 					// graphics commands
@@ -1017,12 +1097,11 @@ namespace Cjing3D
 				}
 				state.emitPostBarriers();
 
-			}, this, &jobHandle);
+			}, this, &executeJobHandle, StaticString<32>().Sprintf("Execute render pass:%d", i).c_str());
 		}
-		JobSystem::RunJobs(passJobs.data(), passJobs.size(), &jobHandle);
-
-		// submit commands
-		JobSystem::RunJob([&](I32 param, void* data) {
+		
+		// submit commands (sequence submit)
+		JobSystem::RunJobEx([&](I32 param, void* data) {
 			RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
 			if (!impl) {
 				return;
@@ -1048,7 +1127,7 @@ namespace Cjing3D
 				return;
 			}
         
-        }, this, &jobHandle);
+        }, this, &jobHandle, executeJobHandle, "SubmitCommands");
 
 		return true;
 	}
@@ -1057,19 +1136,21 @@ namespace Cjing3D
 	{
 		auto& dim = mPhysicalResourceDimensions[physicalIndex];
 		bool needCreate = true;
-		if (mResourceCache.mBuffers[physicalIndex] != GPU::ResHandle::INVALID_HANDLE)
+		if (mResourceCache.mBuffers[physicalIndex].mHandle != GPU::ResHandle::INVALID_HANDLE)
 		{
 			if (dim.mPersistent &&
-				mResourceCache.mBufferDescs[physicalIndex] == dim.mBufferDesc) {
+				mResourceCache.mBuffers[physicalIndex].mDesc == dim.mBufferDesc) {
 				needCreate = false;
 			}
 		}
 
 		if (needCreate) 
 		{
-			mResourceCache.mBuffers[physicalIndex] = GPU::CreateBuffer(&dim.mBufferDesc, nullptr, dim.mName.c_str());
-			mResourceCache.mBufferDescs[physicalIndex] = dim.mBufferDesc;
+			mResourceCache.mBuffers[physicalIndex].mHandle = GPU::CreateBuffer(&dim.mBufferDesc, nullptr, dim.mName.c_str());
+			mResourceCache.mBuffers[physicalIndex].mDesc = dim.mBufferDesc;
 		}
+
+		mResourceCache.mBuffers[physicalIndex].mIsUsed = true;
 	}
 
 	void RenderGraphImpl::CreateTexture(I32 physicalIndex)
@@ -1084,24 +1165,29 @@ namespace Cjing3D
 		}
 
 		bool needCreate = true;
-		if (mResourceCache.mTextures[physicalIndex] != GPU::ResHandle::INVALID_HANDLE)
+		if (mResourceCache.mTextures[physicalIndex].mHandle != GPU::ResHandle::INVALID_HANDLE)
 		{
 			if (dim.mPersistent &&
-				mResourceCache.mTextureDescs[physicalIndex] == dim.mTexDesc) {
+				mResourceCache.mTextures[physicalIndex].mDesc == dim.mTexDesc) {
 				needCreate = false;
 			}
 		}
 
 		if (needCreate) 
 		{
-			mResourceCache.mTextures[physicalIndex] = GPU::CreateTexture(&dim.mTexDesc, nullptr, dim.mName.c_str());
-			mResourceCache.mTextureDescs[physicalIndex] = dim.mTexDesc;
+			mResourceCache.mTextures[physicalIndex].mHandle = GPU::CreateTexture(&dim.mTexDesc, nullptr, dim.mName.c_str());
+			mResourceCache.mTextures[physicalIndex].mDesc = dim.mTexDesc;
 		}
+
+		mResourceCache.mTextures[physicalIndex].mIsUsed = true;
 	}
 
 	void RenderGraphImpl::CreateResources()
 	{
-		for (U32 i = 0; i < mPhysicalResourceDimensions.size(); i++)
+		U32 dimSize = mPhysicalResourceDimensions.size();
+		mResourceCache.mBuffers.resize(dimSize);
+
+		for (U32 i = 0; i < dimSize; i++)
 		{
 			RenderGraphResourceDimension& dim = mPhysicalResourceDimensions[i];
 			if (dim.mType == GPU::ResourceType::RESOURCETYPE_BUFFER) {
@@ -1111,9 +1197,8 @@ namespace Cjing3D
 			{
 				if (dim.mIsTransient)
 				{
-					// allocate transient obj?
-					mResourceCache.mTextures[i];
-					mResourceCache.mTextureDescs[i] = dim.mTexDesc;
+					mResourceCache.mTextures[i].mHandle = GPU::CreateTransientTexture(&dim.mTexDesc);
+					mResourceCache.mTextures[i].mDesc = dim.mTexDesc;
 				}
 				else 
 				{
@@ -1121,6 +1206,8 @@ namespace Cjing3D
 				}
 			}
 		}
+
+		mResourceCache.ClearUnusedRes();
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -1383,9 +1470,9 @@ namespace Cjing3D
 		return mImpl->Compile();
 	}
 
-	bool RenderGraph::Execute()
+	bool RenderGraph::Execute(JobSystem::JobHandle& jobHandle)
 	{
-		return mImpl->Execute();
+		return mImpl->Execute(jobHandle);
 	}
 
 	void RenderGraph::SetFinalResource(const RenderGraphResource& res)
@@ -1403,7 +1490,84 @@ namespace Cjing3D
 
 	String RenderGraph::ExportGraphviz()
 	{
-		return String();
+#ifdef DEBUG
+		String ret;
+		ret += "digraph \"graph\" {\n";
+		ret += "rankdir = LR\n";
+		ret += "node [shape=rectangle, fontname=\"helvetica\", fontsize=10]\n\n";
+		
+		// passes nodes
+		for (const auto& pass : mImpl->mRenderPasses)
+		{
+			ret += pass.mName;
+			ret += " [label=\"";
+			ret += pass.mName;
+			ret += ", id: ";
+			ret += std::to_string(pass.mIndex).c_str();
+			ret += "\", ";
+			ret += "style=filled, fillcolor=";
+			ret += pass.mPhysicalIndex != RenderPassInst::Unused ? "darkorange" : "darkorange4";
+			ret += "]\n";
+		}
+		// res nodes
+		for (const auto& res : mImpl->mResources)
+		{
+			ret += res.mName;
+			ret += " [label=\"";
+			ret += res.mName;
+			ret += ", id: ";
+			ret += std::to_string(res.mIndex).c_str();
+			ret += "\", ";
+			ret += "style=filled, fillcolor=";
+			ret += res.mPhysicalIndex != RenderPassInst::Unused ? "skyblue" : "skyblue4";
+			ret += "]\n";
+		}
+
+		// edge
+		for (auto& physicalPass : mImpl->mPhysicalRenderPasses)
+		{
+			for (U32 passIndex : physicalPass.mPasses)
+			{
+				auto& pass = mImpl->mRenderPasses[passIndex];
+				auto inputs = pass.mRenderPass->GetInputs();
+				for (auto& input : inputs)
+				{
+					if (!input.IsEmpty())
+					{
+						auto& res = mImpl->mResources[input.mIndex];
+						if (res.mPhysicalIndex != ResourceInst::Unused) 
+						{
+							ret += res.mName;
+							ret += "->";
+							ret += pass.mName;
+							ret += "\n";
+						}
+					}
+				}
+
+				// outputs
+				auto outputs = pass.mRenderPass->GetOutputs();
+				for (auto& output : outputs)
+				{
+					if (!output.IsEmpty())
+					{
+						auto& res = mImpl->mResources[output.mIndex];
+						if (res.mPhysicalIndex != ResourceInst::Unused) 
+						{
+							ret += pass.mName;
+							ret += "->";
+							ret += res.mName;
+							ret += "\n";
+						}
+					}
+				}
+			}
+		}
+
+		ret += "}\n";
+		Logger::Print(ret);
+		return ret;
+#endif
 	}
 
 	void* RenderGraph::Allocate(size_t size)

@@ -9,7 +9,7 @@ namespace Cjing3D
 	enum RenderGraphQueueFlag
 	{
 		RENDER_GRAPH_QUEUE_GRAPHICS_BIT = 1 << 0,
-		RENDER_GRAPH_QUEUE_COMPUTE_BIT = 1 << 1,
+		RENDER_GRAPH_QUEUE_ASYNC_COMPUTE_BIT = 1 << 1,
 	};
 	using RenderGraphQueueFlags = U32;
 

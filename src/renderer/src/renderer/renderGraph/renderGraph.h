@@ -99,7 +99,7 @@ namespace Cjing3D
 		void AddRenderPass(const char* name, RenderGraphQueueFlag queueFlag, RenderPass* renderPass, RenderGraphResBuilder& builder);
 		
 		bool Compile();
-		bool Execute();
+		bool Execute(JobSystem::JobHandle& jobHandle);
 		void Clear();
 		void SetFinalResource(const RenderGraphResource& res);
 

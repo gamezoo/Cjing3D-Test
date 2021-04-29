@@ -308,7 +308,7 @@ namespace GPU
 		return mImpl->mHandleAllocator.IsValid(handle);
 	}
 
-	CommandList* CreateCommandlist()
+	CommandList* CreateCommandlist(GPU::CommandListType type)
 	{
 		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
 
@@ -317,7 +317,7 @@ namespace GPU
 		if (cmd->GetHanlde() == ResHandle::INVALID_HANDLE)
 		{
 			ResHandle handle = mImpl->AllocHandle(RESOURCETYPE_COMMAND_LIST);
-			bool ret = mImpl->CheckHandle(handle, mImpl->mDevice->CreateCommandlist(handle));
+			bool ret = mImpl->CheckHandle(handle, mImpl->mDevice->CreateCommandlist(handle, type));
 			if (!ret) {
 				return nullptr;
 			}

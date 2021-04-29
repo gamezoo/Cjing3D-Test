@@ -32,7 +32,9 @@ namespace Cjing3D
 		mMainGraph.Compile();
 
 		// execute render graph
-		mMainGraph.Execute();
+		JobSystem::JobHandle jobHandle;
+		mMainGraph.Execute(jobHandle);
+		JobSystem::Wait(&jobHandle);
 
 		RenderPath::Render();
 	}

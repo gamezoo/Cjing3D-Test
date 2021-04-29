@@ -974,7 +974,7 @@ namespace GPU
 		Logger::Info("Uninitialize graphics device dx11");
 	}
 
-	bool GraphicsDeviceDx11::CreateCommandlist(ResHandle handle)
+	bool GraphicsDeviceDx11::CreateCommandlist(ResHandle handle, GPU::CommandListType type)
 	{
 		auto cmd = mCommandLists.Write(handle);
 		if (*cmd != nullptr) {

@@ -45,13 +45,13 @@ TEST_CASE("RenderGraphTest", "[Render]")
 		"PreDepthPass", 
 		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 		[&](RenderGraphResBuilder& builder) {
-			auto depth = builder.CreateTexture("depth", &backDesc);
 
-			builder.AddOutput(depth);
+			auto depthOutput = builder.CreateTexture("depth", &backDesc);
+			builder.AddOutput(depthOutput);
 
-			return [&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 				ImageParams params = {};
-				RenderImage::Draw(resources.GetTexture(depth), params, cmd);
+				RenderImage::Draw(resources.GetTexture(depthOutput), params, cmd);
 			};
 		}
 	);
@@ -64,10 +64,10 @@ TEST_CASE("RenderGraphTest", "[Render]")
 
 			builder.AddInput(graph.GetResource("depth"));
 
-			auto output = builder.CreateTexture("output", &backDesc);
+			auto output = builder.CreateTexture("mainOutput", &backDesc);
 			builder.AddOutput(output);
 
-			return [&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 		
 			};
 		}
@@ -76,15 +76,15 @@ TEST_CASE("RenderGraphTest", "[Render]")
 	// postprocess pass
 	graph.AddCallbackRenderPass(
 		"PostprocessPass",
-		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_COMPUTE_BIT,
+		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_ASYNC_COMPUTE_BIT,
 		[&](RenderGraphResBuilder& builder) {
 	
-			builder.AddInput(graph.GetResource("output"));
+			builder.AddInput(graph.GetResource("mainOutput"));
 	
-			auto output = builder.CreateTexture("post", &backDesc);
+			auto output = builder.CreateTexture("postOutput", &backDesc);
 			builder.AddOutput(output);
 			
-			return [&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 
 			};
 		}
@@ -96,26 +96,31 @@ TEST_CASE("RenderGraphTest", "[Render]")
 		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 		[&](RenderGraphResBuilder& builder) {
 
-			builder.AddInput(graph.GetResource("output"));
-			builder.AddInput(graph.GetResource("post"));
+			builder.AddInput(graph.GetResource("mainOutput"));
+			builder.AddInput(graph.GetResource("postOutput"));
 
-			auto output = builder.CreateTexture("final", &backDesc);
+			auto output = builder.CreateTexture("finalOutput", &backDesc);
 			builder.AddOutput(output);
 
-			return [&](RenderGraphResources& resources, GPU::CommandList& cmd) {
+			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 
 			};
 		}
 	);
 
-	graph.SetFinalResource(graph.GetResource("final"));
+	graph.SetFinalResource(graph.GetResource("finalOutput"));
 
-	// compile and execute graph
+	// compile graph
 	graph.Compile();
-	//graph.Execute();
-
+	
+	// debug display by graphviz
 	auto graphvizStr = graph.ExportGraphviz();
 	DeisplayGraphviz(graphvizStr);
+
+	// execute graph
+	//JobSystem::JobHandle jobHandle;
+	//graph.Execute(jobHandle);
+	//JobSystem::Wait(&jobHandle);
 }
 
 int main(int argc, char* argv[])
@@ -130,7 +135,7 @@ int main(int argc, char* argv[])
 	Profiler::SetCurrentThreadName("MainThread");
 
 	// init jobsystme
-	JobSystem::Initialize(2, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
+	JobSystem::Initialize(4, JobSystem::MAX_FIBER_COUNT, JobSystem::FIBER_STACK_SIZE);
   
 	auto ret = Catch::Session().run(argc, argv);
 

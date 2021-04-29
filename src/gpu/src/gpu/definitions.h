@@ -21,6 +21,12 @@ namespace GPU {
 	static const I32 MAX_BOUND_RTVS = 8;
 	static const I32 MAX_VERTEX_STREAMS = 8;
 
+	enum CommandListType
+	{
+		COMMAND_LIST_GRAPHICS,
+		COMMAND_LIST_ASYNC_COMPUTE,
+	};
+
 	enum GraphicsDeviceType
 	{
 		GraphicsDeviceType_Unknown,

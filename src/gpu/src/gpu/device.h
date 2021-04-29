@@ -14,7 +14,7 @@ namespace GPU
 		GraphicsDevice(GraphicsDeviceType type);
 		virtual ~GraphicsDevice();
 
-		virtual bool CreateCommandlist(ResHandle handle) = 0;
+		virtual bool CreateCommandlist(ResHandle handle, GPU::CommandListType type) = 0;
 		virtual bool CompileCommandList(ResHandle handle, CommandList& cmd) = 0;
 		virtual bool SubmitCommandLists(Span<ResHandle> handles) = 0;
 		virtual void ResetCommandList(ResHandle handle) = 0;

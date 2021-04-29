@@ -29,6 +29,13 @@ namespace JobSystem
 	static const U32 HANDLE_GENERATION_MASK = 0xffFF0000;
 	static const I32 JOB_SIGNAL_COUNT = 512;
 
+	struct Counter
+	{
+		volatile I32 value_ = 0;
+		JobInfo mNextJob;
+		JobHandle mSibling = INVALID_HANDLE;
+	};
+
 	//////////////////////////////////////////////////////////////////////////
 	// ManagerImpl
 	//////////////////////////////////////////////////////////////////////////
@@ -67,8 +74,9 @@ namespace JobSystem
 		volatile I32 mNumFreeFibers    = 0;
 		volatile I32 mNumWaitingFibers = 0;
 #endif
+		void PushJobInfo(JobInfo& jobInfo);
 		JobHandle AllocateHandle();
-		void ReleaseHandle(JobHandle jobHandle, bool freeHandle);
+		void ReleaseHandle(JobHandle jobHandle);
 		bool IsHandleZero(JobHandle jobHandle);
 
 		bool GetJobFiber(WorkerThread* worker, JobFiber** ouputFiber);
@@ -107,9 +115,10 @@ namespace JobSystem
 
 				// update counter
 				if (jobFiber->mJobInfo.mHandle != INVALID_HANDLE) {
-					jobFiber->mManager.ReleaseHandle(jobFiber->mJobInfo.mHandle, jobFiber->mJobInfo.mFreeHandle);
+					jobFiber->mManager.ReleaseHandle(jobFiber->mJobInfo.mHandle);
 				}
 
+				// update job count later
 				Concurrency::AtomicDecrement(&jobFiber->mManager.mJobCount);
 
 				if (jobFiber->mWorkFiber != nullptr) {
@@ -250,6 +259,62 @@ namespace JobSystem
 	// ManagerImpl
 	//////////////////////////////////////////////////////////////////////////
 
+	void ManagerImpl::PushJobInfo(JobInfo& jobInfo)
+	{
+		// 如果指定了workerThread,则将job添加到worker专属队列中
+		if (jobInfo.mWorkerIndex != USE_ANY_WORKER)
+		{
+			WorkerThread* workerThread = mWorkerThreads[jobInfo.mWorkerIndex % mWorkerThreads.size()];
+			auto& pendingJobs = workerThread->mWorkerPendingJobs[(I32)jobInfo.jobPriority_];
+			while (!pendingJobs.Enqueue(jobInfo))
+			{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+				// log when enqueue job failed
+				F64 currentTime = Timer::GetAbsoluteTime();
+				if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
+				{
+					if (currentTime > nextLogTime)
+					{
+						Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
+						nextLogTime = currentTime + LOG_TIME_REPEAT;
+					}
+				}
+#endif
+				YieldCPU();
+			}
+			workerThread->Wakeup(mScheduleLock);
+		}
+		else
+		{
+			auto& pendingJobs = mPendingJobs[(I32)jobInfo.jobPriority_];
+			while (!pendingJobs.Enqueue(jobInfo))
+			{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+				// log when enqueue job failed
+				F64 currentTime = Timer::GetAbsoluteTime();
+				if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
+				{
+					if (currentTime > nextLogTime)
+					{
+						Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
+						nextLogTime = currentTime + LOG_TIME_REPEAT;
+					}
+				}
+#endif
+				YieldCPU();
+			}
+			// 通知worker去执行job
+			for (auto* workerThread : mWorkerThreads) {
+				workerThread->Wakeup(mScheduleLock);
+			}
+			// mScheduleSem.Signal(1);
+		}
+
+#ifdef DEBUG
+		Concurrency::AtomicIncrement(&mNumPendingJobs);
+#endif
+	}
+
 	JobHandle ManagerImpl::AllocateHandle()
 	{
 		U32 handle = INVALID_HANDLE;
@@ -257,27 +322,42 @@ namespace JobSystem
 		{
 			Counter& counter = mCounterPool[handle & HANDLE_ID_MASK];
 			Concurrency::AtomicExchange(&counter.value_, 0);
+			
+			// need to use implicit mutex??
+			counter.mNextJob.jobFunc_ = nullptr;
+			counter.mSibling = INVALID_HANDLE;
 		}
 		return handle;
 	}
 
-	void ManagerImpl::ReleaseHandle(JobHandle jobHandle, bool freeHandle)
+	void ManagerImpl::ReleaseHandle(JobHandle jobHandle)
 	{
 		if (jobHandle == INVALID_HANDLE) {
 			return;
 		}
 
-		// 如果当前fiber没有任务，则添加到FreeQueue队列中
 		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
 		I32 jobCount = Concurrency::AtomicDecrement(&counter.value_);
-		if (jobCount == 0 && freeHandle)
+		if (jobCount == 0)
 		{
-			while (!mFreeHandleQueue.Enqueue(jobHandle & HANDLE_ID_MASK))
+			// add next jobs, TODO: need to use implicit mutex
+			while (jobHandle != INVALID_HANDLE)
 			{
+				Counter& currCounter = mCounterPool[jobHandle & HANDLE_ID_MASK];
+				if (currCounter.mNextJob.jobFunc_) {
+					PushJobInfo(currCounter.mNextJob);
+				}
+
+				while (!mFreeHandleQueue.Enqueue(jobHandle & HANDLE_ID_MASK))
+				{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
-				Logger::Warning("Failed to enqueue free conunter");
+					Logger::Warning("Failed to enqueue free conunter");
 #endif
-				Concurrency::SwitchToThread();
+					Concurrency::SwitchToThread();
+				}
+
+				currCounter.mNextJob.jobFunc_ = nullptr;
+				jobHandle = currCounter.mSibling;
 			}
 		}
 	}
@@ -625,69 +705,28 @@ namespace JobSystem
 		return gManagerImpl != nullptr;
 	} 
 
-	void RunJobs(JobInfo* jobInfos, I32 numJobs, Counter** counter)
-	{
-		if (!IsInitialized()) {
-			return;
-		}
-
-		const bool jobShouldFreeCounter = (counter == nullptr);
-		Counter* localCounter = CJING_NEW(Counter);
-		localCounter->value_ = numJobs;
-
-		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);
-
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-		F64 startTime = Timer::GetAbsoluteTime();
-		const F64 LOG_TIME_THRESHOLD = 100.0f / 1000000.0;    // 100us.
-		const F64 LOG_TIME_REPEAT    = 1000.0f / 1000.0;      // 1000ms.
-		F64 nextLogTime = startTime + LOG_TIME_THRESHOLD;
-#endif
-
-		for (int i = 0; i < numJobs; i++)
-		{
-			JobInfo& jobInfo = jobInfos[i];
-			jobInfo.mCounter = localCounter;
-			jobInfo.mFreeCounter = jobShouldFreeCounter;
-
-			auto& pendingJobs = gManagerImpl->mPendingJobs[(I32)jobInfo.jobPriority_];
-			while (!pendingJobs.Enqueue(jobInfo))
-			{
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-				// log when enqueue job failed
-				F64 currentTime = Timer::GetAbsoluteTime();
-				if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
-				{
-					if (currentTime > nextLogTime)
-					{
-						Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
-						nextLogTime = currentTime + LOG_TIME_REPEAT;
-					}
-				}
-#endif
-				YieldCPU();
-			}
-			// 通知worker去执行job
-			for (auto* workerThread : gManagerImpl->mWorkerThreads) {
-				workerThread->Wakeup(gManagerImpl->mScheduleLock);
-			}
-			// gManagerImpl->mScheduleSem.Signal(1);
-
-#ifdef DEBUG
-			Concurrency::AtomicIncrement(&gManagerImpl->mNumPendingJobs);
-#endif
-		}
-
-		if (counter != nullptr) {
-			*counter = localCounter;
-		}
-	}
-
 	void RunJob(JobInfo jobInfo, JobHandle* jobHandle)
 	{
 		if (!IsInitialized()) {
 			return;
 		}
+
+		RunJobs(&jobInfo, 1, jobHandle);
+	}
+
+	void RunJob(const JobFunc& job, void* jobData, JobHandle* jobHandle, const std::string& jobName)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		JobSystem::JobInfo jobInfo;
+		jobInfo.jobName = jobName;
+		jobInfo.userParam_ = 0;
+		jobInfo.userData_ = jobData;
+		jobInfo.jobPriority_ = Priority::NORMAL;
+		jobInfo.jobFunc_ = job;
+		jobInfo.mWorkerIndex = USE_ANY_WORKER;
 
 		RunJobs(&jobInfo, 1, jobHandle);
 	}
@@ -705,6 +744,24 @@ namespace JobSystem
 		jobInfo.jobPriority_ = priority;
 		jobInfo.jobFunc_ = job;
 		jobInfo.mWorkerIndex = workerIndex;
+
+		RunJobs(&jobInfo, 1, jobHandle);
+	}
+
+	void RunJobEx(const JobFunc& job, void* jobData, JobHandle* jobHandle, JobHandle preConditon, const std::string& jobName)
+	{
+		if (!IsInitialized()) {
+			return;
+		}
+
+		JobSystem::JobInfo jobInfo;
+		jobInfo.jobName = jobName;
+		jobInfo.userParam_ = 0;
+		jobInfo.userData_ = jobData;
+		jobInfo.jobPriority_ = Priority::NORMAL;
+		jobInfo.jobFunc_ = job;
+		jobInfo.mWorkerIndex = USE_ANY_WORKER;
+		jobInfo.mPreconditon = preConditon;
 
 		RunJobs(&jobInfo, 1, jobHandle);
 	}
@@ -786,7 +843,6 @@ namespace JobSystem
 		Concurrency::AtomicAdd(&gManagerImpl->mCounterPool[localHandle & HANDLE_ID_MASK].value_, numJobs);
 
 		// set total job count
-		const bool jobShouldFreeHandle = (jobHandle == nullptr);
 		Concurrency::AtomicAdd(&gManagerImpl->mJobCount, numJobs);
 
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
@@ -800,60 +856,30 @@ namespace JobSystem
 		{
 			JobInfo& jobInfo = jobInfos[i];
 			jobInfo.mHandle = localHandle;
-			jobInfo.mFreeHandle = jobShouldFreeHandle;
 
-			// 如果指定了workerThread,则将job添加到worker专属队列中
-			if (jobInfo.mWorkerIndex != USE_ANY_WORKER)
+			if (jobInfo.mPreconditon == INVALID_HANDLE || 
+				gManagerImpl->IsHandleZero(jobInfo.mPreconditon))
 			{
-				WorkerThread* workerThread = gManagerImpl->mWorkerThreads[jobInfo.mWorkerIndex % gManagerImpl->mWorkerThreads.size()];
-				auto& pendingJobs = workerThread->mWorkerPendingJobs[(I32)jobInfo.jobPriority_];
-				while (!pendingJobs.Enqueue(jobInfo))
-				{
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-					// log when enqueue job failed
-					F64 currentTime = Timer::GetAbsoluteTime();
-					if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
-					{
-						if (currentTime > nextLogTime)
-						{
-							Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
-							nextLogTime = currentTime + LOG_TIME_REPEAT;
-						}
-					}
-#endif
-					YieldCPU();
-				}
-				workerThread->Wakeup(gManagerImpl->mScheduleLock);
+				gManagerImpl->PushJobInfo(jobInfo);
 			}
 			else
 			{
-				auto& pendingJobs = gManagerImpl->mPendingJobs[(I32)jobInfo.jobPriority_];
-				while (!pendingJobs.Enqueue(jobInfo))
+				Counter& counter = gManagerImpl->mCounterPool[jobInfo.mPreconditon & HANDLE_ID_MASK];
+				if (counter.mNextJob.jobFunc_)
 				{
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-					// log when enqueue job failed
-					F64 currentTime = Timer::GetAbsoluteTime();
-					if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
-					{
-						if (currentTime > nextLogTime)
-						{
-							Logger::Warning("Failed to enqueue job, waiting for it (Total time waiting: %f ms)", (currentTime - startTime) * 1000.0);
-							nextLogTime = currentTime + LOG_TIME_REPEAT;
-						}
-					}
-#endif
-					YieldCPU();
+					// 如果已经存在后续任务,则创建新的Counter，并以链表形式添加到
+					// Preconditon的counter中
+					JobHandle newHandle = gManagerImpl->AllocateHandle();
+					Counter& newCounter = gManagerImpl->mCounterPool[newHandle & HANDLE_ID_MASK];
+					newCounter.mNextJob = jobInfo;
+					newCounter.mSibling = counter.mSibling;
+					counter.mSibling = newHandle;
 				}
-				// 通知worker去执行job
-				for (auto* workerThread : gManagerImpl->mWorkerThreads) {
-					workerThread->Wakeup(gManagerImpl->mScheduleLock);
+				else
+				{
+					counter.mNextJob = jobInfo;
 				}
-				// gManagerImpl->mScheduleSem.Signal(1);
 			}
-
-#ifdef DEBUG
-			Concurrency::AtomicIncrement(&gManagerImpl->mNumPendingJobs);
-#endif
 		}
 	}
 
