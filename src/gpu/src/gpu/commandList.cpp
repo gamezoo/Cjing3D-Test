@@ -157,6 +157,19 @@ namespace GPU {
         mCommands.push(command);
     }
 
+    void CommandList::BeginRenderPass(RenderPassInfo& passInfo)
+    {
+        auto* command = Alloc<CommandBeginRenderPass>();
+        command->mRenderPassInfo = passInfo;
+        mCommands.push(command);
+    }
+
+    void CommandList::EndRenderPass()
+    {
+        auto* command = Alloc<CommandEndRenderPass>();
+        mCommands.push(command);
+    }
+
     void CommandList::Barrier(const GPU::GPUBarrier* barriers, U32 num)
     {
         auto* command = Alloc<CommandBarrier>();

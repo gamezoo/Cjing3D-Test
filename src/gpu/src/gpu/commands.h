@@ -25,7 +25,9 @@ namespace GPU {
 		BEGIN_FRAME_BINDING_SET,
 		END_FRAME_BINDING_SET,
 		UPDATE_BUFFER,
-		BARRIER
+		BARRIER,
+		BEGIN_RENDER_PASS,
+		END_RENDER_PASS,
 
 	};
 
@@ -142,5 +144,12 @@ namespace GPU {
 	{
 		DynamicArray<GPU::GPUBarrier> mBarriers;
 	};
+
+	struct CommandBeginRenderPass : CommandTyped<CommandType::BEGIN_RENDER_PASS>
+	{
+		RenderPassInfo mRenderPassInfo;
+	};
+
+	struct CommandEndRenderPass : CommandTyped<CommandType::END_RENDER_PASS> {};
 }
 }

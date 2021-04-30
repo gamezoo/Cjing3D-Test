@@ -34,14 +34,16 @@ namespace Cjing3D
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
-	// Impl
+	// Definitions
 	////////////////////////////////////////////////////////////////////////////////////////////
+
 	struct AliasTransfer
 	{
 		U32 mFrom;
 		U32 mTo;
 	};
 	
+	// render pass internal inst
 	struct RenderPassInst
 	{
 		enum { Unused = ~0u };
@@ -59,30 +61,29 @@ namespace Cjing3D
 		}
 	};
 
+	// real available render pass
 	struct PhysicalRenderPass
 	{
-		DynamicArray<I32> mPasses;
+		GPU::RenderPassInfo mRenderPassInfo;
+		DynamicArray<I32> mSubPasses;
 		DynamicArray<AliasTransfer> mAliasTransfer;
 	};
 
+	// resource internal inst
 	struct ResourceInst
 	{
 		enum { Unused = ~0u };
 
 		I32 mIndex = -1;
-		GPU::ResourceType mType;
 		StaticString<64> mName;
-		I32 mVersion = 0;
-		bool mIsUsed = false;
-
-		GPU::TextureDesc mTexDesc;
-		GPU::BufferDesc mBufferDesc;
-
-		// new
 		U32 mPhysicalIndex = Unused;
 		RenderGraphQueueFlags mQueueFlags = 0;
 		DynamicArray<I32> mWrittenPasses;
 		DynamicArray<I32> mReadPasses;
+		GPU::ResHandle mImportedHandle;
+		GPU::ResourceType mType;
+		GPU::TextureDesc mTexDesc;
+		GPU::BufferDesc mBufferDesc;
 	};
 
 	RenderGraphResourceDimension CreateResDimension(const ResourceInst& res)
@@ -90,6 +91,8 @@ namespace Cjing3D
 		RenderGraphResourceDimension dim;
 		dim.mName = res.mName;
 		dim.mType = res.mType;
+		dim.mResIndex = res.mIndex;
+		dim.mIsImported = res.mImportedHandle != GPU::ResHandle::INVALID_HANDLE;
 	
 		switch (res.mType)
 		{
@@ -106,6 +109,7 @@ namespace Cjing3D
 		return std::move(dim);
 	}
 
+	// render pass execute state
 	struct RenderPassExecuteState
 	{
 		GPU::CommandList* mCmd = nullptr;
@@ -122,6 +126,7 @@ namespace Cjing3D
 		}
 	};
 
+	// resource timeline of render passes
 	struct ResPassRange
 	{
 		U32 mFirstReadPass = ~0;
@@ -179,17 +184,24 @@ namespace Cjing3D
 		}
 	};
 
+	// barrier
 	struct Barrier
 	{
 		U32 mResPhysicalIndex = 0;
 	};
 
+	// barriers
 	struct Barriers
 	{
 		DynamicArray<Barrier> mInvalidate;
 		DynamicArray<Barrier> mFlush;
 	};
 
+	////////////////////////////////////////////////////////////////////////////////////////////
+	// Resource cache
+	////////////////////////////////////////////////////////////////////////////////////////////
+
+	// resource cache, handle resources by ref count
 	struct ResourceCache
 	{
 		struct BufferPayload
@@ -281,6 +293,10 @@ namespace Cjing3D
 		}
 	};
 
+	////////////////////////////////////////////////////////////////////////////////////////////
+	// RenderGraphImpl
+	////////////////////////////////////////////////////////////////////////////////////////////
+
 	class RenderGraphImpl
 	{
 	public:
@@ -331,6 +347,7 @@ namespace Cjing3D
 		void BuildPhysicalResources();
 		void BuildPhysicalPasses();
 		void BuildTransients();
+		void BuildRenderPassInfos();
 		void BuildBarriers();
 		void BuildPhysicalBarriers();
 		void BuildAliases();
@@ -343,6 +360,9 @@ namespace Cjing3D
 		void CreateTexture(I32 physicalIndex);
 		void CreateResources();
 		void CreateFrameBindingSets();
+
+		void ExecuteGraphicsCommands(PhysicalRenderPass& pass, RenderPassExecuteState& state);
+		void ExecuteComputeCommands(PhysicalRenderPass& pass, RenderPassExecuteState& state);
 
 	public:
 
@@ -618,39 +638,51 @@ namespace Cjing3D
 	{
 		mPhysicalRenderPasses.clear();
 
-		auto CheckMerge = [&](const RenderPassInst& prev, const RenderPassInst& next) {
-			return false;
-		};
-
-		PhysicalRenderPass physicalRenderPass;
-		for(I32 index = 0; index < mPassIndexStack.size();)
+		if (false)
 		{
-			I32 mergeEnd = index + 1;
-			for(; mergeEnd < mPassIndexStack.size(); mergeEnd++)
+			// TODO:   
+			auto CheckMerge = [&](const RenderPassInst& prev, const RenderPassInst& next) {
+				return false;
+			};
+			PhysicalRenderPass physicalRenderPass;
+			for (I32 index = 0; index < mPassIndexStack.size();)
 			{
-				physicalRenderPass.mPasses.push(mPassIndexStack[mergeEnd - 1]);
-
-				bool mergeEnable = true;
-				for(I32 mergeIndex = index; mergeIndex < mergeEnd; mergeIndex++)
+				I32 mergeEnd = index + 1;
+				for (; mergeEnd < mPassIndexStack.size(); mergeEnd++)
 				{
-					if (!CheckMerge(mRenderPasses[mPassIndexStack[mergeIndex]], mRenderPasses[mPassIndexStack[mergeEnd]]))
+					physicalRenderPass.mSubPasses.push(mPassIndexStack[mergeEnd - 1]);
+
+					bool mergeEnable = true;
+					for (I32 mergeIndex = index; mergeIndex < mergeEnd; mergeIndex++)
 					{
-						mergeEnable = false;
+						if (!CheckMerge(mRenderPasses[mPassIndexStack[mergeIndex]], mRenderPasses[mPassIndexStack[mergeEnd]]))
+						{
+							mergeEnable = false;
+							break;
+						}
+					}
+					if (!mergeEnable) {
 						break;
 					}
 				}
-				if (!mergeEnable) {
-					break;
-				}
-			}
 
-			mPhysicalRenderPasses.push(std::move(physicalRenderPass));
-			index = mergeEnd;
+				mPhysicalRenderPasses.push(std::move(physicalRenderPass));
+				index = mergeEnd;
+			}
+		}
+		else
+		{
+			PhysicalRenderPass physicalRenderPass;
+			for (I32 index = 0; index < mPassIndexStack.size(); index++)
+			{
+				physicalRenderPass.mSubPasses.push(mPassIndexStack[index]);
+				mPhysicalRenderPasses.push(std::move(physicalRenderPass));
+			}
 		}
 
 		for (U32 i = 0; i < mPhysicalRenderPasses.size(); i++)
 		{
-			for (I32 passIndex : mPhysicalRenderPasses[i].mPasses) {
+			for (I32 passIndex : mPhysicalRenderPasses[i].mSubPasses) {
 				mRenderPasses[passIndex].mPhysicalIndex = i;
 			}
 		}
@@ -672,6 +704,10 @@ namespace Cjing3D
 			if (dim.mType == GPU::ResourceType::RESOURCETYPE_BUFFER) {
 				dim.mIsTransient = false;
 			}
+
+			if (dim.mIsImported) {
+				dim.mIsTransient = false;
+			}
 		}
 
 		// 如果一个资源被多个pass使用，则该pass不是transient
@@ -682,6 +718,10 @@ namespace Cjing3D
 			}
 
 			if (res.mPhysicalIndex == ResourceInst::Unused) {
+				continue;
+			}
+
+			if (res.mImportedHandle != GPU::ResHandle::INVALID_HANDLE) {
 				continue;
 			}
 
@@ -717,6 +757,10 @@ namespace Cjing3D
 				}
 			}
 		}
+	}
+
+	void RenderGraphImpl::BuildRenderPassInfos()
+	{
 	}
 
 	void RenderGraphImpl::BuildBarriers()
@@ -771,7 +815,7 @@ namespace Cjing3D
 		I32 barrierIndex = 0;
 		for (PhysicalRenderPass& physicalPass : mPhysicalRenderPasses)
 		{
-			for (I32 i = 0; i < physicalPass.mPasses.size(); i++, barrierIndex)
+			for (I32 i = 0; i < physicalPass.mSubPasses.size(); i++, barrierIndex)
 			{
 				Barriers& barriers = mPassBarriers[barrierIndex];
 				for (auto& invalidate : barriers.mInvalidate)
@@ -977,6 +1021,9 @@ namespace Cjing3D
 		// build transients
 		BuildTransients();
 
+		// build render pass infos
+		BuildRenderPassInfos();
+
 		// build barriers
 		BuildBarriers();
 
@@ -987,6 +1034,55 @@ namespace Cjing3D
 		BuildAliases();
 
 		return true;
+	}
+
+	void RenderGraphImpl::ExecuteGraphicsCommands(PhysicalRenderPass& pass, RenderPassExecuteState& state)
+	{
+		GPU::CommandList& cmd = *state.mCmd;
+		cmd.BeginRenderPass(pass.mRenderPassInfo);
+
+		for (const I32& subPass : pass.mSubPasses)
+		{
+			RenderPassInst* renderPassInst = &mRenderPasses[subPass];
+
+			// execute pass
+			auto ent = cmd.Event(renderPassInst->mName);
+			RenderGraphResources resources(*this, renderPassInst->mRenderPass);
+			renderPassInst->mRenderPass->Execute(resources, cmd);
+		}
+
+		cmd.EndRenderPass();
+
+		// compile cmd
+		if (!state.mCmd->GetCommands().empty())
+		{
+			if (!GPU::CompileCommandList(cmd))
+			{
+				Concurrency::AtomicIncrement(&mCompileFailCount);
+				Logger::Warning("Failed to compile cmd for render pass \"%s\"", pass);
+			}
+		}
+	}
+
+	void RenderGraphImpl::ExecuteComputeCommands(PhysicalRenderPass& pass, RenderPassExecuteState& state)
+	{
+		Debug::CheckAssertion(pass.mSubPasses.size() == 1);
+		RenderPassInst* renderPassInst = &mRenderPasses[0];
+
+		// execute pass
+		auto ent = state.mCmd->Event(renderPassInst->mName);
+		RenderGraphResources resources(*this, renderPassInst->mRenderPass);
+		renderPassInst->mRenderPass->Execute(resources, *state.mCmd);
+
+		// compile cmd
+		if (!state.mCmd->GetCommands().empty())
+		{
+			if (!GPU::CompileCommandList(*state.mCmd))
+			{
+				Concurrency::AtomicIncrement(&mCompileFailCount);
+				Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
+			}
+		}
 	}
 
 	bool RenderGraphImpl::Execute(JobSystem::JobHandle& jobHandle)
@@ -1008,13 +1104,13 @@ namespace Cjing3D
 		JobSystem::JobHandle executeJobHandle = JobSystem::INVALID_HANDLE;
 		for(I32 i = 0; i < renderPassCount; i++)
 		{
-			if (mPhysicalRenderPasses[i].mPasses.empty()) {
+			if (mPhysicalRenderPasses[i].mSubPasses.empty()) {
 				continue;
 			}
 
 			mRenderPassExecuteStates[i].mActive = true;
 
-			RenderGraphQueueFlags flag = mRenderPasses[mPhysicalRenderPasses[i].mPasses[0]].mRenderPass->GetQueueFlags();
+			RenderGraphQueueFlags flag = mRenderPasses[mPhysicalRenderPasses[i].mSubPasses[0]].mRenderPass->GetQueueFlags();
 			switch (flag)
 			{
 			case RENDER_GRAPH_QUEUE_GRAPHICS_BIT:
@@ -1051,48 +1147,12 @@ namespace Cjing3D
 				state.emitPreBarriers();
 				{	
 					// graphics commands
-					if (state.mIsGraphics)
-					{
-						for (const I32& subPass : physicalPass.mPasses)
-						{
-							RenderPassInst* renderPassInst = &impl->mRenderPasses[subPass];
-
-							// execute pass
-							auto ent = state.mCmd->Event(renderPassInst->mName);
-							RenderGraphResources resources(*impl, renderPassInst->mRenderPass);
-							renderPassInst->mRenderPass->Execute(resources, *state.mCmd);
-
-							// compile cmd
-							if (!state.mCmd->GetCommands().empty())
-							{
-								if (!GPU::CompileCommandList(*state.mCmd))
-								{
-									Concurrency::AtomicIncrement(&impl->mCompileFailCount);
-									Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
-								}
-							}
-						}
+					if (state.mIsGraphics) {
+						ExecuteGraphicsCommands(physicalPass, state);
 					}
 					// compute commands
-					else
-					{
-						Debug::CheckAssertion(physicalPass.mPasses.size() == 1);
-						RenderPassInst* renderPassInst = &impl->mRenderPasses[0];
-
-						// execute pass
-						auto ent = state.mCmd->Event(renderPassInst->mName);
-						RenderGraphResources resources(*impl, renderPassInst->mRenderPass);
-						renderPassInst->mRenderPass->Execute(resources, *state.mCmd);
-
-						// compile cmd
-						if (!state.mCmd->GetCommands().empty())
-						{
-							if (!GPU::CompileCommandList(*state.mCmd))
-							{
-								Concurrency::AtomicIncrement(&impl->mCompileFailCount);
-								Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName.c_str());
-							}
-						}
+					else {
+						ExecuteComputeCommands(physicalPass, state);
 					}
 				}
 				state.emitPostBarriers();
@@ -1200,6 +1260,10 @@ namespace Cjing3D
 					mResourceCache.mTextures[i].mHandle = GPU::CreateTransientTexture(&dim.mTexDesc);
 					mResourceCache.mTextures[i].mDesc = dim.mTexDesc;
 				}
+				else if (dim.mIsImported)
+				{
+
+				}
 				else 
 				{
 					CreateTexture(i);
@@ -1241,6 +1305,7 @@ namespace Cjing3D
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// RenderGraphResBuilder
 	////////////////////////////////////////////////////////////////////////////////////////////
+
 	RenderGraphResBuilder::RenderGraphResBuilder(RenderGraphImpl& renderGraph, RenderPass* renderPass) :
 		mImpl(renderGraph),
 		mRenderPass(renderPass)
@@ -1289,44 +1354,78 @@ namespace Cjing3D
 		return RenderGraphResource(resInst.mIndex);
 	}
 
-	RenderGraphResource RenderGraphResBuilder::AddInput(RenderGraphResource res)
+	void RenderGraphResBuilder::ReadTexture(RenderGraphResource res)
 	{
 		if (!res) {
-			return res;
+			return;
 		}
 
-		// res record pass index
 		auto& resInst = mImpl.mResources[res.mIndex];
+		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_TEXTURE) {
+			return;
+		}
+
 		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst.mTexDesc.mBindFlags |= GPU::BIND_SHADER_RESOURCE;
 		resInst.mReadPasses.push(mRenderPass->GetIndex());
-
-		// update render pass
 		mRenderPass->AddInput(res);
-		return res;
 	}
 
-	RenderGraphResource RenderGraphResBuilder::AddOutput(RenderGraphResource res)
+	void RenderGraphResBuilder::WriteTexture(RenderGraphResource res)
 	{
 		if (!res) {
-			return res;
+			return;
 		}
 
-		// res record pass index
 		auto& resInst = mImpl.mResources[res.mIndex];
-		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
-		resInst.mWrittenPasses.push(mRenderPass->GetIndex());
+		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_TEXTURE) {
+			return;
+		}
 
-		// update version for trace renderPass resource dependencies
-		mRenderPass->AddInput(res);
-		res.mVersion++;
+		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst.mTexDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
+		resInst.mWrittenPasses.push(mRenderPass->GetIndex());
 		mRenderPass->AddOutput(res);
-		return res;
 	}
 
-	RenderGraphResource RenderGraphResBuilder::AddRTV(RenderGraphResource res, RenderGraphAttachment attachment)
+	void RenderGraphResBuilder::ReadBuffer(RenderGraphResource res)
 	{
 		if (!res) {
-			return res;
+			return;
+		}
+
+		auto& resInst = mImpl.mResources[res.mIndex];
+		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_BUFFER) {
+			return;
+		}
+
+		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst.mBufferDesc.mBindFlags |= GPU::BIND_SHADER_RESOURCE;
+		resInst.mReadPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddInput(res);
+	}
+
+	void RenderGraphResBuilder::WriteBuffer(RenderGraphResource res)
+	{
+		if (!res) {
+			return;
+		}
+
+		auto& resInst = mImpl.mResources[res.mIndex];
+		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_BUFFER) {
+			return;
+		}
+
+		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst.mBufferDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
+		resInst.mWrittenPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddOutput(res);
+	}
+
+	void RenderGraphResBuilder::AddRTV(RenderGraphResource res, RenderGraphAttachment attachment)
+	{
+		if (!res) {
+			return;
 		}
 
 		auto& resource = mImpl.mResources[res.mIndex];
@@ -1339,25 +1438,17 @@ namespace Cjing3D
 			Logger::Warning("Invalid res \'%d\', nnly texture could bind render target", (I32)resource.mType);
 			break;
 		}
+		resource.mWrittenPasses.push(mRenderPass->GetIndex());
 
 		// renderPass add rtv
 		mRenderPass->AddRTV(res, attachment);
-
-		// update version for trace renderPass resource dependencies
-		mRenderPass->AddInput(res);
-		res.mVersion++;
 		mRenderPass->AddOutput(res);
-
-		// update graphs res version (TODO?)
-		resource.mVersion = res.mVersion;
-
-		return res;
 	}
 
-	RenderGraphResource RenderGraphResBuilder::SetDSV(RenderGraphResource res, RenderGraphAttachment attachment)
+	void RenderGraphResBuilder::SetDSV(RenderGraphResource res, RenderGraphAttachment attachment)
 	{
 		if (!res) {
-			return res;
+			return;
 		}
 
 		auto& resource = mImpl.mResources[res.mIndex];
@@ -1370,19 +1461,11 @@ namespace Cjing3D
 			Logger::Warning("Invalid res \'%d\', nnly texture could bind depth stencil", (I32)resource.mType);
 			break;
 		}
+		resource.mWrittenPasses.push(mRenderPass->GetIndex());
 
 		// renderPass add dsv
 		mRenderPass->SetDSV(res, attachment);
-
-		// update for trace renderPass resource dependencies
-		mRenderPass->AddInput(res);
-		res.mVersion++;
 		mRenderPass->AddOutput(res);
-
-		// update graphs res version (TODO?)
-		resource.mVersion = res.mVersion;
-
-		return res;
 	}
 
 	const GPU::TextureDesc* RenderGraphResBuilder::GetTextureDesc(RenderGraphResource res)const
@@ -1494,6 +1577,7 @@ namespace Cjing3D
 		String ret;
 		ret += "digraph \"graph\" {\n";
 		ret += "rankdir = LR\n";
+		ret += "bgcolor = black\n";
 		ret += "node [shape=rectangle, fontname=\"helvetica\", fontsize=10]\n\n";
 		
 		// passes nodes
@@ -1526,7 +1610,7 @@ namespace Cjing3D
 		// edge
 		for (auto& physicalPass : mImpl->mPhysicalRenderPasses)
 		{
-			for (U32 passIndex : physicalPass.mPasses)
+			for (U32 passIndex : physicalPass.mSubPasses)
 			{
 				auto& pass = mImpl->mRenderPasses[passIndex];
 				auto inputs = pass.mRenderPass->GetInputs();
@@ -1538,9 +1622,9 @@ namespace Cjing3D
 						if (res.mPhysicalIndex != ResourceInst::Unused) 
 						{
 							ret += res.mName;
-							ret += "->";
+							ret += "-> ";
 							ret += pass.mName;
-							ret += "\n";
+							ret += " [color=darkolivegreen2]\n";
 						}
 					}
 				}
@@ -1555,9 +1639,9 @@ namespace Cjing3D
 						if (res.mPhysicalIndex != ResourceInst::Unused) 
 						{
 							ret += pass.mName;
-							ret += "->";
+							ret += "-> ";
 							ret += res.mName;
-							ret += "\n";
+							ret += " [color=red2]\n";
 						}
 					}
 				}
@@ -1580,9 +1664,51 @@ namespace Cjing3D
 		for (const auto& res : mImpl->mResources)
 		{
 			if (res.mName == name) {
-				return RenderGraphResource(res.mIndex, res.mVersion);
+				return RenderGraphResource(res.mIndex);
 			}
 		}
 		return RenderGraphResource();
+	}
+
+	RenderGraphResource RenderGraph::ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc)
+	{
+		if (auto res = mImpl->GetResource(name))
+		{
+			Logger::Warning("Render graph resource is already imported, %s.", name);
+			return RenderGraphResource(res->mIndex);
+		}
+
+		ResourceInst resInst;
+		resInst.mName = name;
+		resInst.mIndex = mImpl->mResources.size();
+		resInst.mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
+		resInst.mTexDesc = desc;
+		resInst.mImportedHandle = handle;
+
+		mImpl->mResources.push(resInst);
+		mImpl->mResourceNameMap.insert(name, resInst.mIndex);
+
+		return RenderGraphResource(resInst.mIndex);
+	}
+
+	RenderGraphResource RenderGraph::ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc)
+	{
+		if (auto res = mImpl->GetResource(name))
+		{
+			Logger::Warning("Render graph resource is already imported, %s.", name);
+			return RenderGraphResource(res->mIndex);
+		}
+
+		ResourceInst resInst;
+		resInst.mName = name;
+		resInst.mIndex = mImpl->mResources.size();
+		resInst.mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
+		resInst.mBufferDesc = desc;
+		resInst.mImportedHandle = handle;
+
+		mImpl->mResources.push(resInst);
+		mImpl->mResourceNameMap.insert(name, resInst.mIndex);
+
+		return RenderGraphResource(resInst.mIndex);
 	}
 }

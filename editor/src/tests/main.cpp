@@ -47,11 +47,10 @@ TEST_CASE("RenderGraphTest", "[Render]")
 		[&](RenderGraphResBuilder& builder) {
 
 			auto depthOutput = builder.CreateTexture("depth", &backDesc);
-			builder.AddOutput(depthOutput);
+			builder.SetDSV(depthOutput);
 
 			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				ImageParams params = {};
-				RenderImage::Draw(resources.GetTexture(depthOutput), params, cmd);
+				Logger::Info("DoPreDepthPass");
 			};
 		}
 	);
@@ -62,13 +61,13 @@ TEST_CASE("RenderGraphTest", "[Render]")
 		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 		[&](RenderGraphResBuilder& builder) {
 
-			builder.AddInput(graph.GetResource("depth"));
+			builder.ReadTexture(graph.GetResource("depth"));
 
 			auto output = builder.CreateTexture("mainOutput", &backDesc);
-			builder.AddOutput(output);
+			builder.AddRTV(output);
 
 			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-		
+				Logger::Info("MainPass");
 			};
 		}
 	);
@@ -79,13 +78,13 @@ TEST_CASE("RenderGraphTest", "[Render]")
 		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_ASYNC_COMPUTE_BIT,
 		[&](RenderGraphResBuilder& builder) {
 	
-			builder.AddInput(graph.GetResource("mainOutput"));
+			builder.ReadTexture(graph.GetResource("mainOutput"));
 	
 			auto output = builder.CreateTexture("postOutput", &backDesc);
-			builder.AddOutput(output);
+			builder.AddRTV(output);
 			
 			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
+				Logger::Info("PostprocessPass");
 			};
 		}
 	);
@@ -96,14 +95,14 @@ TEST_CASE("RenderGraphTest", "[Render]")
 		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 		[&](RenderGraphResBuilder& builder) {
 
-			builder.AddInput(graph.GetResource("mainOutput"));
-			builder.AddInput(graph.GetResource("postOutput"));
+			builder.ReadTexture(graph.GetResource("mainOutput"));
+			builder.ReadTexture(graph.GetResource("postOutput"));
 
 			auto output = builder.CreateTexture("finalOutput", &backDesc);
-			builder.AddOutput(output);
+			builder.AddRTV(output);
 
 			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
+				Logger::Info("CompositePass");
 			};
 		}
 	);
@@ -118,9 +117,11 @@ TEST_CASE("RenderGraphTest", "[Render]")
 	DeisplayGraphviz(graphvizStr);
 
 	// execute graph
-	//JobSystem::JobHandle jobHandle;
-	//graph.Execute(jobHandle);
-	//JobSystem::Wait(&jobHandle);
+	JobSystem::JobHandle jobHandle;
+	graph.Execute(jobHandle);
+	JobSystem::Wait(&jobHandle);
+
+	Logger::Info("RenderGraph test finished");
 }
 
 int main(int argc, char* argv[])

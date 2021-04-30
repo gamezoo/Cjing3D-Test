@@ -22,6 +22,8 @@ namespace Cjing3D
 		GPU::BufferDesc mBufferDesc;
 		bool mIsTransient = false;
 		bool mPersistent = true;
+		bool mIsImported = false;
+		I32  mResIndex = 0;
 	};
 
 	struct RenderGraphAttachment
@@ -56,7 +58,7 @@ namespace Cjing3D
 	{
 	public:
 		RenderGraphResource() = default;
-		RenderGraphResource(I32 index, I32 version = 0) :mIndex(index), mVersion(version) {}
+		RenderGraphResource(I32 index) :mIndex(index) {}
 
 		bool operator==(const RenderGraphResource& rhs) const {
 			return mIndex == rhs.mIndex;
@@ -77,12 +79,8 @@ namespace Cjing3D
 		I32 Index()const {
 			return mIndex;
 		}
-		I32 Hash()const {
-			return mIndex * 10000 + mVersion;
-		}
 
 		I32 mIndex = -1;
-		I32 mVersion = 0;
 	};
 
 	U32 HashFunc(U32 Input, const RenderGraphResource& Data);

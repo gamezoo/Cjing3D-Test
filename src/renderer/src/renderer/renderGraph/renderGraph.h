@@ -20,10 +20,12 @@ namespace Cjing3D
 		RenderGraphResource CreateTexture(const char* name, const GPU::TextureDesc* desc);
 		RenderGraphResource CreateBuffer(const char* name, const GPU::BufferDesc* desc);
 
-		RenderGraphResource AddInput(RenderGraphResource res);
-		RenderGraphResource AddOutput(RenderGraphResource res);
-		RenderGraphResource AddRTV(RenderGraphResource res, RenderGraphAttachment attachment);
-		RenderGraphResource SetDSV(RenderGraphResource res, RenderGraphAttachment attachment);
+		void ReadTexture(RenderGraphResource res);
+		void WriteTexture(RenderGraphResource res);
+		void ReadBuffer(RenderGraphResource res);
+		void WriteBuffer(RenderGraphResource res);
+		void AddRTV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget());
+		void SetDSV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::DepthStencil());
 
 		const GPU::TextureDesc* GetTextureDesc(RenderGraphResource res)const;
 		const GPU::BufferDesc* GetBufferDesc(RenderGraphResource res)const;
@@ -103,8 +105,11 @@ namespace Cjing3D
 		void Clear();
 		void SetFinalResource(const RenderGraphResource& res);
 
-		String ExportGraphviz();
 		RenderGraphResource GetResource(const char* name)const;
+		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc);
+		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc);
+
+		String ExportGraphviz();
 
 	private:
 		void* Allocate(size_t size);

@@ -48,6 +48,9 @@ namespace GPU {
 		void BeginFrameBindingSet(ResHandle handle);
 		void EndFrameBindingSet();
 
+		void BeginRenderPass(RenderPassInfo& passInfo);
+		void EndRenderPass();
+
 		void Barrier(const GPU::GPUBarrier* barriers, U32 num);
 
 		struct ScopedFrameBindingSet

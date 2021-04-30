@@ -49,6 +49,8 @@ namespace GPU
             GPU_COMMAND_CASE(CommandUpdateBuffer);
             GPU_COMMAND_CASE(CommandBindResource);
             GPU_COMMAND_CASE(CommandBarrier);
+            GPU_COMMAND_CASE(CommandBeginRenderPass);
+            GPU_COMMAND_CASE(CommandEndRenderPass);
 
             case CommandBeginEvent::TYPE:
             {
@@ -478,6 +480,16 @@ namespace GPU
     bool CompileContextDX11::CompileCommand(const CommandBarrier* cmd)
     {
         // D3D11 dose not support barrier cmd, just return true
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandBeginRenderPass* cmd)
+    {
+        return true;
+    }
+
+    bool CompileContextDX11::CompileCommand(const CommandEndRenderPass* cmd)
+    {
         return true;
     }
 }

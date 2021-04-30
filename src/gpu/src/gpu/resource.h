@@ -364,6 +364,11 @@ namespace GPU
 		}
 	};
 
+	struct RenderPassInfo
+	{
+
+	};
+
 	struct FrameBindingSetDesc
 	{
 		DynamicArray<BindingFrameAttachment> mAttachments;
