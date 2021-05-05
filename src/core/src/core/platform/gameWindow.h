@@ -29,8 +29,8 @@ namespace Cjing3D {
 		virtual void SetWindowTitle(const UTF8String& title) = 0;
 		virtual bool IsMouseCursorVisible()const = 0;
 		virtual void SetMouseCursorVisible(bool visible) = 0;
-		virtual RectInt GetClientBounds()const = 0;
-		virtual void SetClientbounds(const RectInt& rect) = 0;
+		virtual Platform::WindowRect GetClientBounds()const = 0;
+		virtual void SetClientbounds(const Platform::WindowRect& rect) = 0;
 		virtual I32 GetDPI()const = 0;
 
 	private:

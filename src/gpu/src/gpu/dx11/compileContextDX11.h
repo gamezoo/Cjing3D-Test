@@ -36,6 +36,7 @@ namespace GPU
 		GraphicsDeviceDx11& mDevice;
 		CommandListDX11& mCommandList;
 		DynamicArray<String> mEventStack;
+		DynamicArray<ResHandle> mTransientTextures;
 	};
 }
 }

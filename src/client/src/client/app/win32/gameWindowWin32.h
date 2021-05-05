@@ -46,8 +46,8 @@ namespace Cjing3D::Win32 {
 		void SetWindowTitle(const UTF8String& title) override;
 		bool IsMouseCursorVisible()const override;
 		void SetMouseCursorVisible(bool visible) override;
-		RectInt GetClientBounds()const override;
-		void SetClientbounds(const RectInt& rect) override;
+		Platform::WindowRect GetClientBounds()const override;
+		void SetClientbounds(const Platform::WindowRect& rect) override;
 		I32 GetDPI()const override;
 
 		HINSTANCE GetInstance()const { return mHinstance; }
@@ -62,8 +62,7 @@ namespace Cjing3D::Win32 {
 		DynamicArray<WindowMessageHandler> mHandlers;
 		I32 mDPI = DEFAULT_GAME_WINDOW_DPI;
 		UTF8String mTitleName;
-		I32x2 mScreenPos = I32x2(0, 0);
-		I32x2 mScreenSize = I32x2(0, 0);
+		Platform::WindowRect mClientBounds;
 		bool mIsMouseCursorVisible = true;
 		bool mIsFullScreen = false;
 		bool mIsInitialized = false;

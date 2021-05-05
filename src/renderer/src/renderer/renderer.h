@@ -14,6 +14,7 @@ namespace Cjing3D
 	class RenderScene;
 	class Universe;
 	class RenderGraphResources;
+	class GameWindow;
 
 	namespace Renderer
 	{
@@ -21,9 +22,7 @@ namespace Cjing3D
 		bool IsInitialized();
 		void Uninitialize();
 		void InitRenderScene(Engine& engine, Universe& universe);
-		void Update(CullingResult& visibility, FrameCB& frameCB, F32 deltaTime);
-		void PresentBegin(GPU::CommandList& cmd);
-		void PresentEnd();
+		void UpdatePerFrameData(CullingResult& visibility, FrameCB& frameCB, F32 deltaTime, const U32x2& resolution);
 		void EndFrame();
 
 		// drawing methods
@@ -38,5 +37,8 @@ namespace Cjing3D
 		void AddStaticSampler(const GPU::ResHandle& handle, I32 slot);
 		void UpdateViewCulling(CullingResult& cullingResult, Viewport& viewport, I32 cullingFlag);
 		void UpdateCameraCB(const Viewport& viewport, CameraCB& cameraCB);
+
+		U32x2 GetInternalResolution();
+		void SetWindow(const GameWindow& gameWindow);
 	}
 }

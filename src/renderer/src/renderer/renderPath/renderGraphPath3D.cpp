@@ -13,10 +13,8 @@ namespace Cjing3D
 	{
 	}
 
-	void RenderGraphPath3D::ResizeBuffers()
+	void RenderGraphPath3D::ResizeBuffers(const U32x2& resolution)
 	{
-		auto resolution = GPU::GetResolution();
-
 		// update viewport 
 		mViewport.CreatePerspective((F32)resolution.x(), (F32)resolution.y(), mViewport.mNear, mViewport.mFar);
 
@@ -27,7 +25,7 @@ namespace Cjing3D
 			desc.mHeight = resolution[1];
 			desc.mFormat = GPU::FORMAT_R8G8B8A8_UNORM;
 			desc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;			
-			TextureHelper::CreateTexture(mRtMain, desc, nullptr, "rtMain");
+			TextureHelper::CreateTexture(mRtMain, desc, nullptr, "rtMain3D");
 		}
 		// depthBuffers
 		{
@@ -43,20 +41,10 @@ namespace Cjing3D
 	void RenderGraphPath3D::Start()
 	{
 		RenderGraphPath2D::Start();
-
-		if (!mResolutionChangedHandle.IsConnected())
-		{
-			ResizeBuffers();
-			mResolutionChangedHandle = EventSystem::Register(EVENT_RESOLUTION_CHANGE,
-				[this](const VariantArray& variants) {
-					ResizeBuffers();
-			});
-		}
 	}
 
 	void RenderGraphPath3D::Stop()
 	{
-		mResolutionChangedHandle.Disconnect();
 		mRenderPipeline3D.Clear();
 	}
 
@@ -70,13 +58,14 @@ namespace Cjing3D
 		Renderer::UpdateViewCulling(mVisibility, mViewport, cullingFlag);
 
 		// renderer update
-		Renderer::Update(mVisibility, mFrameCB, dt);
+		auto resolution = Renderer::GetInternalResolution();
+		Renderer::UpdatePerFrameData(mVisibility, mFrameCB, dt, resolution);
 
 		// update viewport
 		mViewport.Update();
 	}
 
-	void RenderGraphPath3D::UpdatePipelines(RenderGraph& renderGraph)
+	void RenderGraphPath3D::RenderPipelines(RenderGraph& renderGraph)
 	{
 		PROFILE_FUNCTION();
 
@@ -87,10 +76,10 @@ namespace Cjing3D
 		//mRenderPipeline3D.SetResource("dbMain", dbMainRes);
 
 		//setup pipelines
-		mRenderPipeline3D.Setup(renderGraph, mViewport, mFrameCB, mVisibility);
+		// mRenderPipeline3D.Setup(renderGraph, mViewport, mFrameCB, mVisibility);
 	}
 
-	void RenderGraphPath3D::Compose(GPU::CommandList& cmd)
+	void RenderGraphPath3D::ComposePipelines(GPU::CommandList& cmd)
 	{
 		cmd.EventBegin("Compose3D");
 		if (mRtMain.GetHandle())
@@ -103,6 +92,6 @@ namespace Cjing3D
 		}
 		cmd.EventEnd();
 
-		RenderGraphPath2D::Compose(cmd);
+		RenderGraphPath2D::ComposePipelines(cmd);
 	}
 }

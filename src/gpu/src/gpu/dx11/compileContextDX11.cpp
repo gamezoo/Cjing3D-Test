@@ -331,25 +331,55 @@ namespace GPU
         U32 rtvIndex = 0;
         for (const auto& attachment : bindingSet->mDesc.mAttachments)
         {
-            auto texture = mDevice.mTextures.Read(attachment.mResource);
-            if (!texture) {
-                continue;
-            }
-
             switch (attachment.mType)
             {
             case BindingFrameAttachment::RENDERTARGET:
             {
-                ID3D11RenderTargetView* rtv = attachment.mSubresourceIndex < 0 ? texture->mRTV.Get() : texture->mSubresourceRTVs[attachment.mSubresourceIndex].Get();     
-                // clear rtv when rtv loaded
-                if (attachment.mLoadOp == BindingFrameAttachment::LOAD_CLEAR) {
-                    mCommandList.GetContext()->ClearRenderTargetView(rtv, texture->mDesc.mClearValue.mColor);
+                auto& res = attachment.mResource;
+                Debug::CheckAssertion(res.GetType() == RESOURCETYPE_TEXTURE || res.GetType() == RESOURCETYPE_SWAP_CHAIN);
+
+                ID3D11RenderTargetView* rtv = nullptr;
+                if (res.GetType() == RESOURCETYPE_TEXTURE)
+                {
+                    auto texture = mDevice.mTextures.Read(res);
+                    if (!texture) {
+                        continue;
+                    }
+                    rtv = attachment.mSubresourceIndex < 0 ? texture->mRTV.Get() : texture->mSubresourceRTVs[attachment.mSubresourceIndex].Get();
+               
+                    // clear rtv when rtv loaded
+                    if (attachment.mLoadOp == BindingFrameAttachment::LOAD_CLEAR) {
+                        mCommandList.GetContext()->ClearRenderTargetView(rtv, texture->mDesc.mClearValue.mColor);
+                    }
                 }
+                else if (res.GetType() == RESOURCETYPE_SWAP_CHAIN)
+                {
+                    auto swapChain = mDevice.mSwapChains.Read(res);
+                    if (!swapChain) {
+                        continue;
+                    }
+                    rtv = swapChain->mRenderTargetView.Get();
+                }
+
+                // load clear
+                if (attachment.mLoadOp == BindingFrameAttachment::LOAD_CLEAR)
+                {
+                    if (attachment.mUseCustomClearColor) {
+                        mCommandList.GetContext()->ClearRenderTargetView(rtv, attachment.mCustomClearColor);
+                    }
+                }
+
                 rtvs[rtvIndex++] = rtv;
             }
             break;
             case BindingFrameAttachment::DEPTH_STENCIL:
             {
+                Debug::CheckAssertion(attachment.mResource.GetType() == RESOURCETYPE_TEXTURE);
+                auto texture = mDevice.mTextures.Read(attachment.mResource);
+                if (!texture) {
+                    continue;
+                }
+
                 dsv = attachment.mSubresourceIndex < 0 ? texture->mDSV.Get() : texture->mSubresourceDSVs[attachment.mSubresourceIndex].Get();
                 // clear dsv when dsv loaded
                 if (attachment.mLoadOp == BindingFrameAttachment::LOAD_CLEAR) 
@@ -485,11 +515,32 @@ namespace GPU
 
     bool CompileContextDX11::CompileCommand(const CommandBeginRenderPass* cmd)
     {
+        for (auto& texHandle : cmd->mRenderPassInfo.mTextures)
+        {
+            auto texture = mDevice.mTextures.Write(texHandle);
+            if (!texture || !texture->mIsTransient) {
+                continue;
+            }
+
+            *texture = mDevice.mTransientResAllocator->CreateTexture(texHandle, texture->mDesc);
+            mTransientTextures.push(texHandle);
+        }
         return true;
     }
 
     bool CompileContextDX11::CompileCommand(const CommandEndRenderPass* cmd)
     {
+        for (auto& texHandle : mTransientTextures)
+        {
+            auto texture = mDevice.mTextures.Write(texHandle);
+            if (!texture || !texture->mIsTransient) {
+                continue;
+            }
+
+            mDevice.mTransientResAllocator->DestroyTexture(texHandle, *texture);
+        }
+        mTransientTextures.clear();
+
         return true;
     }
 }

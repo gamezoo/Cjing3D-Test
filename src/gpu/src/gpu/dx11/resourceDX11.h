@@ -18,13 +18,21 @@ namespace GPU
 		I32 mNumSubResources = 0;
 	};
 
+	struct SwapChainDX11
+	{
+		ComPtr<IDXGISwapChain1> mSwapChain;
+		ComPtr<ID3D11Texture2D> mBackBuffer;
+		ComPtr<ID3D11RenderTargetView> mRenderTargetView;
+		I32 mBufferCount = 2;
+	};
+
 	struct TextureDX11 : ResourceDX11
 	{
 		ComPtr<ID3D11RenderTargetView> mRTV;
 		ComPtr<ID3D11DepthStencilView> mDSV;
 		std::vector<ComPtr<ID3D11RenderTargetView>> mSubresourceRTVs;
 		std::vector<ComPtr<ID3D11DepthStencilView>> mSubresourceDSVs;
-
+		bool mIsTransient = false;
 		TextureDesc mDesc;
 	};
 

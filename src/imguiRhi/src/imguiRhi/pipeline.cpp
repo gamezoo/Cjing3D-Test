@@ -14,7 +14,7 @@ namespace Cjing3D
 
 	void ImGuiPipeline::Setup(RenderGraph& graph)
 	{
-		RenderGraphResource rtRes = graph.GetResource(RenderGraphPath2D::RT_MAIN_NAME);
+		// RenderGraphResource rtRes = graph.GetResource(RenderGraphPath2D::RT_MAIN_NAME);
 
 		/*graph.AddCallbackRenderPass("ImGuiPass",
 			[&](RenderGraphResBuilder& builder) {

@@ -835,19 +835,12 @@ namespace GPU
 		}
 	}
 
-	GraphicsDeviceDx11::GraphicsDeviceDx11(Platform::WindowType window, bool isFullScreen, bool isDebug) :
+	GraphicsDeviceDx11::GraphicsDeviceDx11(bool isDebug) :
 		GraphicsDevice(GraphicsDeviceType::GraphicsDeviceType_Dx11)
 	{
 		Logger::Info("Initializing graphics device dx11...");
 
-		mIsFullScreen = isFullScreen;
 		mIsDebug = isDebug;
-
-		Platform::WindowRect clientRect = Platform::GetClientBounds(window);
-		mResolution = {
-			(U32)(clientRect.mRight - clientRect.mLeft),
-			(U32)(clientRect.mBottom - clientRect.mTop)
-		};
 
 		UINT createDeviceFlags = 0;
 		if (mIsDebug) {
@@ -869,10 +862,10 @@ namespace GPU
 		};
 		U32 numFeatureLevels = ARRAYSIZE(featureLevels);
 		D3D_FEATURE_LEVEL featureLevel;
-		HRESULT result;
 
 		////////////////////////////////////////////////////////////////
 		// create device and immediate context
+		HRESULT result;
 		for (U32 index = 0; index < numDirverTypes; index++)
 		{
 			result = D3D11CreateDevice(
@@ -896,52 +889,49 @@ namespace GPU
 			return;
 		}
 
-		////////////////////////////////////////////////////////////////
-		// create swapchain
 		ComPtr<IDXGIDevice2> pDevice;
 		mDevice.As(&pDevice);
 
+		result = pDevice->SetMaximumFrameLatency(1);
+		Debug::CheckAssertion(SUCCEEDED(result));
+
+		////////////////////////////////////////////////////////////////
+		// get factory
 		ComPtr<IDXGIAdapter> pAdapter;
-		pDevice->GetParent(__uuidof(IDXGIAdapter), (void**)&pAdapter);
+		result = pDevice->GetParent(__uuidof(IDXGIAdapter), (void**)&pAdapter);
+		Debug::CheckAssertion(SUCCEEDED(result));
 
-		ComPtr<IDXGIFactory2> pFactory;
-		pAdapter->GetParent(__uuidof(IDXGIFactory2), (void**)&pFactory);
+		result = pAdapter->GetParent(__uuidof(IDXGIFactory2), (void**)&mFactory);
+		Debug::CheckAssertion(SUCCEEDED(result));
 
-		DXGI_SWAP_CHAIN_DESC1 desc = {};
-		desc.Width = mResolution[0];
-		desc.Height = mResolution[1];
-		desc.Format = _ConvertFormat(GetBackBufferFormat());
-		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		desc.BufferCount = 2;
-		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-		desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
-		desc.Flags = 0;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Stereo = false;
-		desc.Scaling = DXGI_SCALING_STRETCH;
-
-		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = {};
-		fullScreenDesc.RefreshRate = { 60, 1 };
-		fullScreenDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-		fullScreenDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-		fullScreenDesc.Windowed = !isFullScreen;
-
-		result = pFactory->CreateSwapChainForHwnd(
-			mDevice.Get(),
-			window,
-			&desc,
-			&fullScreenDesc,
-			nullptr,
-			&mSwapChain);
-		if (FAILED(result))
+		////////////////////////////////////////////////////////////////
+		// debug layer
+		if (isDebug)
 		{
-			Logger::Error("Failed to create graphics swap chain: %08X", result);
-			return;
-		}
+			ID3D11Debug* d3dDebug = nullptr;
+			if (SUCCEEDED(mDevice->QueryInterface(__uuidof(ID3D11Debug), (void**)&d3dDebug)))
+			{
+				ID3D11InfoQueue* d3dInfoQueue = nullptr;
+				if (SUCCEEDED(d3dDebug->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&d3dInfoQueue)))
+				{
+					d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
+					d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
 
-		// Sets the number of frames that the system is allowed to queue for rendering.
-		pDevice->SetMaximumFrameLatency(1);
+					D3D11_MESSAGE_ID hide[] =
+					{
+						D3D11_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
+						// Add more message IDs here as needed
+					};
+
+					D3D11_INFO_QUEUE_FILTER filter = {};
+					filter.DenyList.NumIDs = _countof(hide);
+					filter.DenyList.pIDList = hide;
+					d3dInfoQueue->AddStorageFilterEntries(&filter);
+					d3dInfoQueue->Release();
+				}
+				d3dDebug->Release();
+			}
+		}
 
 		////////////////////////////////////////////////////////////////
 		// check capabilities
@@ -951,26 +941,17 @@ namespace GPU
 		}
 
 		////////////////////////////////////////////////////////////////
-		// create back buffer
-		result = mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &mBackBuffer);
-		if (FAILED(result))
-		{
-			Logger::Error("Failed to create back buffer texture: %08X", result);
-			return;
-		}
-
-		result = mDevice->CreateRenderTargetView(mBackBuffer.Get(), nullptr, &mRenderTargetView);
-		if (FAILED(result))
-		{
-			Logger::Error("Failed to create render target view: %08X", result);
-			return;
-		}
+		// initialize res allocator
+		mTransientResAllocator = CJING_MAKE_UNIQUE<ResourceAllocatorDX11>(*this);
 
 		Logger::Info("Graphics device dx11 Iinitialized");
 	}
 
 	GraphicsDeviceDx11::~GraphicsDeviceDx11()
 	{
+		mTransientResAllocator->Clear();
+		mTransientResAllocator.Reset();
+
 		Logger::Info("Uninitialize graphics device dx11");
 	}
 
@@ -1026,33 +1007,100 @@ namespace GPU
 		(*cmd)->Reset();
 	}
 
-	void GraphicsDeviceDx11::PresentBegin(ResHandle handle)
+	void GraphicsDeviceDx11::Present(ResHandle handle, bool isVsync)
 	{
-		auto ptr = mCommandLists.Read(handle);
-		if (*ptr != nullptr)
-		{
-			auto deviceContext = (*ptr)->GetContext();
-			ID3D11RenderTargetView* rtv = mRenderTargetView.Get();
-			deviceContext->OMSetRenderTargets(1, &rtv, 0);
-			F32 clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-			deviceContext->ClearRenderTargetView(rtv, clearColor);
-			
+		auto swapChain = mSwapChains.Read(handle);
+		if (swapChain) {
+			swapChain->mSwapChain->Present(isVsync, 0);
 		}
-	}
-
-	void GraphicsDeviceDx11::PresentEnd()
-	{
-		mSwapChain->Present(mIsVsync, 0);
 	}
 
 	void GraphicsDeviceDx11::EndFrame()
 	{
+		mTransientResAllocator->GC();
+	}
+
+	bool GraphicsDeviceDx11::CreateSwapChain(ResHandle handle, const SwapChainDesc* desc, Platform::WindowType window)
+	{
+		auto swapChain = mSwapChains.Write(handle);
+
+		HRESULT result;
+		if (swapChain->mSwapChain == nullptr)
+		{
+			DXGI_SWAP_CHAIN_DESC1 sd = {};
+			sd.Width = desc->mWidth;
+			sd.Height = desc->mHeight;
+			sd.Format = _ConvertFormat(desc->mFormat);
+			sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			sd.BufferCount = desc->mBufferCount;
+			sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+			sd.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+			sd.Flags = 0;
+			sd.SampleDesc.Count = 1;
+			sd.SampleDesc.Quality = 0;
+			sd.Stereo = false;
+			sd.Scaling = DXGI_SCALING_STRETCH;
+
+			DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullScreenDesc = {};
+			fullScreenDesc.RefreshRate = { 60, 1 };
+			fullScreenDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+			fullScreenDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+			fullScreenDesc.Windowed = !desc->mFullscreen;
+
+			result = mFactory->CreateSwapChainForHwnd(
+				mDevice.Get(),
+				window,
+				&sd,
+				&fullScreenDesc,
+				nullptr,
+				swapChain->mSwapChain.ReleaseAndGetAddressOf());
+			if (FAILED(result))
+			{
+				Logger::Error("Failed to create graphics swap chain: %08X", result);
+				return false;
+			}
+		}
+		else
+		{
+			swapChain->mBackBuffer.Reset();
+			swapChain->mRenderTargetView.Reset();
+			result = swapChain->mSwapChain->ResizeBuffers(
+				desc->mBufferCount,
+				desc->mWidth,
+				desc->mHeight,
+				_ConvertFormat(desc->mFormat),
+				0
+			);
+			if (FAILED(result))
+			{
+				Logger::Error("Failed to resize swapchain buffer: %08X", result);
+				return false;
+			}
+		}
+
+		// create backbuffer resources
+		result = swapChain->mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &swapChain->mBackBuffer);
+		if (FAILED(result))
+		{
+			Logger::Error("Failed to create back buffer texture: %08X", result);
+			return false;
+		}
+
+		result = mDevice->CreateRenderTargetView(swapChain->mBackBuffer.Get(), nullptr, &swapChain->mRenderTargetView);
+		if (FAILED(result))
+		{
+			Logger::Error("Failed to create render target view: %08X", result);
+			return false;
+		}
+	
+		return true;
 	}
 
 	bool GraphicsDeviceDx11::CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc)
 	{
 		auto bindingSet = mFrameBindingSets.Write(handle);
 		bindingSet->mDesc = *desc;
+
 		return true;
 	}
 
@@ -1060,62 +1108,16 @@ namespace GPU
 	{
 		auto texture = mTextures.Write(handle);
 		texture->mDesc = *desc;
+		texture->mIsTransient = false;
+		return CreateTextureImpl(*texture, desc, initialData);
+	}
 
-		// set initial data
-		DynamicArray<D3D11_SUBRESOURCE_DATA> subresourceDatas;
-		if (initialData != nullptr)
-		{
-			U32 count = desc->mArraySize * std::max(1u, desc->mMipLevels);
-			subresourceDatas.resize(count);
-			for (int i = 0; i < count; i++) {
-				subresourceDatas[i] = _ConvertSubresourceData(initialData[i]);
-			}
-		}
-
-		// create texture
-		HRESULT ret = S_OK;
-		switch (desc->mType)
-		{
-		case GPU::TEXTURE_1D:
-		{
-			D3D11_TEXTURE1D_DESC texDesc = _ConvertTexture1DDesc(desc);
-			ret = mDevice->CreateTexture1D(&texDesc, subresourceDatas.data(), (ID3D11Texture1D**)texture->mResource.ReleaseAndGetAddressOf());
-		}
-		break;
-		case GPU::TEXTURE_2D:
-		{
-			D3D11_TEXTURE2D_DESC texDesc = _ConvertTexture2DDesc(desc);
-			ret = mDevice->CreateTexture2D(&texDesc, subresourceDatas.data(), (ID3D11Texture2D**)texture->mResource.ReleaseAndGetAddressOf());
-		}
-		break;
-		case GPU::TEXTURE_3D:
-		{
-			D3D11_TEXTURE3D_DESC texDesc = _ConvertTexture3DDesc(desc);
-			ret = mDevice->CreateTexture3D(&texDesc, subresourceDatas.data(), (ID3D11Texture3D**)texture->mResource.ReleaseAndGetAddressOf());
-		}
-		break;
-		default:
-			break;
-		}
-		if (FAILED(ret)) {
-			return SUCCEEDED(ret);
-		}
-
-		// create texture subresource
-		if (FLAG_ANY(desc->mBindFlags, BIND_RENDER_TARGET)) {
-			CreateSubresourceImpl(*texture, SUBRESOURCE_RTV, 0, -1, 0, -1);
-		}
-		if (FLAG_ANY(desc->mBindFlags, BIND_DEPTH_STENCIL)) {
-			CreateSubresourceImpl(*texture, SUBRESOURCE_DSV, 0, -1, 0, -1);
-		}
-		if (FLAG_ANY(desc->mBindFlags, BIND_SHADER_RESOURCE)) {
-			CreateSubresourceImpl(*texture, SUBRESOURCE_SRV, 0, -1, 0, -1);
-		}
-		if (FLAG_ANY(desc->mBindFlags, BIND_UNORDERED_ACCESS)) {
-			CreateSubresourceImpl(*texture, SUBRESOURCE_UAV, 0, -1, 0, -1);
-		}
-
-		return SUCCEEDED(ret);
+	bool GraphicsDeviceDx11::CreateTransientTexture(ResHandle handle, const TextureDesc* desc)
+	{
+		auto texture = mTextures.Write(handle);
+		texture->mDesc = *desc;
+		texture->mIsTransient = true;
+		return true;
 	}
 
 	bool GraphicsDeviceDx11::CreateBuffer(ResHandle handle, const BufferDesc* desc, const SubresourceData* initialData)
@@ -1526,7 +1528,7 @@ namespace GPU
 			*mBuffers.Write(handle) = BufferDX11();
 			break;
 		case RESOURCETYPE_TEXTURE:
-			*mTextures.Write(handle) = TextureDX11();
+			 DestroyTextureImpl(*mTextures.Write(handle));
 			break;
 		case RESOURCETYPE_SHADER:
 			if (auto shader = mShaders.Write(handle))
@@ -1568,43 +1570,6 @@ namespace GPU
 			break;
 		default:
 			break;
-		}
-	}
-
-	void GraphicsDeviceDx11::SetResolution(const U32x2 size)
-	{
-		if (size != mResolution)
-		{
-			mResolution = size;
-			mBackBuffer.Reset();
-			mRenderTargetView.Reset();
-
-			// resize buffer
-			HRESULT result = mSwapChain->ResizeBuffers(
-				GetBackBufferCount(),
-				mResolution.x(), mResolution.y(),
-				_ConvertFormat(GetBackBufferFormat()),
-				0);
-			if (FAILED(result))
-			{
-				Logger::Error("Failed to resize swapchain buffer: %08X", result);
-				return;
-			}
-
-			// create backbuffer resources
-			result = mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), &mBackBuffer);
-			if (FAILED(result))
-			{
-				Logger::Error("Failed to create back buffer texture: %08X", result);
-				return;
-			}
-
-			result = mDevice->CreateRenderTargetView(mBackBuffer.Get(), nullptr, &mRenderTargetView);
-			if (FAILED(result))
-			{
-				Logger::Error("Failed to create render target view: %08X", result);
-				return;
-			}
 		}
 	}
 
@@ -1701,6 +1666,70 @@ namespace GPU
 		}
 
 		mImmediateContext->Unmap(resD3D, 0);
+	}
+
+	bool GraphicsDeviceDx11::CreateTextureImpl(TextureDX11& texture, const TextureDesc* desc, const SubresourceData* initialData)
+	{
+		// set initial data
+		DynamicArray<D3D11_SUBRESOURCE_DATA> subresourceDatas;
+		if (initialData != nullptr)
+		{
+			U32 count = desc->mArraySize * std::max(1u, desc->mMipLevels);
+			subresourceDatas.resize(count);
+			for (int i = 0; i < count; i++) {
+				subresourceDatas[i] = _ConvertSubresourceData(initialData[i]);
+			}
+		}
+
+		// create texture
+		HRESULT ret = S_OK;
+		switch (desc->mType)
+		{
+		case GPU::TEXTURE_1D:
+		{
+			D3D11_TEXTURE1D_DESC texDesc = _ConvertTexture1DDesc(desc);
+			ret = mDevice->CreateTexture1D(&texDesc, subresourceDatas.data(), (ID3D11Texture1D**)texture.mResource.ReleaseAndGetAddressOf());
+		}
+		break;
+		case GPU::TEXTURE_2D:
+		{
+			D3D11_TEXTURE2D_DESC texDesc = _ConvertTexture2DDesc(desc);
+			ret = mDevice->CreateTexture2D(&texDesc, subresourceDatas.data(), (ID3D11Texture2D**)texture.mResource.ReleaseAndGetAddressOf());
+		}
+		break;
+		case GPU::TEXTURE_3D:
+		{
+			D3D11_TEXTURE3D_DESC texDesc = _ConvertTexture3DDesc(desc);
+			ret = mDevice->CreateTexture3D(&texDesc, subresourceDatas.data(), (ID3D11Texture3D**)texture.mResource.ReleaseAndGetAddressOf());
+		}
+		break;
+		default:
+			break;
+		}
+		if (FAILED(ret)) {
+			return SUCCEEDED(ret);
+		}
+
+		// create texture subresource
+		if (FLAG_ANY(desc->mBindFlags, BIND_RENDER_TARGET)) {
+			CreateSubresourceImpl(texture, SUBRESOURCE_RTV, 0, -1, 0, -1);
+		}
+		if (FLAG_ANY(desc->mBindFlags, BIND_DEPTH_STENCIL)) {
+			CreateSubresourceImpl(texture, SUBRESOURCE_DSV, 0, -1, 0, -1);
+		}
+		if (FLAG_ANY(desc->mBindFlags, BIND_SHADER_RESOURCE)) {
+			CreateSubresourceImpl(texture, SUBRESOURCE_SRV, 0, -1, 0, -1);
+		}
+		if (FLAG_ANY(desc->mBindFlags, BIND_UNORDERED_ACCESS)) {
+			CreateSubresourceImpl(texture, SUBRESOURCE_UAV, 0, -1, 0, -1);
+		}
+
+		return SUCCEEDED(ret);
+	}
+
+	void GraphicsDeviceDx11::DestroyTextureImpl(TextureDX11& texture)
+	{
+		texture = TextureDX11();
 	}
 
 	int GraphicsDeviceDx11::CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount)

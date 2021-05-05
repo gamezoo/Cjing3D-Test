@@ -117,9 +117,9 @@ TEST_CASE("RenderGraphTest", "[Render]")
 	DeisplayGraphviz(graphvizStr);
 
 	// execute graph
-	JobSystem::JobHandle jobHandle;
-	graph.Execute(jobHandle);
-	JobSystem::Wait(&jobHandle);
+	//JobSystem::JobHandle jobHandle;
+	//graph.Execute(jobHandle);
+	//JobSystem::Wait(&jobHandle);
 
 	Logger::Info("RenderGraph test finished");
 }

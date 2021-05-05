@@ -14,15 +14,11 @@ namespace Cjing3D
 		void Start()override;
 		void Stop()override;
 		void Update(F32 dt)override;
-		void UpdatePipelines(RenderGraph& renderGraph)override;
-		void Compose(GPU::CommandList& cmd)override;
-
-		void ResizeBuffers();
-
-		static const char* RT_MAIN_NAME;
+		void ResizeBuffers(const U32x2& resolution)override;
+		void RenderPipelines(RenderGraph& renderGraph)override;		// called by RenderGraph::Render
+		void ComposePipelines(GPU::CommandList& cmd)override;		// called by RenderGraph::Compose
 
 	protected:
-		ScopedConnection mResolutionChangedHandle;
 		RenderPipeline2D mRenderPipeline2D;
 
 		Texture mRtMain;

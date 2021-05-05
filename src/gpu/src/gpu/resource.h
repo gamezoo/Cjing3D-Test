@@ -20,6 +20,7 @@ namespace GPU
 		RESOURCETYPE_PIPELINE,
 		RESOURCETYPE_PIPELINE_BINDING_SET,
 		RESOURCETYPE_FRAME_BINDING_SET,
+		RESOURCETYPE_SWAP_CHAIN,
 		RESOURCETYPE_COUNT
 	};
 
@@ -277,6 +278,8 @@ namespace GPU
 
 		I32 mSubresourceIndex = -1;
 		ResHandle mResource;
+		bool mUseCustomClearColor = false;
+		F32 mCustomClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 		bool operator!=(const BindingFrameAttachment& rhs)const {
 			return mType != rhs.mType ||
@@ -366,7 +369,7 @@ namespace GPU
 
 	struct RenderPassInfo
 	{
-
+		DynamicArray<GPU::ResHandle> mTextures;
 	};
 
 	struct FrameBindingSetDesc

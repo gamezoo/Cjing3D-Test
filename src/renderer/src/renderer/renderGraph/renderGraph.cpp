@@ -9,6 +9,10 @@
 #include "core\helper\profiler.h"
 #include "gpu\gpu.h"
 
+// TODO: 
+// 1. barriers
+// 2. compile graph only the swapChain is changed, add SceneUpdate callbacks
+
 namespace Cjing3D
 {
 	namespace
@@ -67,6 +71,7 @@ namespace Cjing3D
 		GPU::RenderPassInfo mRenderPassInfo;
 		DynamicArray<I32> mSubPasses;
 		DynamicArray<AliasTransfer> mAliasTransfer;
+		DynamicArray<U32> mPhysicalTextures;
 	};
 
 	// resource internal inst
@@ -100,6 +105,7 @@ namespace Cjing3D
 			dim.mBufferDesc = res.mBufferDesc;
 			break;
 		case GPU::RESOURCETYPE_TEXTURE:
+		case GPU::RESOURCETYPE_SWAP_CHAIN:
 			dim.mTexDesc = res.mTexDesc;
 			break;
 		default:
@@ -421,7 +427,12 @@ namespace Cjing3D
 
 				auto& graphAttachment = renderPass->mRTVAttachments[i];
 				attachment.mLoadOp = graphAttachment.mLoadOp;
+				attachment.mUseCustomClearColor = graphAttachment.mUseCustomClearColor;
 				attachment.mType = GPU::BindingFrameAttachment::RENDERTARGET;
+				for (U32 i = 0; i < 4; i++) {
+					attachment.mCustomClearColor[i] = graphAttachment.mCustomClearColor[i];
+				}
+
 				frameBindingSetDesc.mAttachments.push(attachment);
 			}
 
@@ -761,6 +772,51 @@ namespace Cjing3D
 
 	void RenderGraphImpl::BuildRenderPassInfos()
 	{
+		for (auto& physicalPass : mPhysicalRenderPasses)
+		{
+			auto& physicalTextures = physicalPass.mPhysicalTextures;
+			physicalTextures.clear();
+
+			// add unique texture
+			auto AddTexture = [&](U32 index) {
+				auto it = std::find(physicalTextures.begin(), physicalTextures.end(), index);
+				if (it != physicalTextures.end())
+				{
+					U32(it - physicalTextures.begin());
+				}
+				else
+				{
+					U32 ret = physicalTextures.size();
+					physicalTextures.push(index);
+					return ret;
+				}
+			};
+
+			for (auto& passIndex : physicalPass.mSubPasses)
+			{
+				auto& renderPass = mRenderPasses[passIndex];
+
+				// input resources
+				auto inputs = renderPass.mRenderPass->GetInputs();
+				for (auto& input : inputs)
+				{
+					if (!input.IsEmpty() && mResources[input.mIndex].mType == GPU::RESOURCETYPE_TEXTURE)
+					{
+						AddTexture(mResources[input.mIndex].mPhysicalIndex);
+					}
+				}
+
+				// output resources
+				auto outputs = renderPass.mRenderPass->GetOutputs();
+				for (auto& output : outputs)
+				{
+					if (!output.IsEmpty() && mResources[output.mIndex].mType == GPU::RESOURCETYPE_TEXTURE)
+					{
+						AddTexture(mResources[output.mIndex].mPhysicalIndex);
+					}
+				}
+			}
+		}
 	}
 
 	void RenderGraphImpl::BuildBarriers()
@@ -1048,7 +1104,17 @@ namespace Cjing3D
 			// execute pass
 			auto ent = cmd.Event(renderPassInst->mName);
 			RenderGraphResources resources(*this, renderPassInst->mRenderPass);
+
+			auto frameBindingSet = resources.GetFrameBindingSet();
+			if (frameBindingSet != GPU::ResHandle::INVALID_HANDLE) {
+				cmd.BeginFrameBindingSet(frameBindingSet);
+			}
+
 			renderPassInst->mRenderPass->Execute(resources, cmd);
+
+			if (frameBindingSet != GPU::ResHandle::INVALID_HANDLE) {
+				cmd.EndFrameBindingSet();
+			}
 		}
 
 		cmd.EndRenderPass();
@@ -1253,7 +1319,7 @@ namespace Cjing3D
 			if (dim.mType == GPU::ResourceType::RESOURCETYPE_BUFFER) {
 				CreateBuffer(i);
 			}
-			else
+			else if (dim.mType == GPU::ResourceType::RESOURCETYPE_TEXTURE)
 			{
 				if (dim.mIsTransient)
 				{
@@ -1262,7 +1328,8 @@ namespace Cjing3D
 				}
 				else if (dim.mIsImported)
 				{
-
+					mResourceCache.mTextures[i].mHandle = mResources[dim.mResIndex].mImportedHandle;
+					mResourceCache.mTextures[i].mDesc = dim.mTexDesc;
 				}
 				else 
 				{
@@ -1270,8 +1337,17 @@ namespace Cjing3D
 				}
 			}
 		}
-
 		mResourceCache.ClearUnusedRes();
+
+		// assign transient resources to render pass infos
+		auto& textures = mResourceCache.mTextures;
+		for (PhysicalRenderPass& physicalPass : mPhysicalRenderPasses)
+		{
+			for (I32 i = 0; i < physicalPass.mPhysicalTextures.size(); i++)
+			{
+				physicalPass.mRenderPassInfo.mTextures.push(textures[physicalPass.mPhysicalTextures[i]].mHandle);
+			}
+		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
@@ -1432,6 +1508,7 @@ namespace Cjing3D
 		switch (resource.mType)
 		{
 		case GPU::RESOURCETYPE_TEXTURE:
+		case GPU::RESOURCETYPE_SWAP_CHAIN:
 			resource.mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_RENDER_TARGET;
 			break;
 		default:

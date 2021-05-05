@@ -122,6 +122,8 @@ namespace Renderer
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
 		StaticArray<GPU::ResHandle, CBTYPE_COUNT> mConstantBuffers;
 		DynamicArray<GPU::ResHandle> mSamplerStates;
+
+		U32x2 mWindowSize = { 0u, 0u };
 	};
 
 	RendererImpl::RendererImpl()
@@ -443,21 +445,10 @@ namespace Renderer
 		universe.AddScene(std::move(renderScene));
 	}
 
-	void Update(CullingResult& visibility, FrameCB& frameCB, F32 deltaTime)
+	void UpdatePerFrameData(CullingResult& visibility, FrameCB& frameCB, F32 deltaTime, const U32x2& resolution)
 	{
-		auto screenSize = GPU::GetScreenSize();
-		frameCB.gFrameScreenSize = screenSize;
-		frameCB.gFrameScreenSizeRCP = F32x2(1.0f / screenSize[0], 1.0f / screenSize[1]);
-	}
-
-	void PresentBegin(GPU::CommandList& cmd)
-	{
-		GPU::PresentBegin(cmd);
-	}
-
-	void PresentEnd()
-	{
-		GPU::PresentEnd();
+		frameCB.gFrameScreenSize = F32x2((F32)resolution.x(), (F32)resolution.y());
+		frameCB.gFrameScreenSizeRCP = F32x2(1.0f / (F32)resolution.x(), 1.0f / (F32)resolution.y());
 	}
 
 	void EndFrame()
@@ -581,6 +572,23 @@ namespace Renderer
 		cameraCB.gCameraFarZ = viewport.mFar;
 		cameraCB.gCameraInvNearZ = (1.0f / std::max(0.00001f, cameraCB.gCameraNearZ));
 		cameraCB.gCameraInvFarZ = (1.0f / std::max(0.00001f, cameraCB.gCameraFarZ));
+	}
+
+	U32x2 GetInternalResolution()
+	{
+		return U32x2();
+	}
+
+	void SetWindow(const GameWindow& gameWindow)
+	{
+		GPU::ResHandle swapChain = GPU::GetSwapChain();
+
+		Platform::WindowRect clientRect = gameWindow.GetClientBounds();
+		mImpl->mWindowSize = {
+			(U32)(clientRect.mRight - clientRect.mLeft),
+			(U32)(clientRect.mBottom - clientRect.mTop)
+		};
+		GPU::ResizeSwapChain(swapChain, mImpl->mWindowSize.x(), mImpl->mWindowSize.y());
 	}
 }
 }

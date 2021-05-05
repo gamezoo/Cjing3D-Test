@@ -30,7 +30,7 @@ namespace Cjing3D
 		virtual void FixedUpdate();
 		virtual void Update(F32 deltaTime);
 		virtual void Render();
-		virtual void Compose(GPU::CommandList& cmd);
+		virtual void Compose();
 
 	protected:
 		bool mIsInitialized = false;

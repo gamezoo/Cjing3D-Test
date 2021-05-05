@@ -32,6 +32,8 @@ namespace Cjing3D
 		GPU::BindingFrameAttachment::LoadOp mLoadOp = GPU::BindingFrameAttachment::LOAD_DEFAULT;
 
 		I32 mSubresourceIndex = -1;
+		bool mUseCustomClearColor = false;
+		F32 mCustomClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 		static RenderGraphAttachment RenderTarget(
 			GPU::BindingFrameAttachment::LoadOp loadOp = GPU::BindingFrameAttachment::LOAD_DEFAULT

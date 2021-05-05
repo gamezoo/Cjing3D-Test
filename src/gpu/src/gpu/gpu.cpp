@@ -3,6 +3,7 @@
 #include "core\concurrency\concurrency.h"
 #include "core\container\staticArray.h"
 #include "core\helper\enumTraits.h"
+#include "core\event\eventSystem.h"
 
 #ifdef CJING3D_RENDERER_DX11
 #include "gpu\dx11\deviceDX11.h"
@@ -37,9 +38,10 @@ namespace GPU
 		I32 mAvaiableCmdCount = 0;
 		HashMap<I32, I32> mUsedIndexMap;
 
-		// desc map (TODO:Remove)
-		HashMap<I32, BufferDesc> mBufferDescMap;
-		HashMap<I32, TextureDesc> mTextureDescMap;
+		// swapchian
+		SwapChainDesc mSwapChainDesc;
+		GPU::ResHandle mSwapChain;
+		Platform::WindowType mWindow;
 
 	public:
 		ResHandle AllocHandle(ResourceType type)
@@ -61,6 +63,7 @@ namespace GPU
 			Concurrency::ScopedMutex lock(mMutex);
 			for (ResHandle handle : mTransientHandle)
 			{
+				mDevice->DestroyResource(handle);
 				mHandleAllocator.Free(handle);
 			}
 			mTransientHandle.clear();
@@ -72,16 +75,6 @@ namespace GPU
 			auto& releasedHandles = mReleasedHandles[mCurrentFrameCount % MaxGPUFrames];
 			for (ResHandle handle : releasedHandles)
 			{
-				switch (handle.GetType())
-				{
-				case RESOURCETYPE_BUFFER:
-					mBufferDescMap.erase(handle.GetHash());
-					break;
-				case RESOURCETYPE_TEXTURE:
-					mTextureDescMap.erase(handle.GetHash());
-					break;
-				}
-
 				mDevice->DestroyResource(handle);
 				mHandleAllocator.Free(handle);
 			}
@@ -157,26 +150,44 @@ namespace GPU
 		if (IsInitialized()) {
 			return;
 		}
-		
-		Platform::WindowType window = params.mWindow;
-		bool fullscreen = params.mIsFullscreen;
+
+		mImpl->mWindow = params.mWindow;
+
+		// initialize graphics device
 #ifdef DEBUG
 		bool debug = true;
 #else
 		bool debug = false;
 #endif
 #ifdef CJING3D_RENDERER_DX11
-		SharedPtr<GPU::GraphicsDevice> device = CJING_MAKE_SHARED<GPU::GraphicsDeviceDx11>(window, fullscreen, debug);
+		SharedPtr<GPU::GraphicsDevice> device = CJING_MAKE_SHARED<GPU::GraphicsDeviceDx11>(debug);
 #else
 		Logger::Error("Unsupport graphics device");
 #endif
 		mImpl = CJING_NEW(ManagerImpl);
 		mImpl->mDevice = device;
 
+		// initialize command pool
 		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
 			mImpl->mAvaiableCmdList[i] = i;
 		}
 		mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
+
+		// create swapChain
+		auto clientBounds = Platform::GetClientBounds(params.mWindow);
+		SwapChainDesc desc = {};
+		desc.mWidth  = clientBounds.mRight - clientBounds.mLeft;
+		desc.mHeight = clientBounds.mBottom - clientBounds.mTop;
+		desc.mBufferCount = 2;
+		desc.mFormat = FORMAT_R8G8B8A8_UNORM;
+
+		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_SWAP_CHAIN);
+		mImpl->CheckHandle(handle, mImpl->mDevice->CreateSwapChain(handle, &desc, params.mWindow));
+		if (!handle) {
+			Logger::Error("Failed to create swap chain");
+		}
+		mImpl->mSwapChain = handle;
+		mImpl->mSwapChainDesc = desc;
 	}
 
 	bool IsInitialized()
@@ -259,44 +270,9 @@ namespace GPU
 		return mImpl->mDevice.get();
 	}
 
-	void PresentBegin(CommandList& cmd)
-	{
-		mImpl->mDevice->PresentBegin(cmd.GetHanlde());
-	}
-
-	void PresentEnd()
-	{
-		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
-		U32 count = mImpl->mUsedCmdCount;
-		mImpl->mUsedCmdCount = 0;
-		if (count > 0)
-		{
-			DynamicArray<ResHandle> handles;
-			for (U32 i = 0; i < count; i++) 
-			{
-				I32 index = mImpl->mUsedCmdList[i];
-				auto& cmd = mImpl->mAllCmdList[index];
-				auto handle = cmd.GetHanlde();
-				if (handle != ResHandle::INVALID_HANDLE)
-				{
-					if (!cmd.IsCompiled()) {
-						mImpl->mDevice->CompileCommandList(handle, cmd);
-					}
-					handles.push(handle);
-				}
-			}
-			mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
-		
-			for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
-				mImpl->mAvaiableCmdList[i] = i;
-			}
-			mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
-		}
-		mImpl->mDevice->PresentEnd();
-	}
-
 	void EndFrame()
 	{
+		// do ending frame jobs
 		mImpl->mCurrentFrameCount++;
 		mImpl->mDevice->EndFrame();
 		mImpl->ProcessReleasedHandles();
@@ -306,6 +282,23 @@ namespace GPU
 	bool IsHandleValid(ResHandle handle)
 	{
 		return mImpl->mHandleAllocator.IsValid(handle);
+	}
+
+	void Present()
+	{
+		// first submit all remain command lists
+		SubmitAllRemainCommandList();
+
+		// swapchain present
+		mImpl->mDevice->Present(mImpl->mSwapChain, mImpl->mSwapChainDesc.mVsync);
+	}
+
+	void ResizeSwapChain(ResHandle handle, U32 width, U32 height)
+	{
+		auto& desc = mImpl->mSwapChainDesc;
+		desc.mWidth = width;
+		desc.mHeight = height;
+		mImpl->mDevice->CreateSwapChain(handle, &desc, mImpl->mWindow);
 	}
 
 	CommandList* CreateCommandlist(GPU::CommandListType type)
@@ -413,6 +406,37 @@ namespace GPU
 		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
 	}
 
+	bool SubmitAllRemainCommandList()
+	{
+		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
+		U32 count = mImpl->mUsedCmdCount;
+		mImpl->mUsedCmdCount = 0;
+		if (count > 0)
+		{
+			DynamicArray<ResHandle> handles;
+			for (U32 i = 0; i < count; i++)
+			{
+				I32 index = mImpl->mUsedCmdList[i];
+				auto& cmd = mImpl->mAllCmdList[index];
+				auto handle = cmd.GetHanlde();
+				if (handle != ResHandle::INVALID_HANDLE)
+				{
+					if (!cmd.IsCompiled()) {
+						mImpl->mDevice->CompileCommandList(handle, cmd);
+					}
+					handles.push(handle);
+				}
+			}
+			mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
+
+			for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
+				mImpl->mAvaiableCmdList[i] = i;
+			}
+			mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
+		}
+		return true;
+	}
+
 	ResHandle AllocateHandle(ResourceType type)
 	{
 		return mImpl->AllocHandle(type);
@@ -431,9 +455,6 @@ namespace GPU
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_TEXTURE);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTexture(handle, desc, initialData));
 		SET_DEBUG_NAME(name);
-		if (handle != ResHandle::INVALID_HANDLE) {
-			mImpl->mTextureDescMap.insert(handle.GetHash(), *desc);
-		}
 		return handle;
 	}
 
@@ -442,9 +463,6 @@ namespace GPU
 		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_BUFFER);
 		mImpl->CheckHandle(handle, mImpl->mDevice->CreateBuffer(handle, desc, initialData));
 		SET_DEBUG_NAME(name);
-		if (handle != ResHandle::INVALID_HANDLE) {
-			mImpl->mBufferDescMap.insert(handle.GetHash(), *desc);
-		}
 		return handle;
 	}
 
@@ -486,19 +504,19 @@ namespace GPU
 		return handle;
 	}
 
+
+	ResHandle CreateTransientTexture(const TextureDesc* desc)
+	{
+		ResHandle handle = mImpl->AllocTransientHandle(ResourceType::RESOURCETYPE_TEXTURE);
+		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTransientTexture(handle, desc));
+		return handle;
+	}
+
 	void DestroyResource(ResHandle handle)
 	{
 		if (handle && IsHandleValid(handle)) {
 			mImpl->DestroyHandle(handle);
 		}
-	}
-
-	ResHandle CreateTransientTexture(const TextureDesc* desc)
-	{
-		ResHandle handle = mImpl->AllocHandle(ResourceType::RESOURCETYPE_TEXTURE);
-		mImpl->CheckHandle(handle, mImpl->mDevice->CreateTexture(handle, desc, nullptr));
-
-		return handle;
 	}
 
 	bool UpdatePipelineBindings(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs)
@@ -553,19 +571,19 @@ namespace GPU
 		mImpl->mDevice->Unmap(res);
 	}
 
-	const BufferDesc* GetBufferDesc(ResHandle handle)
+	ResHandle GetSwapChain()
 	{
-		return mImpl->mBufferDescMap.find(handle.GetHash());
+		return mImpl->mSwapChain;
 	}
 
-	const TextureDesc* GetTextureDesc(ResHandle handle)
+	SwapChainDesc& GetSwapChainDesc()
 	{
-		return mImpl->mTextureDescMap.find(handle.GetHash());
+		return mImpl->mSwapChainDesc;
 	}
 
 	FORMAT GetBackBufferFormat()
 	{
-		return mImpl->mDevice->GetBackBufferFormat();
+		return mImpl->mSwapChainDesc.mFormat;
 	}
 
 	U32 GetFormatStride(FORMAT value)
@@ -656,16 +674,6 @@ namespace GPU
 			return true;
 		}
 		return false;
-	}
-
-	U32x2 GetResolution()
-	{
-		return mImpl->mDevice->GetResolution();
-	}
-
-	F32x2 GetScreenSize()
-	{
-		return mImpl->mDevice->GetScreenSize();
 	}
 
 	FormatInfo GetFormatInfo(FORMAT format)

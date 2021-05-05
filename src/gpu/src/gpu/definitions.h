@@ -3,6 +3,7 @@
 #include "core\common\definitions.h"
 #include "core\helper\handle.h"
 #include "core\memory\memory.h"
+#include "core\platform\platform.h"
 #include "math\maths.h"
 
 namespace Cjing3D {
@@ -662,6 +663,17 @@ namespace GPU {
 		BlendStateDesc mBlendState;
 		RasterizerStateDesc mRasterizerState;
 		DepthStencilStateDesc mDepthStencilState;
+	};
+
+	struct SwapChainDesc
+	{
+		U32 mWidth = 0;
+		U32 mHeight = 0;
+		U32 mBufferCount = 2;
+		FORMAT mFormat = FORMAT_R10G10B10A2_UNORM;
+		bool mFullscreen = false;
+		bool mVsync = true;
+		F32 mClearcolor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	};
 
 	struct GPUMapping

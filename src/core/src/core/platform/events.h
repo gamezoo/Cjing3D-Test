@@ -11,15 +11,10 @@ namespace Cjing3D
 	};
 
 	// window close event
-	struct WindowCloseEvent : WindowEvent {
-	};
+	struct WindowCloseEvent : WindowEvent {};
 
 	// view resize event
-	struct ViewResizeEvent : WindowEvent
-	{
-		U32 width = 0;
-		U32 height = 0;
-	};
+	struct ViewResizeEvent : WindowEvent {};
 
 	struct WindowMoveEvent : WindowEvent
 	{

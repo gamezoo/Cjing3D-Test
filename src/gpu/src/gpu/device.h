@@ -11,17 +11,17 @@ namespace GPU
 	class GraphicsDevice
 	{
 	public:
-		GraphicsDevice(GraphicsDeviceType type);
-		virtual ~GraphicsDevice();
+		GraphicsDevice(GraphicsDeviceType type) : mDeviceType(type) {}
+		virtual ~GraphicsDevice() {}
 
 		virtual bool CreateCommandlist(ResHandle handle, GPU::CommandListType type) = 0;
 		virtual bool CompileCommandList(ResHandle handle, CommandList& cmd) = 0;
 		virtual bool SubmitCommandLists(Span<ResHandle> handles) = 0;
 		virtual void ResetCommandList(ResHandle handle) = 0;
-		virtual void PresentBegin(ResHandle handle) = 0;
-		virtual void PresentEnd() = 0;
+		virtual void Present(ResHandle handle, bool isVsync) = 0;
 		virtual void EndFrame() = 0;
 
+		virtual bool CreateSwapChain(ResHandle handle, const SwapChainDesc* desc, Platform::WindowType window) = 0;
 		virtual bool CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc) = 0;
 		virtual bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData) = 0;
 		virtual bool CreateBuffer(ResHandle handle, const BufferDesc* desc, const SubresourceData* initialData) = 0;
@@ -30,7 +30,8 @@ namespace GPU
 		virtual bool CreatePipelineState(ResHandle handle, const PipelineStateDesc* desc) = 0;
 		virtual bool CreatePipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc) = 0;
 		virtual bool CreateTempPipelineBindingSet(ResHandle handle, const PipelineBindingSetDesc* desc) = 0;
-		
+		virtual bool CreateTransientTexture(ResHandle handle, const TextureDesc* desc) = 0;
+
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingSRV> srvs) = 0;
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingUAV> uavs) = 0;
 		virtual bool UpdatePipelineBindingSet(ResHandle handle, I32 index, I32 slot, Span<const BindingBuffer> cbvs) = 0;
@@ -42,32 +43,19 @@ namespace GPU
 		virtual GPUAllocation GPUAllcate(ResHandle handle, size_t size) = 0;
 		virtual void Map(GPU::ResHandle res, GPUMapping& mapping) = 0;
 		virtual void Unmap(GPU::ResHandle res) = 0;
+
 		// add static sampler, it will be valid for the entire rendering pass
 		virtual void AddStaticSampler(const StaticSampler& sampler) = 0;
 
-		U32x2 GetResolution()const { return mResolution; }
-		U32 GetResolutionWidth()const { return mResolution.x(); }
-		U32 GetResolutionHeight()const { return mResolution.y(); }
-		F32x2 GetScreenSize()const;
-
-		bool IsFullScreen()const { return mIsFullScreen; }
-		bool GetIsVsync()const { return mIsVsync; }
 		GraphicsDeviceType GetGraphicsDeviceType()const { return mDeviceType; }
 		U64 GetFrameCount()const { return mCurrentFrameCount; }
-		FORMAT GetBackBufferFormat()const { return mBackBufferFormat; }
-		U32 GetBackBufferCount()const { return mBackBufferCount; }
+		U32 GetBackBufferCount()const { return BACK_BUFFER_COUNT; }
 		bool CheckCapability(GPU_CAPABILITY capability) { return (U32)capability & mCapabilities; }
 
-		void SetIsVsync(bool isVsync) { mIsVsync = isVsync; }
-		virtual void SetResolution(const U32x2 size) = 0;
-
 	protected:
+		static constexpr U32 BACK_BUFFER_COUNT = 2;
+
 		GraphicsDeviceType mDeviceType;
-		bool mIsFullScreen = false;
-		FORMAT mBackBufferFormat = FORMAT_R8G8B8A8_UNORM;
-		U32 mBackBufferCount = 2;
-		U32x2 mResolution = U32x2(0u, 0u);
-		bool mIsVsync = true;
 		bool mIsDebug = false;
 		U64 mCurrentFrameCount = 0;
 		U32 mCapabilities = 0;

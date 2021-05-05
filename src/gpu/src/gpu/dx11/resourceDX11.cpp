@@ -104,23 +104,16 @@ namespace GPU
 		mActivePSO = nullptr;
 		mIsPSODirty = false;
 
-		// reset viewport
-		D3D11_VIEWPORT vp = {};
-		vp.Width    = (F32)mDevice.mResolution.x();
-		vp.Height   = (F32)mDevice.mResolution.y();
-		vp.MinDepth = 0.0f;
-		vp.MaxDepth = 1.0f;
-		vp.TopLeftX = 0;
-		vp.TopLeftY = 0;
-		mDeviceContext->RSSetViewports(1, &vp);
-
 		// reset scissor rect
-		D3D11_RECT rect = {};
-		rect.left   = INT32_MIN;
-		rect.top    = INT32_MIN;
-		rect.right  = INT32_MAX;
-		rect.bottom = INT32_MAX;
-		mDeviceContext->RSSetScissorRects(1, &rect);
+		D3D11_RECT rects[8];
+		for (uint32_t i = 0; i < 8; ++i)
+		{
+			rects[i].left = INT32_MIN;
+			rects[i].top = INT32_MIN;
+			rects[i].right = INT32_MAX;
+			rects[i].bottom = INT32_MAX;
+		}
+		mDeviceContext->RSSetScissorRects(8, rects);
 
 		// bind static samplers
 		for (I32 shaderStage = 0; shaderStage < SHADERSTAGES_COUNT; shaderStage++)

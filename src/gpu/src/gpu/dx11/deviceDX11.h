@@ -6,6 +6,7 @@
 #include "gpu\device.h"
 #include "gpu\dx11\includeDX11.h"
 #include "gpu\dx11\resourceDX11.h"
+#include "gpu\dx11\allocatorDX11.h"
 #include "core\platform\platform.h"
 #include "core\container\hashMap.h"
 
@@ -20,19 +21,20 @@ namespace GPU
 		friend class CompileContextDX11;
 		friend class CommandListDX11;
 
-		GraphicsDeviceDx11(Platform::WindowType window, bool isFullScreen = false, bool isDebug = false);
+		GraphicsDeviceDx11(bool isDebug = false);
 		virtual ~GraphicsDeviceDx11();
 
 		bool CreateCommandlist(ResHandle handle, GPU::CommandListType type)override;
 		bool CompileCommandList(ResHandle handle, CommandList& cmd)override;
 		bool SubmitCommandLists(Span<ResHandle> handles)override;
 		void ResetCommandList(ResHandle handle)override;
-		void PresentBegin(ResHandle handle)override;
-		void PresentEnd()override;
+		void Present(ResHandle handle, bool isVsync)override;
 		void EndFrame() override;
 
+		bool CreateSwapChain(ResHandle handle, const SwapChainDesc* desc, Platform::WindowType window)override;
 		bool CreateFrameBindingSet(ResHandle handle, const FrameBindingSetDesc* desc)override;
 		bool CreateTexture(ResHandle handle, const TextureDesc* desc, const SubresourceData* initialData)override;
+		bool CreateTransientTexture(ResHandle handle, const TextureDesc* desc)override;
 		bool CreateBuffer(ResHandle handle, const BufferDesc* desc, const SubresourceData* initialData)override;
 		bool CreateShader(ResHandle handle, SHADERSTAGES stage, const void* bytecode, size_t length)override;
 		bool CreateSamplerState(ResHandle handle, const SamplerDesc* desc)override;
@@ -48,7 +50,6 @@ namespace GPU
 
 		void DestroyResource(ResHandle handle)override;
 		void SetResourceName(ResHandle resource, const char* name)override;
-		void SetResolution(const U32x2 size)override;
 
 		// add static sampler, it will be valid for the entire rendering passs
 		void AddStaticSampler(const StaticSampler& sampler)override;
@@ -60,17 +61,20 @@ namespace GPU
 		ID3D11DeviceContext& GetDeviceContext() { return *mImmediateContext.Get(); }
 
 	private:
+		bool CreateTextureImpl(TextureDX11& texture, const TextureDesc* desc, const SubresourceData* initialData);
+		void DestroyTextureImpl(TextureDX11& texture);
 		int CreateSubresourceImpl(TextureDX11& texture, SUBRESOURCE_TYPE type, U32 firstSlice, U32 sliceCount, U32 firstMip, U32 mipCount);
 		int CreateSubresourceImpl(BufferDX11& buffer, SUBRESOURCE_TYPE type, U32 offset, U32 size = ~0);
 
 	private:
+		friend class ResourceAllocatorDX11;
+
 		ComPtr<ID3D11Device> mDevice;
-		ComPtr<IDXGISwapChain1> mSwapChain;
 		ComPtr<ID3D11DeviceContext> mImmediateContext;
-		ComPtr<ID3D11Texture2D> mBackBuffer;
-		ComPtr<ID3D11RenderTargetView> mRenderTargetView;
+		ComPtr<IDXGIFactory2> mFactory;
 
 		// resources
+		ResourcePool<SwapChainDX11> mSwapChains;
 		ResourcePool<TextureDX11> mTextures;
 		ResourcePool<BufferDX11> mBuffers;
 		ResourcePool<ShaderDX11> mShaders;
@@ -81,6 +85,7 @@ namespace GPU
 		ResourcePool<FrameBindingSetDX11> mFrameBindingSets;
 
 		DynamicArray<StaticSampler> mStaticSamplers;
+		UniquePtr<ResourceAllocatorDX11> mTransientResAllocator = nullptr;
 	};
 }
 }

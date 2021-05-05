@@ -141,14 +141,9 @@ namespace Cjing3D
 			Render();
 		}
 
-		GPU::CommandList* cmd = GPU::CreateCommandlist();
-		Renderer::PresentBegin(*cmd);
-		{
-			Compose(*cmd);
-		}
-		Renderer::PresentEnd();
+		Compose();
+		
 		Renderer::EndFrame();
-
 		Profiler::EndFrame();
 	}
 
@@ -183,15 +178,23 @@ namespace Cjing3D
 		}
 	}
 
-	void MainComponent::Compose(GPU::CommandList& cmd)
+	void MainComponent::Compose()
 	{
 		PROFILE_FUNCTION();
 
 		if (mRenderPath != nullptr)
 		{
-			cmd.EventBegin("Compose");
-			mRenderPath->Compose(cmd);
-			cmd.EventEnd();
+			auto& swapChainDesc = GPU::GetSwapChainDesc();
+			GPU::TextureDesc desc = {};
+			desc.mType = GPU::TEXTURE_2D;
+			desc.mWidth = swapChainDesc.mWidth;
+			desc.mHeight = swapChainDesc.mHeight;
+			desc.mFormat = swapChainDesc.mFormat;
+			for (U32 i = 0; i < 4; i++) {
+				desc.mClearValue.mColor[i] = swapChainDesc.mClearcolor[i];
+			}
+
+			mRenderPath->Compose(GPU::GetSwapChain(), desc);
 		}
 	}
 }

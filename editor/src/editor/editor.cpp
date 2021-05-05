@@ -24,9 +24,9 @@ namespace Cjing3D
 		RenderGraphPath2D::Stop();
 	}
 
-	void GameEditorRenderer::UpdatePipelines(RenderGraph& renderGraph)
+	void GameEditorRenderer::RenderPipelines(RenderGraph& renderGraph)
 	{
-		RenderGraphPath2D::UpdatePipelines(renderGraph);
+		RenderGraphPath2D::RenderPipelines(renderGraph);
 
 		mImGuiPipeline.Setup(renderGraph);
 	}
@@ -44,7 +44,7 @@ namespace Cjing3D
 	void GameEditor::PreInitialize()
 	{
 		RegisterWidget("MenuBar", CJING_MAKE_SHARED<EditorWidgetMenu>(*this));
-		RegisterWidget("GameView", CJING_MAKE_SHARED<EditorWidgetGameView>(*this));
+		//RegisterWidget("GameView", CJING_MAKE_SHARED<EditorWidgetGameView>(*this));
 		//RegisterWidget("SceneView", CJING_MAKE_SHARED<EditorWidgetSceneView>(*this));
 		RegisterWidget("AssetBrowser", CJING_MAKE_SHARED<EditorWidgetAssetBrowser>(*this), true);
 		RegisterWidget("Setting", CJING_MAKE_SHARED<EditorWidgetSetting>(*this), true);
@@ -129,7 +129,7 @@ namespace Cjing3D
 
 		/////////////////////////////////////////////////////////////////////////
 		// update gui
-		U32x2 resolution = GPU::GetResolution();
+		U32x2 resolution;
 		InputManager* input = mEngine->GetInputManager();
 		ImGuiRHI::Manager::BeginFrame(*input, (F32)resolution.x(), (F32)resolution.y(), deltaTime);
 

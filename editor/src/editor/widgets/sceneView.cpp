@@ -14,14 +14,12 @@ namespace Cjing3D
 	public:
 		UniquePtr<RenderPath> mRenderPath = nullptr;
 		Texture mGameTextrue;
-		GPU::ResHandle mFrameBinding;
 		ImVec2 mPrevViewSize;
 
 		void ResizeBuffers(const ImVec2& size)
 		{
 			mPrevViewSize = size;
 			mGameTextrue.Clear();
-			GPU::DestroyResource(mFrameBinding);
 
 			// texture 
 			GPU::TextureDesc texDesc;
@@ -31,11 +29,6 @@ namespace Cjing3D
 			texDesc.mBindFlags = GPU::BIND_RENDER_TARGET | GPU::BIND_SHADER_RESOURCE;
 			GPU::ResHandle res = GPU::CreateTexture(&texDesc, nullptr, "rtSceneView");
 			mGameTextrue.SetTexture(res, texDesc);
-
-			// frame binding set
-			GPU::FrameBindingSetDesc desc;
-			desc.mAttachments.push(GPU::BindingFrameAttachment::RenderTarget(mGameTextrue.GetHandle()));
-			mFrameBinding = GPU::CreateFrameBindingSet(&desc, "fbSceneView");
 		}
 
 		void Initialize()
@@ -48,8 +41,6 @@ namespace Cjing3D
 		{
 			mRenderPath->Stop();
 			mRenderPath.Reset();
-
-			GPU::DestroyResource(mFrameBinding);
 		}
 
 		void Update(F32 deltaTime)
@@ -73,14 +64,8 @@ namespace Cjing3D
 
 			mRenderPath->Update(deltaTime);
 			mRenderPath->Render();
+			mRenderPath->Compose(mGameTextrue.GetHandle(), mGameTextrue.GetDesc());
 
-			GPU::CommandList* cmd = GPU::CreateCommandlist();
-			if (auto binding = cmd->BindScopedFrameBindingSet(mFrameBinding))
-			{
-				cmd->EventBegin("GameCompose");
-				mRenderPath->Compose(*cmd);
-				cmd->EventEnd();
-			}
 			if (mGameTextrue.GetHandle()) {
 				ImGui::Image((ImTextureID)mGameTextrue.GetHandlePtr(), size);
 			}

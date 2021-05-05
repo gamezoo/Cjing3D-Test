@@ -349,15 +349,13 @@ namespace Platform {
 				e.mWindow = hWnd;
 				e.mMoveX = (I32)LOWORD(lParam);
 				e.mMoveY = (I32)HIWORD(lParam);
-				mImpl.mEventQueue.Push<ViewResizeEvent>(e);
+				mImpl.mEventQueue.Push<WindowMoveEvent>(e);
 			}
 			return 0;
 			case WM_SIZE:
 			{
 				ViewResizeEvent e;
 				e.mWindow = hWnd;
-				e.width = LOWORD(lParam);
-				e.height = HIWORD(lParam);
 				mImpl.mEventQueue.Push<ViewResizeEvent>(e);
 			}
 			return 0;

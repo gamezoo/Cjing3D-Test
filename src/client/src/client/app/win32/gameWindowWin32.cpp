@@ -50,15 +50,15 @@ namespace Cjing3D::Win32 {
 		mHinstance(hInstance),
 		mHwnd(NULL),
 		mTitleName(titleName),
-		mScreenSize(config.mScreenSize),
+		mClientBounds({0, 0, config.mScreenSize.x(), config.mScreenSize.y() }),
 		mEventQueue(eventQueue),
 		mIsFullScreen(config.mIsFullScreen)
 	{
 		///////////////////////////////////////////////////////////////////////////////
 		// init window
 		std::wstring nameWStr = StringUtils::StringToWString(mTitleName.toString());
-		LONG adjustedWidth = static_cast<LONG>(mScreenSize[0]);
-		LONG adjustedHeight = static_cast<LONG>(mScreenSize[1]);
+		LONG adjustedWidth = static_cast<LONG>(mClientBounds.mRight - mClientBounds.mLeft);
+		LONG adjustedHeight = static_cast<LONG>(mClientBounds.mBottom - mClientBounds.mTop);
 		DWORD windowStyle = 0;
 		DWORD windowStyleEx = 0;
 
@@ -71,7 +71,11 @@ namespace Cjing3D::Win32 {
 		{
 			windowStyle |= WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 
-			RECT rectangle = { 0, 0, static_cast<LONG>(mScreenSize[0]), static_cast<LONG>(mScreenSize[1])};
+			RECT rectangle = { 
+				0, 
+				0, 
+				static_cast<LONG>(mClientBounds.mRight - mClientBounds.mLeft), 
+				static_cast<LONG>(mClientBounds.mBottom - mClientBounds.mTop)};
 			AdjustWindowRect(&rectangle, windowStyle, FALSE);
 
 			adjustedWidth  = rectangle.right - rectangle.left;
@@ -128,11 +132,12 @@ namespace Cjing3D::Win32 {
 		POINT point = { 0, 0 };
 		if (::ClientToScreen(mHwnd, &point))
 		{
-			mScreenPos[0] = static_cast<std::int32_t>(point.x);
-			mScreenPos[1] = static_cast<std::int32_t>(point.y);
+			mClientBounds.mLeft = static_cast<std::int32_t>(point.x);
+			mClientBounds.mTop  = static_cast<std::int32_t>(point.y);
 		}
 
-		Logger::Info("[Video] Initialize GameWindowWin32 Size:%d, %d", mScreenSize[0], mScreenSize[1]);
+		Logger::Info("[Video] Initialize GameWindowWin32 Size:%d, %d", 
+			mClientBounds.mRight - mClientBounds.mLeft, mClientBounds.mBottom - mClientBounds.mTop);
 		mIsInitialized = true;
 	}
 
@@ -215,7 +220,7 @@ namespace Cjing3D::Win32 {
 		return mTitleName;
 	}
 
-	void GameWindowWin32::SetClientbounds(const RectInt& rect)
+	void GameWindowWin32::SetClientbounds(const Platform::WindowRect& rect)
 	{
 		if (mIsFullScreen) {
 			return;
@@ -238,8 +243,10 @@ namespace Cjing3D::Win32 {
 			return;
 		}
 
-		mScreenSize[0] = rect.mRight - rect.mLeft;
-		mScreenSize[1] = rect.mBottom - rect.mTop;
+		mClientBounds.mLeft   = rect.mLeft;
+		mClientBounds.mTop    = rect.mTop;
+		mClientBounds.mRight  = rect.mRight;
+		mClientBounds.mBottom = rect.mBottom;
 	}
 
 	I32 GameWindowWin32::GetDPI() const
@@ -273,9 +280,9 @@ namespace Cjing3D::Win32 {
 		}
 	}
 
-	RectInt GameWindowWin32::GetClientBounds() const
+	Platform::WindowRect GameWindowWin32::GetClientBounds() const
 	{
-		return { 0, 0, mScreenSize[0], mScreenSize[1] };
+		return mClientBounds;
 	}
 
 	GameWindowWin32 * GameWindowWin32::GetWindowCaller(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -325,8 +332,8 @@ namespace Cjing3D::Win32 {
 		case WM_MOVE: 
 			if (window != nullptr) 
 			{
-				window->mScreenPos[0] = static_cast<I32>(LOWORD(lParam));
-				window->mScreenPos[1] = static_cast<I32>(HIWORD(lParam));
+				window->mClientBounds.mLeft = static_cast<I32>(LOWORD(lParam));
+				window->mClientBounds.mRight = static_cast<I32>(HIWORD(lParam));
 			}
 			break;
 		case WM_INPUT: 
@@ -350,13 +357,16 @@ namespace Cjing3D::Win32 {
 			{
 				if (window != nullptr)
 				{
-					ViewResizeEvent e;
-					e.width = static_cast<U32>(lParam & 0xffff);
-					e.height = static_cast<U32>((lParam >> 16) & 0xffff);
-					window->mEventQueue->Push<ViewResizeEvent>(e);
+					window->mClientBounds.mRight  = window->mClientBounds.mLeft + static_cast<I32>(LOWORD(lParam));
+					window->mClientBounds.mBottom = window->mClientBounds.mTop  + static_cast<I32>(HIWORD(lParam));
 				}
 			}
-			return true;
+			break;
+		case WM_EXITSIZEMOVE:
+			if (window != nullptr) {
+				window->mEventQueue->Push<ViewResizeEvent>();
+			}
+			return 0;
 		default:
 			break;
 		}

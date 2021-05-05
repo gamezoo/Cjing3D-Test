@@ -215,7 +215,9 @@ namespace Cjing3D::Win32
 		}
 		else if (systemEvent.Is<ViewResizeEvent>())
 		{
-			const ViewResizeEvent* event = systemEvent.As<ViewResizeEvent>();
+			if (mGameWindow != nullptr) {
+				Renderer::SetWindow(*mGameWindow);
+			}
 		}
 	}
 
