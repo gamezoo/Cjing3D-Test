@@ -235,36 +235,16 @@ namespace Cjing3D
 		void ClearUnusedRes()
 		{
 			// clear useless resources
+			for (auto& buffer : mBuffers)
 			{
-				auto it = mBuffers.begin();
-				while (it != mBuffers.end())
-				{
-					if (!it->mIsUsed)
-					{
-						if (it->mHandle != GPU::ResHandle::INVALID_HANDLE) {
-							GPU::DestroyResource(it->mHandle);
-						}
-						it = mBuffers.erase(it);
-					}
-					else {
-						it++;
-					}
+				if (!buffer.mIsUsed && buffer.mHandle != GPU::ResHandle::INVALID_HANDLE) {
+					GPU::DestroyResource(buffer.mHandle);
 				}
 			}
+			for (auto& texture : mTextures)
 			{
-				auto it = mTextures.begin();
-				while (it != mTextures.end())
-				{
-					if (!it->mIsUsed)
-					{
-						if (it->mHandle != GPU::ResHandle::INVALID_HANDLE) {
-							GPU::DestroyResource(it->mHandle);
-						}
-						it = mTextures.erase(it);
-					}
-					else {
-						it++;
-					}
+				if (!texture.mIsUsed && texture.mHandle != GPU::ResHandle::INVALID_HANDLE) {
+					GPU::DestroyResource(texture.mHandle);
 				}
 			}
 		}
@@ -382,6 +362,10 @@ namespace Cjing3D
 			if (outDesc != nullptr) {
 				*outDesc = resInst.mTexDesc;
 			}
+			if (resInst.mImportedHandle != GPU::ResHandle::INVALID_HANDLE) {
+				return resInst.mImportedHandle;
+			}
+
 			return mResourceCache.mTextures[resInst.mPhysicalIndex].mHandle;
 		}
 
@@ -1026,6 +1010,7 @@ namespace Cjing3D
 		mResources.clear();
 		mResourceNameMap.clear();
 		mResourceCache.Clear();
+		mPhysicalResourceDimensions.clear();
 		mFinalRes = RenderGraphResource();
 
 		mAllocator.Reset();
@@ -1227,7 +1212,7 @@ namespace Cjing3D
 		}
 		
 		// submit commands (sequence submit)
-		JobSystem::RunJobEx([&](I32 param, void* data) {
+		JobSystem::RunJobEx([renderPassCount](I32 param, void* data) {
 			RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
 			if (!impl) {
 				return;
@@ -1312,6 +1297,7 @@ namespace Cjing3D
 	{
 		U32 dimSize = mPhysicalResourceDimensions.size();
 		mResourceCache.mBuffers.resize(dimSize);
+		mResourceCache.mTextures.resize(dimSize);
 
 		for (U32 i = 0; i < dimSize; i++)
 		{
@@ -1326,17 +1312,12 @@ namespace Cjing3D
 					mResourceCache.mTextures[i].mHandle = GPU::CreateTransientTexture(&dim.mTexDesc);
 					mResourceCache.mTextures[i].mDesc = dim.mTexDesc;
 				}
-				else if (dim.mIsImported)
-				{
-					mResourceCache.mTextures[i].mHandle = mResources[dim.mResIndex].mImportedHandle;
-					mResourceCache.mTextures[i].mDesc = dim.mTexDesc;
-				}
-				else 
+				else if (!dim.mIsImported)
 				{
 					CreateTexture(i);
 				}
 			}
-		}
+		} 
 		mResourceCache.ClearUnusedRes();
 
 		// assign transient resources to render pass infos

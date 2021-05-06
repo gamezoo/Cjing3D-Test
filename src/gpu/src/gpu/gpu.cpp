@@ -151,8 +151,6 @@ namespace GPU
 			return;
 		}
 
-		mImpl->mWindow = params.mWindow;
-
 		// initialize graphics device
 #ifdef DEBUG
 		bool debug = true;
@@ -166,6 +164,7 @@ namespace GPU
 #endif
 		mImpl = CJING_NEW(ManagerImpl);
 		mImpl->mDevice = device;
+		mImpl->mWindow = params.mWindow;
 
 		// initialize command pool
 		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
@@ -217,6 +216,10 @@ namespace GPU
 		mImpl->mUsedIndexMap.clear();
 		mImpl->ClearTransientHandles();
 
+		// clear swapChain
+		mImpl->DestroyHandle(mImpl->mSwapChain);
+
+		// process release handles
 		for (int i = 0; i < MaxGPUFrames; i++) 
 		{
 			mImpl->mCurrentFrameCount++;

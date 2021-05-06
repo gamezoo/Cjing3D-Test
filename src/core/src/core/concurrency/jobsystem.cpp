@@ -916,17 +916,17 @@ namespace JobSystem
 		while (counter.value_ > value) {
 			YieldCPU();
 		}
-
-		if (value == 0) {
-			while (!gManagerImpl->mFreeHandleQueue.Enqueue(*jobHandle & HANDLE_ID_MASK))
-			{
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-				Logger::Warning("Failed to enqueue jobHandle");
-#endif
-				Concurrency::SwitchToThread();
-			}
-			*jobHandle = INVALID_HANDLE;
-		}
+//
+//		if (value == 0) {
+//			while (!gManagerImpl->mFreeHandleQueue.Enqueue(*jobHandle & HANDLE_ID_MASK))
+//			{
+//#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+//				Logger::Warning("Failed to enqueue jobHandle");
+//#endif
+//				Concurrency::SwitchToThread();
+//			}
+//			*jobHandle = INVALID_HANDLE;
+//		}
 	}
 
 	void YieldCPU()

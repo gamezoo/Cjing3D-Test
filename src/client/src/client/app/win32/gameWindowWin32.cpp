@@ -332,8 +332,12 @@ namespace Cjing3D::Win32 {
 		case WM_MOVE: 
 			if (window != nullptr) 
 			{
+				I32 width  = window->mClientBounds.mRight  - window->mClientBounds.mLeft;
+				I32 height = window->mClientBounds.mBottom - window->mClientBounds.mTop;
 				window->mClientBounds.mLeft = static_cast<I32>(LOWORD(lParam));
-				window->mClientBounds.mRight = static_cast<I32>(HIWORD(lParam));
+				window->mClientBounds.mTop  = static_cast<I32>(HIWORD(lParam));
+				window->mClientBounds.mRight = window->mClientBounds.mLeft + width;
+				window->mClientBounds.mBottom = window->mClientBounds.mTop + height;
 			}
 			break;
 		case WM_INPUT: 
@@ -357,8 +361,8 @@ namespace Cjing3D::Win32 {
 			{
 				if (window != nullptr)
 				{
-					window->mClientBounds.mRight  = window->mClientBounds.mLeft + static_cast<I32>(LOWORD(lParam));
-					window->mClientBounds.mBottom = window->mClientBounds.mTop  + static_cast<I32>(HIWORD(lParam));
+					window->mClientBounds.mRight  = window->mClientBounds.mLeft + static_cast<I16>(LOWORD(lParam));
+					window->mClientBounds.mBottom = window->mClientBounds.mTop  + static_cast<I16>(HIWORD(lParam));
 				}
 			}
 			break;

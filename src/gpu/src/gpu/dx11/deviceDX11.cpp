@@ -1550,6 +1550,9 @@ namespace GPU
 		case RESOURCETYPE_PIPELINE:
 			*mPipelineStates.Write(handle) = PipelineStateDX11();
 			break;
+		case RESOURCETYPE_SWAP_CHAIN:
+			*mSwapChains.Write(handle) = SwapChainDX11();
+			break;
 		default:
 			break;
 		}

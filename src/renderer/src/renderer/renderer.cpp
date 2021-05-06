@@ -398,6 +398,11 @@ namespace Renderer
 		mImpl = CJING_NEW(RendererImpl);
 		mImpl->PreLoadBuffers();
 
+		auto clientBounds = Platform::GetClientBounds(params.mWindow);
+		mImpl->mWindowSize = {
+			clientBounds.mRight - clientBounds.mLeft,
+			clientBounds.mBottom - clientBounds.mTop };
+
 		// editor may load shaders lazy
 		if (loadShaders) {
 			mImpl->PreLoadShaders();
@@ -584,11 +589,15 @@ namespace Renderer
 		GPU::ResHandle swapChain = GPU::GetSwapChain();
 
 		Platform::WindowRect clientRect = gameWindow.GetClientBounds();
-		mImpl->mWindowSize = {
+		U32x2 clientSize = {
 			(U32)(clientRect.mRight - clientRect.mLeft),
 			(U32)(clientRect.mBottom - clientRect.mTop)
 		};
-		GPU::ResizeSwapChain(swapChain, mImpl->mWindowSize.x(), mImpl->mWindowSize.y());
+		if (clientSize != mImpl->mWindowSize)
+		{
+			mImpl->mWindowSize = clientSize;
+			GPU::ResizeSwapChain(swapChain, mImpl->mWindowSize.x(), mImpl->mWindowSize.y());
+		}
 	}
 }
 }

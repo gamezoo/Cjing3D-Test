@@ -56,6 +56,7 @@ namespace Cjing3D
 				// set backbuffer rtv
 				RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget();
 				attachment.mUseCustomClearColor = true;
+				attachment.mLoadOp = GPU::BindingFrameAttachment::LOAD_CLEAR;
 				for (U32 i = 0; i < 4; i++) {
 					attachment.mCustomClearColor[i] = rtDesc.mClearValue.mColor[i];
 				}
@@ -76,8 +77,11 @@ namespace Cjing3D
 		mMainGraph.SetFinalResource(outColor);
 		mMainGraph.Compile();
 
+		//auto graphvizStr = mMainGraph.ExportGraphviz();
+		//Logger::Print(graphvizStr);
+
 		// execute render graph
-		JobSystem::JobHandle jobHandle;
+		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;
 		mMainGraph.Execute(jobHandle);
 		JobSystem::Wait(&jobHandle);
 

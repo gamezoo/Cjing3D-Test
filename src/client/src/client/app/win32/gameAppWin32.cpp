@@ -35,10 +35,6 @@ namespace Cjing3D::Win32
 		GameAppWinImpl(HINSTANCE hInstance) :
 			mHinstance(hInstance) 
 		{
-			// register log sink
-			Logger::RegisterSink(mStdoutLoggerSink);
-			Logger::RegisterSink(mDebugLoggerSink);
-
 			// init profiler
 			Profiler::Initialize();
 			Profiler::SetCurrentThreadName("MainThread");
@@ -81,6 +77,9 @@ namespace Cjing3D::Win32
 				freopen("CONOUT$", "w", stdout);
 				freopen("CONOUT$", "w", stderr);
 			}
+
+			Logger::RegisterSink(mStdoutLoggerSink);
+			Logger::RegisterSink(mDebugLoggerSink);
 
 			Logger::SetIsDisplayTime(false);
 			Logger::Print(CjingVersion::GetHeaderString());
