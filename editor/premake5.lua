@@ -1,7 +1,7 @@
-dofile("../tools/premake/options.lua")
-dofile("../tools/premake/globals.lua")
-dofile("../tools/premake/plugins.lua")
-dofile("../tools/premake/example_app.lua")
+dofile("../tools/cjing_build/premake/options.lua")
+dofile("../tools/cjing_build/premake/globals.lua")
+dofile("../tools/cjing_build/premake/plugins.lua")
+dofile("../tools/cjing_build/premake/example_app.lua")
 dofile("../src/definitions.lua")
 
 editor_name = "editor"
@@ -35,7 +35,7 @@ solution ("Cjing3D")
     filter { }
     
 -- engine lib project
-dofile "../src/modules.lua"
+dofile "../src/project.lua"
 
 -- example projects
 print("-------------------------------------------------------------")

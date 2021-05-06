@@ -1,40 +1,22 @@
+import "../tools/cjing_build/config_base.jsc"
 {
     ///////////////////////////////////////////////////////////////////
     // common definitions
     jcs_def :
     {
         cjing_build_dir : "../tools/cjing_build",
-        assert_dir : "../assets",
-    },
-
-    ///////////////////////////////////////////////////////////////////
-    // platform tools
-    tools<Windows>: 
-    {
-        type : tools,
-        jsc: "py -3 ${cjing_build_dir}/scripts/jsc/jsc.py",
-        premake: "${cjing_build_dir}/premake/premake5.exe",
-        pre_parser : "py -3 ../tools/pre_parser/pre_parser.py",
-        shader_compiler : "py -3 ../tools/shader_compiler/shader_compiler.py",
-        ispc : "../tools/ispc/ispc.exe"
+        assets_dir : "../assets",
     },
 
     ///////////////////////////////////////////////////////////////////
     // base
     base :
     {
-        // assets directory
-        jcs_def : 
-        {
-            assets_dir : ""
-        },
-
-        print_header : true,
-
         // build config
-        build_config : {
+        build_config : 
+        {
             build_cmd: "${cjing_build_dir}/cjing_build",
-            dest : "${assert_dir}"
+            dest : "${assets_dir}"
         },
     },
 
@@ -45,7 +27,6 @@
         // source assets directory
         jcs_def : 
         {
-            assets_dir : "assets",
             platforms : "x64"
         },
 
@@ -68,9 +49,9 @@
         },  
 
         // ispc compiler
-        //ispc : {
-        //    args : []
-        //}
+        ispc : {
+            type : none,
+        },
 
         // shader compiler
         shaders : {
@@ -95,7 +76,7 @@
             args : [
                 "%{vs_version}",   // To genenrate vs sln, the first param must is "vs_version"
                 "--env_dir=../",
-                "--work_dir=${assert_dir}",
+                "--work_dir=${assets_dir}",
                 "--renderer=dx11",
                 "--platform_dir=win32",
                 "--sdk_version=%{windows_sdk_version}",

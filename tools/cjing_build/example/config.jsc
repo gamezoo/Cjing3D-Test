@@ -4,7 +4,7 @@
     jcs_def :
     {
         cjing_build_dir : "../tools/cjing_build",
-        assert_dir : "../assets",
+        assets_dir : "../assets",
     },
 
     ///////////////////////////////////////////////////////////////////
@@ -34,7 +34,7 @@
         // build config
         build_config : {
             build_cmd: "${cjing_build_dir}/cjing_build",
-            dest : "${assert_dir}"
+            dest : "${assets_dir}"
         },
     },
 
@@ -95,7 +95,7 @@
             args : [
                 "%{vs_version}",   // To genenrate vs sln, the first param must is "vs_version"
                 "--env_dir=../",
-                "--work_dir=${assert_dir}",
+                "--work_dir=${assets_dir}",
                 "--renderer=dx11",
                 "--platform_dir=win32",
                 "--sdk_version=%{windows_sdk_version}",

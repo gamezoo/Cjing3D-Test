@@ -1,5 +1,5 @@
-dofile("../../tools/premake/options.lua")
-dofile("../../tools/premake/globals.lua")
+dofile("../../tools/cjing_build/premake/options.lua")
+dofile("../../tools/cjing_build/premake/globals.lua")
 
 solution "fcpp_sln"
 	location ("build/" .. platform_dir ) 

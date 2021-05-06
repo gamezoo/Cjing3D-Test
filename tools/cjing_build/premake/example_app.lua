@@ -119,7 +119,7 @@ function create_example_app(project_name, source_directory, root_directory, app_
         end 
 
         -- set engine dependencies
-        local engine_dependencies = default_engine_dependencies
+        local engine_dependencies = default_engine_modules
 
         --------------------------------------------------------------
         -- Config

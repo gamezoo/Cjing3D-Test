@@ -248,6 +248,7 @@ def task_run_generate_build_config(config, task_name, files):
     # make dir
     dir = os.path.dirname(dest_dir)
     if not os.path.exists(dir):
+        print("LALALA:", dir)
         os.makedirs(dir)
 
     # generate config
