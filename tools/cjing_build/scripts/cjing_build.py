@@ -14,7 +14,7 @@ import jsc.jsc as jsc
 # major version
 major_version = 0
 # features [0-100]
-minor_version = 2
+minor_version = 3
 # patch update; bug fixes [0-1000]
 match_version = 0
 
@@ -248,7 +248,6 @@ def task_run_generate_build_config(config, task_name, files):
     # make dir
     dir = os.path.dirname(dest_dir)
     if not os.path.exists(dir):
-        print("LALALA:", dir)
         os.makedirs(dir)
 
     # generate config
