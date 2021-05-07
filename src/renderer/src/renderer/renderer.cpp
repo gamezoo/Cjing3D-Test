@@ -400,8 +400,8 @@ namespace Renderer
 
 		auto clientBounds = Platform::GetClientBounds(params.mWindow);
 		mImpl->mWindowSize = {
-			clientBounds.mRight - clientBounds.mLeft,
-			clientBounds.mBottom - clientBounds.mTop };
+			(U32)(clientBounds.mRight - clientBounds.mLeft),
+			(U32)(clientBounds.mBottom - clientBounds.mTop) };
 
 		// editor may load shaders lazy
 		if (loadShaders) {

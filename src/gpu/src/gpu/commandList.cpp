@@ -157,10 +157,10 @@ namespace GPU {
         mCommands.push(command);
     }
 
-    void CommandList::BeginRenderPass(RenderPassInfo& passInfo)
+    void CommandList::BeginRenderPass(const RenderPassInfo& passInfo)
     {
         auto* command = Alloc<CommandBeginRenderPass>();
-        command->mRenderPassInfo = passInfo;
+        command->mRenderPassInfo = &passInfo;
         mCommands.push(command);
     }
 

@@ -1217,8 +1217,11 @@ namespace Cjing3D
 			if (!impl) {
 				return;
 			}
-
 			if (impl->mCompileFailCount > 0) {
+				return;
+			}
+
+			if (renderPassCount <= 0) {
 				return;
 			}
 
@@ -1237,7 +1240,6 @@ namespace Cjing3D
 				Logger::Warning("Failed to submit command lists.");
 				return;
 			}
-        
         }, this, &jobHandle, executeJobHandle, "SubmitCommands");
 
 		return true;

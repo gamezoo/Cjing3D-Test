@@ -147,7 +147,7 @@ namespace GPU {
 
 	struct CommandBeginRenderPass : CommandTyped<CommandType::BEGIN_RENDER_PASS>
 	{
-		RenderPassInfo mRenderPassInfo;
+		const RenderPassInfo* mRenderPassInfo = nullptr;
 	};
 
 	struct CommandEndRenderPass : CommandTyped<CommandType::END_RENDER_PASS> {};

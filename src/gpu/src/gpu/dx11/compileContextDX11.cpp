@@ -515,7 +515,11 @@ namespace GPU
 
     bool CompileContextDX11::CompileCommand(const CommandBeginRenderPass* cmd)
     {
-        for (auto& texHandle : cmd->mRenderPassInfo.mTextures)
+        if (cmd->mRenderPassInfo == nullptr) {
+            return true;
+        }
+
+        for (auto& texHandle : cmd->mRenderPassInfo->mTextures)
         {
             auto texture = mDevice.mTextures.Write(texHandle);
             if (!texture || !texture->mIsTransient) {

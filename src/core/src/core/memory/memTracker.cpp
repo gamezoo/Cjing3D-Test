@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 namespace Cjing3D
 {
@@ -121,6 +122,7 @@ namespace Cjing3D
 			os << std::endl;
 		}
 
+		std::cout << os.str().c_str() << std::endl;
 		Logger::Warning(os.str().c_str());
 
 #ifdef DEBUG

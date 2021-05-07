@@ -34,6 +34,7 @@ namespace JobSystem
 		volatile I32 value_ = 0;
 		JobInfo mNextJob;
 		JobHandle mSibling = INVALID_HANDLE;
+		U32 mGeneration = 0;	// use for check
 	};
 
 	//////////////////////////////////////////////////////////////////////////
@@ -77,6 +78,7 @@ namespace JobSystem
 		void PushJobInfo(JobInfo& jobInfo);
 		JobHandle AllocateHandle();
 		void ReleaseHandle(JobHandle jobHandle);
+		bool IsHandleValid(JobHandle jobHandle);
 		bool IsHandleZero(JobHandle jobHandle);
 
 		bool GetJobFiber(WorkerThread* worker, JobFiber** ouputFiber);
@@ -261,6 +263,13 @@ namespace JobSystem
 
 	void ManagerImpl::PushJobInfo(JobInfo& jobInfo)
 	{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+		F64 startTime = Timer::GetAbsoluteTime();
+		const F64 LOG_TIME_THRESHOLD = 100.0f / 1000000.0;    // 100us.
+		const F64 LOG_TIME_REPEAT = 1000.0f / 1000.0;      // 1000ms.
+		F64 nextLogTime = startTime + LOG_TIME_THRESHOLD;
+#endif
+
 		// 如果指定了workerThread,则将job添加到worker专属队列中
 		if (jobInfo.mWorkerIndex != USE_ANY_WORKER)
 		{
@@ -269,6 +278,7 @@ namespace JobSystem
 			while (!pendingJobs.Enqueue(jobInfo))
 			{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
+
 				// log when enqueue job failed
 				F64 currentTime = Timer::GetAbsoluteTime();
 				if ((currentTime - startTime) > LOG_TIME_THRESHOLD)
@@ -318,16 +328,16 @@ namespace JobSystem
 	JobHandle ManagerImpl::AllocateHandle()
 	{
 		U32 handle = INVALID_HANDLE;
-		if (mFreeHandleQueue.Dequeue(handle))
-		{
-			Counter& counter = mCounterPool[handle & HANDLE_ID_MASK];
-			Concurrency::AtomicExchange(&counter.value_, 0);
-			
-			// need to use implicit mutex??
-			counter.mNextJob.jobFunc_ = nullptr;
-			counter.mSibling = INVALID_HANDLE;
+		if (!mFreeHandleQueue.Dequeue(handle)){
+			return handle;
 		}
-		return handle;
+
+		Counter& counter = mCounterPool[handle & HANDLE_ID_MASK];
+		counter.value_ = 0;
+		counter.mNextJob.jobFunc_ = nullptr;
+		counter.mSibling = INVALID_HANDLE;
+
+		return (handle & HANDLE_ID_MASK) | counter.mGeneration;
 	}
 
 	void ManagerImpl::ReleaseHandle(JobHandle jobHandle)
@@ -338,7 +348,7 @@ namespace JobSystem
 
 		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
 		I32 jobCount = Concurrency::AtomicDecrement(&counter.value_);
-		if (jobCount == 0)
+		if (jobCount <= 0)
 		{
 			// add next jobs, TODO: need to use implicit mutex
 			while (jobHandle != INVALID_HANDLE)
@@ -348,7 +358,8 @@ namespace JobSystem
 					PushJobInfo(currCounter.mNextJob);
 				}
 
-				while (!mFreeHandleQueue.Enqueue(jobHandle & HANDLE_ID_MASK))
+				currCounter.mGeneration = (((currCounter.mGeneration >> 16) + 1) & 0xffFF) << 16;
+				while (!mFreeHandleQueue.Enqueue((jobHandle & HANDLE_ID_MASK) | currCounter.mGeneration))
 				{
 #if JOB_SYSTEM_LOGGING_LEVEL >= 1
 					Logger::Warning("Failed to enqueue free conunter");
@@ -362,14 +373,22 @@ namespace JobSystem
 		}
 	}
 
+	bool ManagerImpl::IsHandleValid(JobHandle jobHandle)
+	{
+		return jobHandle != INVALID_HANDLE;
+	}
+
 	bool ManagerImpl::IsHandleZero(JobHandle jobHandle)
 	{
 		if (jobHandle == INVALID_HANDLE) {
 			return true;
 		}
 
-		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
-		return counter.value_ <= 0;
+		const U32 id = jobHandle & HANDLE_ID_MASK;
+		const U32 gen = jobHandle & HANDLE_GENERATION_MASK;
+
+		Counter& counter = mCounterPool[id];
+		return counter.value_ <= 0 || counter.mGeneration != gen;
 	}
 
 	bool ManagerImpl::GetJobFiber(WorkerThread* worker, JobFiber** ouputFiber)
