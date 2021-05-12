@@ -41,6 +41,9 @@ namespace Cjing3D
 
 	void RenderGraphPath::Compose(GPU::ResHandle rtHandle, const GPU::TextureDesc& rtDesc)
 	{
+		// add final resources of render path
+		AddFinalResources(mMainGraph);
+
 		// import back buffer
 		RenderGraphResource outColor = mMainGraph.ImportTexture("BackBuffer", rtHandle, rtDesc);
 
@@ -60,13 +63,13 @@ namespace Cjing3D
 				for (U32 i = 0; i < 4; i++) {
 					attachment.mCustomClearColor[i] = rtDesc.mClearValue.mColor[i];
 				}
-				builder.AddRTV(outColor, attachment);
+				outColor = builder.AddRTV(outColor, attachment);
 
 				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 					// bind viewport
 					GPU::ViewPort viewport;
-					viewport.mHeight = (F32)rtDesc.mWidth;
-					viewport.mWidth  = (F32)rtDesc.mHeight;
+					viewport.mWidth  = (F32)rtDesc.mWidth;
+					viewport.mHeight = (F32)rtDesc.mHeight;
 					cmd.BindViewport(viewport);
 
 					ComposePipelines(cmd);
@@ -90,6 +93,11 @@ namespace Cjing3D
 
 		// clear render graph
 		mMainGraph.Clear();
+		mFinalResources.clear();
+	}
+
+	void RenderGraphPath::AddFinalResources(RenderGraph& renderGraph)
+	{
 	}
 
 	void RenderGraphPath::AddFinalResource(const RenderGraphResource& res)

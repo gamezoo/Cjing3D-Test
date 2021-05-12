@@ -29,7 +29,6 @@ namespace Cjing3D
 
 	void RenderGraphPath2D::Stop()
 	{
-		mRenderPipeline2D.Clear();
 	}
 
 	void RenderGraphPath2D::Update(F32 dt)
@@ -41,11 +40,26 @@ namespace Cjing3D
 	{
 		PROFILE_FUNCTION();
 
-		//auto rtMainRes = renderGraph.ImportTexture(RT_MAIN_NAME, mRtMain.GetHandle(), &mRtMain.GetDesc());
-		//mRenderPipeline2D.SetResource("rtMain", rtMainRes);
-		// mRenderPipeline2D.Setup(renderGraph);
+		auto rtMainRes = renderGraph.ImportTexture("rtMain2D", mRtMain.GetHandle(), mRtMain.GetDesc());
+		auto rtDesc = mRtMain.GetDesc();
+		renderGraph.AddCallbackRenderPass("Render2D",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
 
-		//AddFinalResource(rtMainRes);
+				// clear renderTarget
+				RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget();
+				attachment.mUseCustomClearColor = true;
+				attachment.mLoadOp = GPU::BindingFrameAttachment::LOAD_CLEAR;
+				for (U32 i = 0; i < 4; i++) {
+					attachment.mCustomClearColor[i] = rtDesc.mClearValue.mColor[i];
+				}
+				auto res = builder.AddRTV(rtMainRes, RenderGraphAttachment::RenderTarget());
+				builder.GetBloackBoard().Put("rtMain2D", res);
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+					
+				};
+			});
 	}
 
 	void RenderGraphPath2D::ComposePipelines(GPU::CommandList& cmd)
@@ -57,6 +71,14 @@ namespace Cjing3D
 			params.EnableFullScreen();
 
 			RenderImage::Draw(mRtMain.GetHandle(), params, cmd);
+		}
+	}
+
+	void RenderGraphPath2D::AddFinalResources(RenderGraph& renderGraph)
+	{
+		auto finalRes = renderGraph.GetBloackBoard().Get("rtMain2D");
+		if (finalRes) {
+			AddFinalResource(finalRes);
 		}
 	}
 }

@@ -60,31 +60,50 @@ namespace Cjing3D
 	{
 	public:
 		RenderGraphResource() = default;
-		RenderGraphResource(I32 index) :mIndex(index) {}
+		RenderGraphResource(I32 index, I16 version = 0) :mIndex(index), mVersion(version) {}
 
 		bool operator==(const RenderGraphResource& rhs) const {
-			return mIndex == rhs.mIndex;
+			return mIndex == rhs.mIndex && mVersion == rhs.mVersion;
 		}
 		bool operator!=(const RenderGraphResource& rhs) const {
-			return mIndex != rhs.mIndex;
+			return mIndex != rhs.mIndex || mVersion != rhs.mVersion;
 		}
 		bool operator< (const RenderGraphResource& rhs) const {
 			return mIndex < rhs.mIndex;
 		}
 		operator bool()const {
-			return mIndex != -1;
+			return !IsEmpty();
 		}
 
 		bool IsEmpty()const {
-			return mIndex == -1;
+			return mIndex == -1 || mVersion == -1;
 		}
 		I32 Index()const {
 			return mIndex;
 		}
+		I32 Hash()const {
+			return mIndex * 10000 + mVersion;
+		}
 
 		I32 mIndex = -1;
+		I16 mVersion = 0;
 	};
 
 	U32 HashFunc(U32 Input, const RenderGraphResource& Data);
 	U64 HashFunc(U64 Input, const RenderGraphResource& Data);
+
+	class RenderGraphBlackboard
+	{
+	public:
+		RenderGraphBlackboard();
+		~RenderGraphBlackboard();
+
+		void Put(const char* name, RenderGraphResource res);
+		RenderGraphResource Get(const char* name)const;
+		void Remove(const char* name);
+		void Clear();
+
+	private:
+		HashMap<StringID, RenderGraphResource> mResMap;
+	};
 }

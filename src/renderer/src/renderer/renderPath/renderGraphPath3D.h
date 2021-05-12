@@ -20,6 +20,9 @@ namespace Cjing3D
 		void ComposePipelines(GPU::CommandList& cmd)override;		// called by RenderGraph::Compose
 
 	protected:
+		virtual void AddFinalResources(RenderGraph& renderGraph);
+
+	protected:
 		RenderPipeline3D mRenderPipeline3D;
 
 		Texture mRtMain;

@@ -14,23 +14,21 @@ namespace Cjing3D
 
 	void ImGuiPipeline::Setup(RenderGraph& graph)
 	{
-		// RenderGraphResource rtRes = graph.GetResource(RenderGraphPath2D::RT_MAIN_NAME);
+		auto rtRes = graph.GetBloackBoard().Get("rtMain2D");
+		if (!rtRes) {
+			return;
+		}
 
-		/*graph.AddCallbackRenderPass("ImGuiPass",
+		graph.AddCallbackRenderPass("ImGuiPass",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 			[&](RenderGraphResBuilder& builder) {
 
-				builder.AddRTV(rtRes, RenderGraphAttachment::RenderTarget());
-			},
-			[&](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				auto fbs = resources.GetFrameBindingSet();
-				if (fbs == GPU::ResHandle::INVALID_HANDLE) {
-					return;
-				}
+				auto res = builder.AddRTV(rtRes, RenderGraphAttachment::RenderTarget());
+				graph.GetBloackBoard().Put("rtMain2D", res);
 
-				if (auto binding = cmd.BindScopedFrameBindingSet(fbs)) {
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {						
 					ImGuiRHI::Manager::Render(cmd);
-				}
-			}
-		);*/
+				};
+			});
 	}
 }

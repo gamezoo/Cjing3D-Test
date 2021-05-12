@@ -129,7 +129,7 @@ namespace Cjing3D
 
 		/////////////////////////////////////////////////////////////////////////
 		// update gui
-		U32x2 resolution;
+		U32x2 resolution = Renderer::GetInternalResolution();
 		InputManager* input = mEngine->GetInputManager();
 		ImGuiRHI::Manager::BeginFrame(*input, (F32)resolution.x(), (F32)resolution.y(), deltaTime);
 

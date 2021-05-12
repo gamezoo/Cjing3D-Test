@@ -24,6 +24,7 @@ namespace Cjing3D
 		virtual void ComposePipelines(GPU::CommandList& cmd) = 0; 		// called by RenderGraph::Compose
 
 	protected:
+		virtual void AddFinalResources(RenderGraph& renderGraph);
 		void AddFinalResource(const RenderGraphResource& res);
 
 	private:

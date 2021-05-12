@@ -122,7 +122,7 @@ namespace Renderer
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
 		StaticArray<GPU::ResHandle, CBTYPE_COUNT> mConstantBuffers;
 		DynamicArray<GPU::ResHandle> mSamplerStates;
-
+		F32 mResolutionScale = 1.0f;
 		U32x2 mWindowSize = { 0u, 0u };
 	};
 
@@ -581,7 +581,10 @@ namespace Renderer
 
 	U32x2 GetInternalResolution()
 	{
-		return U32x2();
+		return U32x2(
+			(U32)(mImpl->mWindowSize.x() * mImpl->mResolutionScale),
+			(U32)(mImpl->mWindowSize.y() * mImpl->mResolutionScale)
+		);
 	}
 
 	void SetWindow(const GameWindow& gameWindow)

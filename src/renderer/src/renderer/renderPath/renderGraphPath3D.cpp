@@ -94,4 +94,14 @@ namespace Cjing3D
 
 		RenderGraphPath2D::ComposePipelines(cmd);
 	}
+
+	void RenderGraphPath3D::AddFinalResources(RenderGraph& renderGraph)
+	{
+		RenderGraphPath2D::AddFinalResources(renderGraph);
+
+		auto finalRes = renderGraph.GetBloackBoard().Get("rtMain3D");
+		if (finalRes) {
+			AddFinalResource(finalRes);
+		}
+	}
 }

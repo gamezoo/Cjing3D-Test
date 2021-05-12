@@ -20,12 +20,15 @@ namespace Cjing3D
 		RenderGraphResource CreateTexture(const char* name, const GPU::TextureDesc* desc);
 		RenderGraphResource CreateBuffer(const char* name, const GPU::BufferDesc* desc);
 
-		void ReadTexture(RenderGraphResource res);
-		void WriteTexture(RenderGraphResource res);
-		void ReadBuffer(RenderGraphResource res);
-		void WriteBuffer(RenderGraphResource res);
-		void AddRTV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget());
-		void SetDSV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::DepthStencil());
+		RenderGraphResource ReadTexture(RenderGraphResource res);
+		RenderGraphResource WriteTexture(RenderGraphResource res);
+		RenderGraphResource ReadBuffer(RenderGraphResource res);
+		RenderGraphResource WriteBuffer(RenderGraphResource res);
+		RenderGraphResource AddRTV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget());
+		RenderGraphResource SetDSV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::DepthStencil());
+
+		RenderGraphBlackboard& GetBloackBoard();
+		RenderGraphBlackboard const& GetBloackBoard()const;
 
 		const GPU::TextureDesc* GetTextureDesc(RenderGraphResource res)const;
 		const GPU::BufferDesc* GetBufferDesc(RenderGraphResource res)const;
@@ -104,6 +107,9 @@ namespace Cjing3D
 		bool Execute(JobSystem::JobHandle& jobHandle);
 		void Clear();
 		void SetFinalResource(const RenderGraphResource& res);
+
+		RenderGraphBlackboard& GetBloackBoard();
+		RenderGraphBlackboard const& GetBloackBoard()const;
 
 		RenderGraphResource GetResource(const char* name)const;
 		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc);

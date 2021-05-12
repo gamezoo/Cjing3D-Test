@@ -1,7 +1,6 @@
 #pragma once
 
 #include "renderGraphPath.h"
-#include "renderer\renderPipeline\renderPipeline2D.h"
 
 namespace Cjing3D
 {
@@ -19,8 +18,9 @@ namespace Cjing3D
 		void ComposePipelines(GPU::CommandList& cmd)override;		// called by RenderGraph::Compose
 
 	protected:
-		RenderPipeline2D mRenderPipeline2D;
+		virtual void AddFinalResources(RenderGraph& renderGraph);
 
+	protected:
 		Texture mRtMain;
 	};
 }
