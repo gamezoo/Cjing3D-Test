@@ -35,86 +35,86 @@ TEST_CASE("RenderGraphTest", "[Render]")
 	RenderGraph graph;
 
 	// back tex
-	GPU::TextureDesc backDesc;
-	backDesc.mFormat = GPU::FORMAT_R8G8B8A8_UNORM;
-	backDesc.mWidth = 1024;
-	backDesc.mHeight = 768;
+	//GPU::TextureDesc backDesc;
+	//backDesc.mFormat = GPU::FORMAT_R8G8B8A8_UNORM;
+	//backDesc.mWidth = 1024;
+	//backDesc.mHeight = 768;
 
-	// predepth
-	graph.AddCallbackRenderPass(
-		"PreDepthPass", 
-		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-		[&](RenderGraphResBuilder& builder) {
+	//// predepth
+	//graph.AddCallbackRenderPass(
+	//	"PreDepthPass", 
+	//	RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+	//	[&](RenderGraphResBuilder& builder) {
 
-			auto depthOutput = builder.CreateTexture("depth", &backDesc);
-			builder.SetDSV(depthOutput);
+	//		auto depthOutput = builder.CreateTexture("depth", &backDesc);
+	//		builder.SetDSV(depthOutput);
 
-			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				Logger::Info("DoPreDepthPass");
-			};
-		}
-	);
+	//		return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+	//			Logger::Info("DoPreDepthPass");
+	//		};
+	//	}
+	//);
 
-	// main render pass
-	graph.AddCallbackRenderPass(
-		"MainPass",
-		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-		[&](RenderGraphResBuilder& builder) {
+	//// main render pass
+	//graph.AddCallbackRenderPass(
+	//	"MainPass",
+	//	RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+	//	[&](RenderGraphResBuilder& builder) {
 
-			builder.ReadTexture(graph.GetResource("depth"));
+	//		builder.ReadTexture(graph.GetResource("depth"));
 
-			auto output = builder.CreateTexture("mainOutput", &backDesc);
-			builder.AddRTV(output);
+	//		auto output = builder.CreateTexture("mainOutput", &backDesc);
+	//		builder.AddRTV(output);
 
-			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				Logger::Info("MainPass");
-			};
-		}
-	);
+	//		return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+	//			Logger::Info("MainPass");
+	//		};
+	//	}
+	//);
 
-	// postprocess pass
-	graph.AddCallbackRenderPass(
-		"PostprocessPass",
-		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_ASYNC_COMPUTE_BIT,
-		[&](RenderGraphResBuilder& builder) {
-	
-			builder.ReadTexture(graph.GetResource("mainOutput"));
-	
-			auto output = builder.CreateTexture("postOutput", &backDesc);
-			builder.AddRTV(output);
-			
-			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				Logger::Info("PostprocessPass");
-			};
-		}
-	);
+	//// postprocess pass
+	//graph.AddCallbackRenderPass(
+	//	"PostprocessPass",
+	//	RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_ASYNC_COMPUTE_BIT,
+	//	[&](RenderGraphResBuilder& builder) {
+	//
+	//		builder.ReadTexture(graph.GetResource("mainOutput"));
+	//
+	//		auto output = builder.CreateTexture("postOutput", &backDesc);
+	//		builder.AddRTV(output);
+	//		
+	//		return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+	//			Logger::Info("PostprocessPass");
+	//		};
+	//	}
+	//);
 
-	// composite + UI
-	graph.AddCallbackRenderPass(
-		"CompositePass",
-		RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-		[&](RenderGraphResBuilder& builder) {
+	//// composite + UI
+	//graph.AddCallbackRenderPass(
+	//	"CompositePass",
+	//	RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+	//	[&](RenderGraphResBuilder& builder) {
 
-			builder.ReadTexture(graph.GetResource("mainOutput"));
-			builder.ReadTexture(graph.GetResource("postOutput"));
+	//		builder.ReadTexture(graph.GetResource("mainOutput"));
+	//		builder.ReadTexture(graph.GetResource("postOutput"));
 
-			auto output = builder.CreateTexture("finalOutput", &backDesc);
-			builder.AddRTV(output);
+	//		auto output = builder.CreateTexture("finalOutput", &backDesc);
+	//		builder.AddRTV(output);
 
-			return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-				Logger::Info("CompositePass");
-			};
-		}
-	);
+	//		return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+	//			Logger::Info("CompositePass");
+	//		};
+	//	}
+	//);
 
-	graph.SetFinalResource(graph.GetResource("finalOutput"));
+	//graph.SetFinalResource(graph.GetResource("finalOutput"));
 
-	// compile graph
-	graph.Compile();
-	
-	// debug display by graphviz
-	auto graphvizStr = graph.ExportGraphviz();
-	DeisplayGraphviz(graphvizStr);
+	//// compile graph
+	//graph.Compile();
+	//
+	//// debug display by graphviz
+	//auto graphvizStr = graph.ExportGraphviz();
+	//DeisplayGraphviz(graphvizStr);
 
 	// execute graph
 	//JobSystem::JobHandle jobHandle;

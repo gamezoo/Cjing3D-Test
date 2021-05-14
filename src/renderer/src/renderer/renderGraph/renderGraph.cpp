@@ -83,12 +83,18 @@ namespace Cjing3D
 		StaticString<64> mName;
 		U32 mPhysicalIndex = Unused;
 		RenderGraphQueueFlags mQueueFlags = 0;
-		DynamicArray<I32> mWrittenPasses;
-		DynamicArray<I32> mReadPasses;
-		GPU::ResHandle mImportedHandle;
 		GPU::ResourceType mType;
 		GPU::TextureDesc mTexDesc;
 		GPU::BufferDesc mBufferDesc;
+
+		GPU::ResHandle mImportedHandle;
+	};
+
+	struct ResourceSlot
+	{
+		I16 mVersion = 0;
+		I32 mInstIndex = -1;
+		I32 mNodeIndex = -1;
 	};
 
 	RenderGraphResourceDimension CreateResDimension(const ResourceInst& res)
@@ -298,7 +304,9 @@ namespace Cjing3D
 		DynamicArray<Set<I32>> mPassIndexMergeDependencies;
 
 		// resource
-		DynamicArray<ResourceInst> mResources;
+		DynamicArray<ResourceSlot> mResourceSlots;
+		DynamicArray<ResourceInst*> mResourceInsts;
+		DynamicArray<ResourceNode*> mResourceNodes;
 		HashMap<StringID, I32> mResourceNameMap;
 		ResourceCache mResourceCache;
 
@@ -331,6 +339,10 @@ namespace Cjing3D
 		bool Compile();
 		bool Execute(JobSystem::JobHandle& jobHandle);
 
+		RenderGraphResource CreateNewVersionRes(RenderGraphResource res);
+		ResourceNode* GetResourceNode(const RenderGraphResource& res);
+		ResourceInst* GetResourceInst(const RenderGraphResource& res);
+
 		void FilterRenderPass(DynamicArray<I32>& renderPasses);
 		void ReorderRenderPass(DynamicArray<I32>& renderPasses);
 		void BuildPhysicalResources();
@@ -342,7 +354,7 @@ namespace Cjing3D
 		void BuildAliases();
 
 		void TraverseRenderPassDependency(const RenderPassInst& renderPass, U32 stackCount);
-		void DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount, I16 version, bool mergeDependency);
+		void DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount, bool mergeDependency);
 		bool CheckPassDependent(I32 srcPass, I32 dstPass)const;
 
 		void CreateBuffer(I32 physicalIndex);
@@ -357,7 +369,7 @@ namespace Cjing3D
 
 		GPU::ResHandle GetTexture(const RenderGraphResource& res, GPU::TextureDesc* outDesc = nullptr)
 		{
-			const auto& resInst = mResources[res.mIndex];
+			const auto& resInst = *GetResourceInst(res);
 			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_TEXTURE);
 			if (resInst.mPhysicalIndex == ResourceInst::Unused) {
 				return GPU::ResHandle::INVALID_HANDLE;
@@ -374,7 +386,7 @@ namespace Cjing3D
 
 		GPU::ResHandle GetBuffer(const RenderGraphResource& res, GPU::BufferDesc* outDesc = nullptr)
 		{
-			const auto& resInst = mResources[res.mIndex];
+			const auto& resInst = *GetResourceInst(res);
 			Debug::CheckAssertion(resInst.mType == GPU::RESOURCETYPE_BUFFER);
 			if (resInst.mPhysicalIndex == ResourceInst::Unused) {
 				return GPU::ResHandle::INVALID_HANDLE;
@@ -391,7 +403,34 @@ namespace Cjing3D
 			if (it == nullptr) {
 				return nullptr;
 			}
-			return &mResources[*it];
+			return mResourceInsts[*it];
+		}
+
+		void* Alloc(size_t size)
+		{
+			return (void*)mAllocator.Allocate(size);
+		}
+
+		template<typename T>
+		T* Alloc()
+		{
+			void* data = Alloc(sizeof(T));
+			if (data != nullptr) {
+				return new(data) T;
+			}
+			return nullptr;
+		}
+
+		bool IsResourceValid(const RenderGraphResource& res)
+		{
+			if (res.IsEmpty()) {
+				return false;
+			}
+
+			if (mResourceSlots[res.mIndex].mVersion != res.mVersion) {
+				return false;
+			}
+			return true;
 		}
 	};
 
@@ -442,17 +481,15 @@ namespace Cjing3D
 	void RenderGraphImpl::TraverseRenderPassDependency(const RenderPassInst& renderPass, U32 stackCount)
 	{
 		auto inputs = renderPass.mRenderPass->GetInputs();
-		for (const RenderGraphResource& res : inputs)
+		for (const ResourceNode* node : inputs)
 		{
-			if (!res.IsEmpty())
-			{
-				ResourceInst& resInst = mResources[res.mIndex];
-				DependRenderPassRecursive(renderPass, resInst.mWrittenPasses, stackCount, res.mVersion, false);
+			if (node) {
+				DependRenderPassRecursive(renderPass, node->mWrittenPasses, stackCount, false);
 			}
 		}
 	}
 
-	void RenderGraphImpl::DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount, I16 version, bool mergeDependency)
+	void RenderGraphImpl::DependRenderPassRecursive(const RenderPassInst& renderPass, const DynamicArray<I32>& writtenPasses, U32 stackCount, bool mergeDependency)
 	{
 		for (auto& passIndex : writtenPasses)
 		{
@@ -482,6 +519,35 @@ namespace Cjing3D
 			mPassIndexStack.push(passIndex);
 			TraverseRenderPassDependency(mRenderPasses[passIndex], stackCount);
 		}
+	}
+
+	RenderGraphResource RenderGraphImpl::CreateNewVersionRes(RenderGraphResource res)
+	{
+		// update res version
+		res.mVersion++;
+
+		auto& slot = mResourceSlots[res.mIndex];
+		slot.mVersion = res.mVersion;
+		slot.mNodeIndex = mResourceNodes.size();
+
+		ResourceNode* newNode = Alloc<ResourceNode>();
+		newNode->mIndex = mResourceNodes.size();
+		newNode->mRes = res;
+		mResourceNodes.push(newNode);
+
+		return res;
+	}
+
+	ResourceNode* RenderGraphImpl::GetResourceNode(const RenderGraphResource& res)
+	{
+		const ResourceSlot& slot = mResourceSlots[res.mIndex];
+		return mResourceNodes[slot.mNodeIndex];
+	}
+
+	ResourceInst* RenderGraphImpl::GetResourceInst(const RenderGraphResource& res)
+	{
+		const ResourceSlot& slot = mResourceSlots[res.mIndex];
+		return mResourceInsts[slot.mInstIndex];
 	}
 
 	void RenderGraphImpl::FilterRenderPass(DynamicArray<I32>& renderPasses)
@@ -605,17 +671,13 @@ namespace Cjing3D
 			// inputs
 			RenderPassInst& renderPass = mRenderPasses[passIndex];
 			auto inputs = renderPass.mRenderPass->GetInputs();
-			for (auto& input : inputs)
+			for (auto input : inputs)
 			{
-				if (!input.IsEmpty())
+				auto res = GetResourceInst(input->mRes);
+				if (res->mPhysicalIndex == ResourceInst::Unused) 
 				{
-					auto& res = mResources[input.mIndex];
-					if (res.mPhysicalIndex == ResourceInst::Unused) 
-					{
-						mPhysicalResourceDimensions.push(std::move(CreateResDimension(res)));
-						res.mPhysicalIndex = physicalIndex++;
-					}
-					
+					mPhysicalResourceDimensions.push(std::move(CreateResDimension(*res)));
+					res->mPhysicalIndex = physicalIndex++;
 				}
 			}
 
@@ -623,14 +685,11 @@ namespace Cjing3D
 			auto outputs = renderPass.mRenderPass->GetOutputs();
 			for (auto& output : outputs)
 			{
-				if (!output.IsEmpty())
+				auto res = GetResourceInst(output->mRes);
+				if (res->mPhysicalIndex == ResourceInst::Unused)
 				{
-					auto& res = mResources[output.mIndex];
-					if (res.mPhysicalIndex == ResourceInst::Unused)
-					{
-						mPhysicalResourceDimensions.push(std::move(CreateResDimension(res)));
-						res.mPhysicalIndex = physicalIndex++;
-					}
+					mPhysicalResourceDimensions.push(std::move(CreateResDimension(*res)));
+					res->mPhysicalIndex = physicalIndex++;
 				}
 			}
 		}
@@ -713,8 +772,9 @@ namespace Cjing3D
 		}
 
 		// 如果一个资源被多个pass使用，则该pass不是transient
-		for (auto& res : mResources)
+		for (auto& resSlot : mResourceSlots)
 		{
+			auto& res = *mResourceInsts[resSlot.mInstIndex];
 			if (res.mType != GPU::RESOURCETYPE_TEXTURE) {
 				continue;
 			}
@@ -728,7 +788,8 @@ namespace Cjing3D
 			}
 
 			// check written passes
-			for (auto& passIndex : res.mWrittenPasses)
+			auto& node = *mResourceNodes[resSlot.mNodeIndex];
+			for (auto& passIndex : node.mWrittenPasses)
 			{
 				U32 passPhysicalIndex = mRenderPasses[passIndex].mPhysicalIndex;
 				if (passPhysicalIndex != RenderPassInst::Unused)
@@ -744,7 +805,7 @@ namespace Cjing3D
 			}
 
 			// check read passes
-			for (auto& passIndex : res.mReadPasses)
+			for (auto& passIndex : node.mReadPasses)
 			{
 				U32 passPhysicalIndex = mRenderPasses[passIndex].mPhysicalIndex;
 				if (passPhysicalIndex != RenderPassInst::Unused)
@@ -789,21 +850,21 @@ namespace Cjing3D
 
 				// input resources
 				auto inputs = renderPass.mRenderPass->GetInputs();
-				for (auto& input : inputs)
+				for (auto input : inputs)
 				{
-					if (!input.IsEmpty() && mResources[input.mIndex].mType == GPU::RESOURCETYPE_TEXTURE)
-					{
-						AddTexture(mResources[input.mIndex].mPhysicalIndex);
+					auto res = GetResourceInst(input->mRes);
+					if (res && res->mType == GPU::RESOURCETYPE_TEXTURE) {
+						AddTexture(res->mPhysicalIndex);
 					}
 				}
 
 				// output resources
 				auto outputs = renderPass.mRenderPass->GetOutputs();
-				for (auto& output : outputs)
+				for (auto output : outputs)
 				{
-					if (!output.IsEmpty() && mResources[output.mIndex].mType == GPU::RESOURCETYPE_TEXTURE)
-					{
-						AddTexture(mResources[output.mIndex].mPhysicalIndex);
+					auto res = GetResourceInst(output->mRes);
+					if (res && res->mType == GPU::RESOURCETYPE_TEXTURE) {
+						AddTexture(res->mPhysicalIndex);
 					}
 				}
 			}
@@ -835,21 +896,19 @@ namespace Cjing3D
 
 			// input resources
 			auto inputs = renderPass.mRenderPass->GetInputs();
-			for (auto& input : inputs)
+			for (auto input : inputs)
 			{
-				if (!input.IsEmpty())
-				{
-					GetBarrier(barriers.mInvalidate, mResources[input.mIndex].mPhysicalIndex);
+				if (auto res = GetResourceInst(input->mRes)) {
+					GetBarrier(barriers.mInvalidate, res->mPhysicalIndex);
 				}
 			}
 
 			// output resources
 			auto outputs = renderPass.mRenderPass->GetOutputs();
-			for (auto& output : outputs)
+			for (auto output : outputs)
 			{
-				if (!output.IsEmpty())
-				{
-					GetBarrier(barriers.mFlush, mResources[output.mIndex].mPhysicalIndex);
+				if (auto res = GetResourceInst(output->mRes)) {
+					GetBarrier(barriers.mFlush, res->mPhysicalIndex);
 				}
 			}
 
@@ -916,10 +975,10 @@ namespace Cjing3D
 
 			// input resources
 			auto inputs = renderPass.mRenderPass->GetInputs();
-			for (auto& input : inputs)
+			for (auto input : inputs)
 			{
-				if (!input.IsEmpty()) {
-					RegisterReader(mResources[input.mIndex], renderPass.mPhysicalIndex);
+				if (auto res = GetResourceInst(input->mRes)) {
+					RegisterReader(*res, renderPass.mPhysicalIndex);
 				}
 			}
 
@@ -927,8 +986,8 @@ namespace Cjing3D
 			auto outputs = renderPass.mRenderPass->GetOutputs();
 			for (auto& output : outputs)
 			{
-				if (!output.IsEmpty()){
-					RegisterWriter(mResources[output.mIndex], renderPass.mPhysicalIndex);
+				if (auto res = GetResourceInst(output->mRes)) {
+					RegisterReader(*res, renderPass.mPhysicalIndex);
 				}
 			}
 		}
@@ -1014,7 +1073,8 @@ namespace Cjing3D
 		mRenderPassIndexMap.clear();
 
 		// resources
-		mResources.clear();
+		mResourceSlots.clear();
+		mResourceInsts.clear();
 		mResourceNameMap.clear();
 		mResourceCache.Clear();
 		mPhysicalResourceDimensions.clear();
@@ -1041,15 +1101,15 @@ namespace Cjing3D
 			Logger::Error("[RenderGraph] The final resource dose not exist.");
 			return false;
 		}
-		ResourceInst& finalRes = mResources[mFinalRes.mIndex];
-		if (finalRes.mWrittenPasses.empty())
+		ResourceNode* finalResNode = GetResourceNode(mFinalRes);
+		if (finalResNode->mWrittenPasses.empty())
 		{
 			Logger::Error("[RenderGraph] The final resource dose not written by any passes.");
 			return false;
 		}
 
 		// get available passes by traversing pass dependencies
-		for (auto& passIndex : finalRes.mWrittenPasses) {
+		for (auto& passIndex : finalResNode->mWrittenPasses) {
 			mPassIndexStack.push(passIndex);
 		}
 		auto tempStack = mPassIndexStack;
@@ -1392,15 +1452,28 @@ namespace Cjing3D
 			return RenderGraphResource(res->mIndex);
 		}
 
-		ResourceInst resInst;
-		resInst.mName = name;
-		resInst.mIndex = mImpl.mResources.size();
-		resInst.mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
-		resInst.mTexDesc = *desc;
-		mImpl.mResources.push(resInst);
-		mImpl.mResourceNameMap.insert(name, resInst.mIndex);
+		RenderGraphResource res(mImpl.mResourceSlots.size());
+		// res slot
+		ResourceSlot& resSlot = mImpl.mResourceSlots.emplace();
+		resSlot.mInstIndex = mImpl.mResourceInsts.size();
+		resSlot.mNodeIndex = mImpl.mResourceNodes.size();
 
-		return RenderGraphResource(resInst.mIndex);
+		// res inst
+		ResourceInst* resInst = Alloc<ResourceInst>();
+		resInst->mName = name;
+		resInst->mIndex = mImpl.mResourceInsts.size();
+		resInst->mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
+		resInst->mTexDesc = *desc;
+		mImpl.mResourceInsts.push(resInst);
+		mImpl.mResourceNameMap.insert(name, resInst->mIndex);
+
+		// res node
+		ResourceNode* resNode = Alloc<ResourceNode>();
+		resNode->mIndex = mImpl.mResourceNodes.size();
+		resNode->mRes = res;
+		mImpl.mResourceNodes.push(resNode);
+
+		return res;
 	}
 
 	RenderGraphResource RenderGraphResBuilder::CreateBuffer(const char* name, const GPU::BufferDesc* desc)
@@ -1411,15 +1484,28 @@ namespace Cjing3D
 			return RenderGraphResource(res->mIndex);
 		}
 
-		ResourceInst resInst;
-		resInst.mName = name;
-		resInst.mIndex = mImpl.mResources.size();
-		resInst.mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
-		resInst.mBufferDesc = *desc;
-		mImpl.mResources.push(resInst);
-		mImpl.mResourceNameMap.insert(name, resInst.mIndex);
+		RenderGraphResource res(mImpl.mResourceSlots.size());
+		// res slot
+		ResourceSlot& resSlot = mImpl.mResourceSlots.emplace();
+		resSlot.mInstIndex = mImpl.mResourceInsts.size();
+		resSlot.mNodeIndex = mImpl.mResourceNodes.size();
 
-		return RenderGraphResource(resInst.mIndex);
+		// res inst
+		ResourceInst* resInst = Alloc<ResourceInst>();
+		resInst->mName = name;
+		resInst->mIndex = mImpl.mResourceInsts.size();
+		resInst->mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
+		resInst->mBufferDesc = *desc;
+		mImpl.mResourceInsts.push(resInst);
+		mImpl.mResourceNameMap.insert(name, resInst->mIndex);
+
+		// res node
+		ResourceNode* resNode = Alloc<ResourceNode>();
+		resNode->mIndex = mImpl.mResourceNodes.size();
+		resNode->mRes = res;
+		mImpl.mResourceNodes.push(resNode);
+
+		return res;
 	}
 
 	RenderGraphResource RenderGraphResBuilder::ReadTexture(RenderGraphResource res)
@@ -1428,15 +1514,16 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resInst = mImpl.mResources[res.mIndex];
-		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_TEXTURE) {
+		auto resNode = mImpl.GetResourceNode(res);
+		auto resInst = mImpl.GetResourceInst(res);
+		if (resInst->mType != GPU::ResourceType::RESOURCETYPE_TEXTURE) {
 			return res;
 		}
 
-		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
-		resInst.mTexDesc.mBindFlags |= GPU::BIND_SHADER_RESOURCE;
-		resInst.mReadPasses.push(mRenderPass->GetIndex());
-		mRenderPass->AddInput(res);
+		resInst->mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst->mTexDesc.mBindFlags |= GPU::BIND_SHADER_RESOURCE;
+		resNode->mReadPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddInput(resNode);
 
 		return res;
 	}
@@ -1447,17 +1534,23 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resInst = mImpl.mResources[res.mIndex];
-		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_TEXTURE) {
+		auto resNode = mImpl.GetResourceNode(res);
+		auto resInst = mImpl.GetResourceInst(res);
+		if (resInst->mType != GPU::ResourceType::RESOURCETYPE_TEXTURE) {
 			return res;
 		}
+		resInst->mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst->mTexDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
 
-		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
-		resInst.mTexDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
-		resInst.mWrittenPasses.push(mRenderPass->GetIndex());
+		// 如果当前资源节点已经存在读写Pass，则CreateNewVersionRes(更新Version，创建ResNode)
+		if (resNode->mWrittenPasses.size() > 0 || resNode->mReadPasses.size() > 0)
+		{
+			res = mImpl.CreateNewVersionRes(res);
+			resNode = mImpl.GetResourceNode(res);
+		}
 
-		res.mVersion++;
-		mRenderPass->AddOutput(res);
+		resNode->mWrittenPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddOutput(resNode);
 
 		return res;
 	}
@@ -1468,15 +1561,16 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resInst = mImpl.mResources[res.mIndex];
-		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_BUFFER) {
+		auto resNode = mImpl.GetResourceNode(res);
+		auto resInst = mImpl.GetResourceInst(res);
+		if (resInst->mType != GPU::ResourceType::RESOURCETYPE_BUFFER) {
 			return res;
 		}
 
-		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
-		resInst.mBufferDesc.mBindFlags |= GPU::BIND_SHADER_RESOURCE;
-		resInst.mReadPasses.push(mRenderPass->GetIndex());
-		mRenderPass->AddInput(res);
+		resInst->mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst->mBufferDesc.mBindFlags |= GPU::BIND_SHADER_RESOURCE;
+		resNode->mReadPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddInput(resNode);
 
 		return res;
 	}
@@ -1487,17 +1581,25 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resInst = mImpl.mResources[res.mIndex];
-		if (resInst.mType != GPU::ResourceType::RESOURCETYPE_BUFFER) {
+		auto resNode = mImpl.GetResourceNode(res);
+		auto resInst = mImpl.GetResourceInst(res);
+		if (resInst->mType != GPU::ResourceType::RESOURCETYPE_BUFFER) {
 			return res;
 		}
 
-		resInst.mQueueFlags |= mRenderPass->GetQueueFlags();
-		resInst.mBufferDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
-		resInst.mWrittenPasses.push(mRenderPass->GetIndex());
+		resInst->mQueueFlags |= mRenderPass->GetQueueFlags();
+		resInst->mBufferDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
 
-		res.mVersion++;
-		mRenderPass->AddOutput(res);
+
+		// 如果当前资源节点已经存在读写Pass，则CreateNewVersionRes(更新Version，创建ResNode)
+		if (resNode->mWrittenPasses.size() > 0 || resNode->mReadPasses.size() > 0)
+		{
+			res = mImpl.CreateNewVersionRes(res);
+			resNode = mImpl.GetResourceNode(res);
+		}
+
+		resNode->mWrittenPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddOutput(resNode);
 
 		return res;
 	}
@@ -1508,23 +1610,29 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resource = mImpl.mResources[res.mIndex];
-		switch (resource.mType)
+		auto resNode = mImpl.GetResourceNode(res);
+		auto resInst = mImpl.GetResourceInst(res);
+		switch (resInst->mType)
 		{
 		case GPU::RESOURCETYPE_TEXTURE:
 		case GPU::RESOURCETYPE_SWAP_CHAIN:
-			resource.mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_RENDER_TARGET;
+			resInst->mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_RENDER_TARGET;
 			break;
 		default:
-			Logger::Warning("Invalid res \'%d\', nnly texture could bind render target", (I32)resource.mType);
+			Logger::Warning("Invalid res \'%d\', nnly texture could bind render target", (I32)resInst->mType);
 			break;
 		}
-		resource.mWrittenPasses.push(mRenderPass->GetIndex());
 
-		// renderPass add rtv
+		// 如果当前资源节点已经存在读写Pass，则CreateNewVersionRes(更新Version，创建ResNode)
+		if (resNode->mWrittenPasses.size() > 0 || resNode->mReadPasses.size() > 0)
+		{
+			res = mImpl.CreateNewVersionRes(res);
+			resNode = mImpl.GetResourceNode(res);
+		}
+
+		resNode->mWrittenPasses.push(mRenderPass->GetIndex());
 		mRenderPass->AddRTV(res, attachment);
-		res.mVersion++;
-		mRenderPass->AddOutput(res);
+		mRenderPass->AddOutput(resNode);
 
 		return res;
 	}
@@ -1535,60 +1643,59 @@ namespace Cjing3D
 			return res;
 		}
 
-		auto& resource = mImpl.mResources[res.mIndex];
-		switch (resource.mType)
+		auto resNode = mImpl.GetResourceNode(res);
+		auto resInst = mImpl.GetResourceInst(res);
+		switch (resInst->mType)
 		{
 		case GPU::RESOURCETYPE_TEXTURE:
-			resource.mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_DEPTH_STENCIL;
+			resInst->mTexDesc.mBindFlags |= GPU::BIND_FLAG::BIND_DEPTH_STENCIL;
 			break;
 		default:
-			Logger::Warning("Invalid res \'%d\', nnly texture could bind depth stencil", (I32)resource.mType);
+			Logger::Warning("Invalid res \'%d\', nnly texture could bind depth stencil", (I32)resInst->mType);
 			break;
 		}
-		resource.mWrittenPasses.push(mRenderPass->GetIndex());
+
+		// 如果当前资源节点已经存在读写Pass，则CreateNewVersionRes(更新Version，创建ResNode)
+		if (resNode->mWrittenPasses.size() > 0 || resNode->mReadPasses.size() > 0)
+		{
+			res = mImpl.CreateNewVersionRes(res);
+			resNode = mImpl.GetResourceNode(res);
+		}
 
 		// renderPass add dsv
+		resNode->mWrittenPasses.push(mRenderPass->GetIndex());
 		mRenderPass->SetDSV(res, attachment);
-		res.mVersion++;
-		mRenderPass->AddOutput(res);
+		mRenderPass->AddOutput(resNode);
 
 		return res;
 	}
 
 	const GPU::TextureDesc* RenderGraphResBuilder::GetTextureDesc(RenderGraphResource res)const
 	{
-		if (!res) {
+		if (!res || res.mIndex >= mImpl.mResourceSlots.size()) {
 			return nullptr;
 		}
 
-		if (res.mIndex >= mImpl.mResources.size()) {
+		auto resInst = mImpl.GetResourceInst(res);
+		if (resInst->mType != GPU::RESOURCETYPE_TEXTURE) {
 			return nullptr;
 		}
 
-		auto& resInst = mImpl.mResources[res.mIndex];
-		if (resInst.mType != GPU::RESOURCETYPE_TEXTURE) {
-			return nullptr;
-		}
-
-		return &resInst.mTexDesc;
+		return &resInst->mTexDesc;
 	}
 
 	const GPU::BufferDesc* RenderGraphResBuilder::GetBufferDesc(RenderGraphResource res)const
 	{
-		if (!res) {
-			return nullptr;
-		}
-
-		if (res.mIndex >= mImpl.mResources.size()) {
+		if (!res || res.mIndex >= mImpl.mResourceSlots.size()) {
 			return nullptr;
 		}
 	
-		auto& resInst = mImpl.mResources[res.mIndex];
-		if (resInst.mType != GPU::RESOURCETYPE_BUFFER) {
+		auto resInst = mImpl.GetResourceInst(res);
+		if (resInst->mType != GPU::RESOURCETYPE_BUFFER) {
 			return nullptr;
 		}
 
-		return &resInst.mBufferDesc;
+		return &resInst->mBufferDesc;
 	}
 
 	RenderGraphBlackboard& RenderGraphResBuilder::GetBloackBoard()
@@ -1690,7 +1797,8 @@ namespace Cjing3D
 		// passes nodes
 		for (const auto& pass : mImpl->mRenderPasses)
 		{
-			ret += pass.mName;
+			ret += "Pass_";
+			ret += std::to_string(pass.mIndex).c_str();
 			ret += " [label=\"";
 			ret += pass.mName;
 			ret += ", id: ";
@@ -1701,16 +1809,20 @@ namespace Cjing3D
 			ret += "]\n";
 		}
 		// res nodes
-		for (const auto& res : mImpl->mResources)
+		for (const auto& node : mImpl->mResourceNodes)
 		{
-			ret += res.mName;
+			auto res = mImpl->GetResourceInst(node->mRes);
+			ret += "Res_";
+			ret += std::to_string(node->mIndex).c_str();
 			ret += " [label=\"";
-			ret += res.mName;
+			ret += res->mName;
 			ret += ", id: ";
-			ret += std::to_string(res.mIndex).c_str();
+			ret += std::to_string(res->mIndex).c_str();
+			ret += ", \\nversion: ";
+			ret += std::to_string(node->mRes.mVersion).c_str();
 			ret += "\", ";
 			ret += "style=filled, fillcolor=";
-			ret += res.mPhysicalIndex != RenderPassInst::Unused ? "skyblue" : "skyblue4";
+			ret += res->mPhysicalIndex != RenderPassInst::Unused ? "skyblue" : "skyblue4";
 			ret += "]\n";
 		}
 
@@ -1723,14 +1835,16 @@ namespace Cjing3D
 				auto inputs = pass.mRenderPass->GetInputs();
 				for (auto& input : inputs)
 				{
-					if (!input.IsEmpty())
+					if (input != nullptr)
 					{
-						auto& res = mImpl->mResources[input.mIndex];
-						if (res.mPhysicalIndex != ResourceInst::Unused) 
+						auto res = mImpl->GetResourceInst(input->mRes);
+						if (res->mPhysicalIndex != ResourceInst::Unused) 
 						{
-							ret += res.mName;
+							ret += "Res_";
+							ret += std::to_string(input->mIndex).c_str();
 							ret += "-> ";
-							ret += pass.mName;
+							ret += "Pass_";
+							ret += std::to_string(pass.mIndex).c_str();
 							ret += " [color=darkolivegreen2]\n";
 						}
 					}
@@ -1740,14 +1854,16 @@ namespace Cjing3D
 				auto outputs = pass.mRenderPass->GetOutputs();
 				for (auto& output : outputs)
 				{
-					if (!output.IsEmpty())
+					if (output != nullptr)
 					{
-						auto& res = mImpl->mResources[output.mIndex];
-						if (res.mPhysicalIndex != ResourceInst::Unused) 
+						auto res = mImpl->GetResourceInst(output->mRes);
+						if (res->mPhysicalIndex != ResourceInst::Unused) 
 						{
-							ret += pass.mName;
+							ret += "Pass_";
+							ret += std::to_string(pass.mIndex).c_str();
 							ret += "-> ";
-							ret += res.mName;
+							ret += "Res_";
+							ret += std::to_string(output->mIndex).c_str();
 							ret += " [color=red2]\n";
 						}
 					}
@@ -1761,22 +1877,6 @@ namespace Cjing3D
 #endif
 	}
 
-	void* RenderGraph::Allocate(size_t size)
-	{
-		return (void*)mImpl->mAllocator.Allocate(size);
-	}
-
-	RenderGraphResource RenderGraph::GetResource(const char* name)const
-	{
-		for (const auto& res : mImpl->mResources)
-		{
-			if (res.mName == name) {
-				return RenderGraphResource(res.mIndex);
-			}
-		}
-		return RenderGraphResource();
-	}
-
 	RenderGraphResource RenderGraph::ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc)
 	{
 		if (auto res = mImpl->GetResource(name))
@@ -1785,17 +1885,29 @@ namespace Cjing3D
 			return RenderGraphResource(res->mIndex);
 		}
 
-		ResourceInst resInst;
-		resInst.mName = name;
-		resInst.mIndex = mImpl->mResources.size();
-		resInst.mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
-		resInst.mTexDesc = desc;
-		resInst.mImportedHandle = handle;
+		RenderGraphResource res(mImpl->mResourceSlots.size());
+		// res slot
+		ResourceSlot& resSlot = mImpl->mResourceSlots.emplace();
+		resSlot.mInstIndex = mImpl->mResourceInsts.size();
+		resSlot.mNodeIndex = mImpl->mResourceNodes.size();
 
-		mImpl->mResources.push(resInst);
-		mImpl->mResourceNameMap.insert(name, resInst.mIndex);
+		// res inst
+		ResourceInst* resInst = mImpl->Alloc<ResourceInst>();
+		resInst->mName = name;
+		resInst->mIndex = mImpl->mResourceInsts.size();
+		resInst->mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
+		resInst->mTexDesc = desc;
+		resInst->mImportedHandle = handle;
+		mImpl->mResourceInsts.push(resInst);
+		mImpl->mResourceNameMap.insert(name, resInst->mIndex);
 
-		return RenderGraphResource(resInst.mIndex);
+		// res node
+		ResourceNode* resNode = mImpl->Alloc<ResourceNode>();
+		resNode->mIndex = mImpl->mResourceNodes.size();
+		resNode->mRes = res;
+		mImpl->mResourceNodes.push(resNode);
+
+		return res;
 	}
 
 	RenderGraphResource RenderGraph::ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc)
@@ -1806,16 +1918,33 @@ namespace Cjing3D
 			return RenderGraphResource(res->mIndex);
 		}
 
-		ResourceInst resInst;
-		resInst.mName = name;
-		resInst.mIndex = mImpl->mResources.size();
-		resInst.mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
-		resInst.mBufferDesc = desc;
-		resInst.mImportedHandle = handle;
+		RenderGraphResource res(mImpl->mResourceSlots.size());
+		// res slot
+		ResourceSlot& resSlot = mImpl->mResourceSlots.emplace();
+		resSlot.mInstIndex = mImpl->mResourceInsts.size();
+		resSlot.mNodeIndex = mImpl->mResourceNodes.size();
 
-		mImpl->mResources.push(resInst);
-		mImpl->mResourceNameMap.insert(name, resInst.mIndex);
+		// res inst
+		ResourceInst* resInst = mImpl->Alloc<ResourceInst>();
+		resInst->mName = name;
+		resInst->mIndex = mImpl->mResourceInsts.size();
+		resInst->mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
+		resInst->mBufferDesc = desc;
+		resInst->mImportedHandle = handle;
+		mImpl->mResourceInsts.push(resInst);
+		mImpl->mResourceNameMap.insert(name, resInst->mIndex);
 
-		return RenderGraphResource(resInst.mIndex);
+		// res node
+		ResourceNode* resNode = mImpl->Alloc<ResourceNode>();
+		resNode->mIndex = mImpl->mResourceNodes.size();
+		resNode->mRes = res;
+		mImpl->mResourceNodes.push(resNode);
+
+		return res;
+	}
+
+	void* RenderGraph::Alloc(size_t size)
+	{
+		return mImpl->Alloc(size);
 	}
 }

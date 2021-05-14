@@ -79,9 +79,7 @@ namespace Cjing3D
 		// compile render graph
 		mMainGraph.SetFinalResource(outColor);
 		mMainGraph.Compile();
-
-		//auto graphvizStr = mMainGraph.ExportGraphviz();
-		//Logger::Print(graphvizStr);
+		mMainGraph.ExportGraphviz();
 
 		// execute render graph
 		JobSystem::JobHandle jobHandle = JobSystem::INVALID_HANDLE;

@@ -12,6 +12,7 @@ namespace Cjing3D
 	class RenderGraphResources;
 	class RenderGraphResBuilder;
 	class RenderGraph;
+	struct ResourceNode;
 
 	class RenderPass
 	{
@@ -21,10 +22,8 @@ namespace Cjing3D
 
 		U32 GetIndex()const;
 		RenderGraphQueueFlags GetQueueFlags()const;
-		Span<const RenderGraphResource> GetInputs()const;
-		Span<const RenderGraphResource> GetOutputs()const;
-		Span<RenderGraphResource> GetInputs();
-		Span<RenderGraphResource> GetOutputs();
+		Span<const ResourceNode*> GetInputs()const;
+		Span<const ResourceNode*> GetOutputs()const;
 
 		virtual void Setup(RenderGraphResBuilder& builder) = 0;
 		virtual void Execute(RenderGraphResources& resources, GPU::CommandList& cmd) = 0;
@@ -37,8 +36,8 @@ namespace Cjing3D
 
 		void SetIndex(U32 index);
 		void AddQueueFlag(RenderGraphQueueFlag queueFlag);
-		void AddInput(const RenderGraphResource& res);
-		void AddOutput(const RenderGraphResource& res);
+		void AddInput(const ResourceNode* res);
+		void AddOutput(const ResourceNode* res);
 		void AddRTV(const RenderGraphResource& res, const RenderGraphAttachment& attachment);
 		void SetDSV(const RenderGraphResource& res, const RenderGraphAttachment& attachment);
 

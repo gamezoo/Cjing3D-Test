@@ -23,6 +23,7 @@ namespace Cjing3D
 			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 			[&](RenderGraphResBuilder& builder) {
 
+				builder.ReadTexture(rtRes);
 				auto res = builder.AddRTV(rtRes, RenderGraphAttachment::RenderTarget());
 				graph.GetBloackBoard().Put("rtMain2D", res);
 

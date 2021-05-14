@@ -92,6 +92,14 @@ namespace Cjing3D
 	U32 HashFunc(U32 Input, const RenderGraphResource& Data);
 	U64 HashFunc(U64 Input, const RenderGraphResource& Data);
 
+	struct ResourceNode
+	{
+		I32 mIndex = -1;
+		RenderGraphResource mRes;
+		DynamicArray<I32> mWrittenPasses;
+		DynamicArray<I32> mReadPasses;
+	};
+
 	class RenderGraphBlackboard
 	{
 	public:

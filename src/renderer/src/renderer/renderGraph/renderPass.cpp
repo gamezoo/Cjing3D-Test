@@ -16,12 +16,12 @@ namespace Cjing3D
 		CJING_SAFE_DELETE(mImpl);
 	}
 
-	void RenderPass::AddInput(const RenderGraphResource& res)
+	void RenderPass::AddInput(const ResourceNode* res)
 	{
 		mImpl->AddInput(res);
 	}
 
-	void RenderPass::AddOutput(const RenderGraphResource& res)
+	void RenderPass::AddOutput(const ResourceNode* res)
 	{
 		mImpl->AddOutput(res);
 	}
@@ -46,24 +46,14 @@ namespace Cjing3D
 		mImpl->mQueueFlags |= queueFlag;
 	}
 
-	Span<const RenderGraphResource> RenderPass::GetInputs() const
+	Span<const ResourceNode*> RenderPass::GetInputs() const
 	{
-		return Span<const RenderGraphResource>(mImpl->mInputs.data(), mImpl->mInputCount);
+		return Span<const ResourceNode*>(mImpl->mInputs.data(), mImpl->mInputCount);
 	}
 
-	Span<const RenderGraphResource> RenderPass::GetOutputs() const
+	Span<const ResourceNode*> RenderPass::GetOutputs() const
 	{
-		return Span<const RenderGraphResource>(mImpl->mOutputs.data(), mImpl->mOutputCount);
-	}
-
-	Span<RenderGraphResource> RenderPass::GetInputs()
-	{
-		return Span<RenderGraphResource>(mImpl->mInputs.data(), mImpl->mInputCount);
-	}
-
-	Span<RenderGraphResource> RenderPass::GetOutputs()
-	{
-		return Span<RenderGraphResource>(mImpl->mOutputs.data(), mImpl->mOutputCount);
+		return Span<const ResourceNode*>(mImpl->mOutputs.data(), mImpl->mOutputCount);
 	}
 
 	U32 RenderPass::GetIndex() const

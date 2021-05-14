@@ -15,9 +15,9 @@ namespace Cjing3D
 		RenderGraphQueueFlags mQueueFlags = 0;
 
 		I32 mInputCount = 0;
-		StaticArray<RenderGraphResource, MAX_RES_INPUTS> mInputs;
+		StaticArray<const ResourceNode*, MAX_RES_INPUTS> mInputs;
 		I32 mOutputCount = 0;
-		StaticArray<RenderGraphResource, MAX_RES_INPUTS> mOutputs;
+		StaticArray<const ResourceNode*, MAX_RES_INPUTS> mOutputs;
 
 		// rtv
 		I32 mRTVCount = 0;
@@ -40,16 +40,16 @@ namespace Cjing3D
 			}
 		}
 
-		void AddInput(const RenderGraphResource& res)
+		void AddInput(const ResourceNode* node)
 		{
 			Debug::CheckAssertion(mInputCount < mInputs.size());
-			mInputs[mInputCount++] = res;
+			mInputs[mInputCount++] = node;
 		}
 
-		void AddOutput(const RenderGraphResource& res)
+		void AddOutput(const ResourceNode* node)
 		{
 			Debug::CheckAssertion(mOutputCount < mOutputs.size());
-			mOutputs[mOutputCount++] = res;
+			mOutputs[mOutputCount++] = node;
 		}
 
 		void AddRTV(const RenderGraphResource& res, const RenderGraphAttachment& attachment)
