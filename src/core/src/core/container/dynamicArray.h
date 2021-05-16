@@ -476,7 +476,6 @@ namespace Cjing3D
 			return mData;
 		}
 
-
 		const T* data()const
 		{
 			return mData;

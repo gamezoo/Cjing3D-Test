@@ -31,6 +31,7 @@ namespace GPU
 
         ID3D11DeviceContext& context = *mCommandList.GetContext();
         const DynamicArray<Command*> commands = cmd.GetCommands();
+        I32 commandIndex = 0;
         for (const auto& command : commands)
         {
             switch (command->mType)
@@ -51,6 +52,7 @@ namespace GPU
             GPU_COMMAND_CASE(CommandBarrier);
             GPU_COMMAND_CASE(CommandBeginRenderPass);
             GPU_COMMAND_CASE(CommandEndRenderPass);
+            break;
 
             case CommandBeginEvent::TYPE:
             {
@@ -75,8 +77,11 @@ namespace GPU
                 Debug::CheckAssertion(false);
                 break;
             }
+
+            commandIndex++;
         }
 
+        Debug::CheckAssertion(commandIndex == commands.size());
         Debug::CheckAssertion(mEventStack.size() == 0);
         return true;
     }

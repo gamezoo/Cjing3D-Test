@@ -41,19 +41,14 @@ namespace Cjing3D
 		PROFILE_FUNCTION();
 
 		auto rtMainRes = renderGraph.ImportTexture("rtMain2D", mRtMain.GetHandle(), mRtMain.GetDesc());
-		auto rtDesc = mRtMain.GetDesc();
 		renderGraph.AddCallbackRenderPass("Render2D",
 			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
 			[&](RenderGraphResBuilder& builder) {
 
 				// clear renderTarget
 				RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget();
-				attachment.mUseCustomClearColor = true;
 				attachment.mLoadOp = GPU::BindingFrameAttachment::LOAD_CLEAR;
-				for (U32 i = 0; i < 4; i++) {
-					attachment.mCustomClearColor[i] = rtDesc.mClearValue.mColor[i];
-				}
-				auto res = builder.AddRTV(rtMainRes, RenderGraphAttachment::RenderTarget());
+				auto res = builder.AddRTV(rtMainRes, attachment);
 				builder.GetBloackBoard().Put("rtMain2D", res);
 
 				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {

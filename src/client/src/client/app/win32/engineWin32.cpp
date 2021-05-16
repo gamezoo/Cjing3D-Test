@@ -124,8 +124,9 @@ namespace Cjing3D::Win32
 
 	void EngineWin32::Uninitialize()
 	{
+		Logger::Info("Engine uninitializing...");
 		for (ModulerPlugin* plugin : mModulerPlugins) {
-			plugin->Initialize();
+			plugin->Uninitialize();
 		}
 
 		// unit renderer

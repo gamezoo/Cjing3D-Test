@@ -30,13 +30,8 @@ namespace GPU
 		DynamicArray<ResHandle> mTransientHandle;
 
 		// command lists
-		Concurrency::Mutex mCmdMutex;
 		StaticArray<CommandList, MAX_COMMANDLIST_COUNT> mAllCmdList;
-		StaticArray<I32, MAX_COMMANDLIST_COUNT> mUsedCmdList;
-		I32 mUsedCmdCount = 0;
-		StaticArray<I32, MAX_COMMANDLIST_COUNT> mAvaiableCmdList;
-		I32 mAvaiableCmdCount = 0;
-		HashMap<I32, I32> mUsedIndexMap;
+		volatile I32 mUsedCmdCount = 0;
 
 		// swapchian
 		SwapChainDesc mSwapChainDesc;
@@ -166,12 +161,6 @@ namespace GPU
 		mImpl->mDevice = device;
 		mImpl->mWindow = params.mWindow;
 
-		// initialize command pool
-		for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
-			mImpl->mAvaiableCmdList[i] = i;
-		}
-		mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
-
 		// create swapChain
 		auto clientBounds = Platform::GetClientBounds(params.mWindow);
 		SwapChainDesc desc = {};
@@ -209,11 +198,8 @@ namespace GPU
 				mImpl->mDevice->DestroyResource(handle);
 				mImpl->mHandleAllocator.Free(handle);
 			}
-			mImpl->mAvaiableCmdList[i] = i;
 		}
-		mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
 		mImpl->mUsedCmdCount = 0;
-		mImpl->mUsedIndexMap.clear();
 		mImpl->ClearTransientHandles();
 
 		// clear swapChain
@@ -290,7 +276,7 @@ namespace GPU
 	void Present()
 	{
 		// first submit all remain command lists
-		SubmitAllRemainCommandList();
+		SubmitCommandLists();
 
 		// swapchain present
 		mImpl->mDevice->Present(mImpl->mSwapChain, mImpl->mSwapChainDesc.mVsync);
@@ -306,9 +292,7 @@ namespace GPU
 
 	CommandList* CreateCommandlist(GPU::CommandListType type)
 	{
-		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
-
-		I32 cmdIndex = mImpl->mAvaiableCmdList[--mImpl->mAvaiableCmdCount];
+		I32 cmdIndex = Concurrency::AtomicIncrement(&mImpl->mUsedCmdCount) - 1;
 		CommandList* cmd = &mImpl->mAllCmdList[cmdIndex];
 		if (cmd->GetHanlde() == ResHandle::INVALID_HANDLE)
 		{
@@ -326,10 +310,6 @@ namespace GPU
 
 		mImpl->mDevice->ResetCommandList(cmd->GetHanlde());
 
-		mImpl->mUsedCmdList[mImpl->mUsedCmdCount] = cmdIndex;
-		mImpl->mUsedIndexMap.insert(cmd->GetHanlde().GetHash(), mImpl->mUsedCmdCount);
-		mImpl->mUsedCmdCount++;
-
 		return cmd;
 	}
 
@@ -344,83 +324,17 @@ namespace GPU
 		return false;
 	}
 
-	bool SubmitCommandList(const CommandList& cmd)
+	bool SubmitCommandLists()
 	{
-		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
-
-		Debug::CheckAssertion(cmd.GetHanlde() != ResHandle::INVALID_HANDLE);
-		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
-
-		auto usedIndex = mImpl->mUsedIndexMap.find(cmd.GetHanlde().GetHash());
-		if (usedIndex == nullptr) {
-			return false;
-		}
-
-		I32 cmdIndex = mImpl->mUsedCmdList[*usedIndex];
-
-		// update cmd list
-		mImpl->mUsedCmdCount--;
-		for (int i = *usedIndex; i < mImpl->mUsedCmdCount; i++) {
-			mImpl->mUsedCmdList[i] = mImpl->mUsedCmdList[i + 1];
-		}
-		mImpl->mUsedIndexMap.erase(cmd.GetHanlde().GetHash());
-		mImpl->mAvaiableCmdList[mImpl->mAvaiableCmdCount++] = cmdIndex;
-
-		// submit cmd
-		auto handle = cmd.GetHanlde();
-		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(&handle, 1));
-	}
-
-	bool SubmitCommandList(Span<CommandList*> cmds)
-	{
-		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
-
-		DynamicArray<ResHandle> handles;
-		for (int i = 0; i < cmds.length(); i++)
-		{
-			auto handle = cmds[i]->GetHanlde();
-			if (handle != ResHandle::INVALID_HANDLE) {
-				handles.push(handle);
-			}
-		}
-		if (handles.size() <= 0) {
-			return false;
-		}
-
-		Debug::CheckAssertion(mImpl->mUsedCmdCount > 0);
-		// update cmd list
-		for (const auto& handle : handles)
-		{
-			auto usedIndex = mImpl->mUsedIndexMap.find(handle.GetHash());
-			if (usedIndex == nullptr) {
-				return false;
-			}
-
-			I32 cmdIndex = mImpl->mUsedCmdList[*usedIndex];
-			mImpl->mUsedCmdCount--;
-			for (int i = *usedIndex; i < mImpl->mUsedCmdCount; i++) {
-				mImpl->mUsedCmdList[i] = mImpl->mUsedCmdList[i + 1];
-			}
-			mImpl->mUsedIndexMap.erase(handle.GetHash());
-			mImpl->mAvaiableCmdList[mImpl->mAvaiableCmdCount++] = cmdIndex;
-		}
-
-		// submit cmd
-		return mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
-	}
-
-	bool SubmitAllRemainCommandList()
-	{
-		Concurrency::ScopedMutex lock(mImpl->mCmdMutex);
 		U32 count = mImpl->mUsedCmdCount;
+		Concurrency::AtomicExchange(&mImpl->mUsedCmdCount, 0);
 		mImpl->mUsedCmdCount = 0;
 		if (count > 0)
 		{
 			DynamicArray<ResHandle> handles;
 			for (U32 i = 0; i < count; i++)
 			{
-				I32 index = mImpl->mUsedCmdList[i];
-				auto& cmd = mImpl->mAllCmdList[index];
+				auto& cmd = mImpl->mAllCmdList[i];
 				auto handle = cmd.GetHanlde();
 				if (handle != ResHandle::INVALID_HANDLE)
 				{
@@ -431,11 +345,6 @@ namespace GPU
 				}
 			}
 			mImpl->mDevice->SubmitCommandLists(Span<ResHandle>(handles.data(), handles.size()));
-
-			for (int i = 0; i < MAX_COMMANDLIST_COUNT; i++) {
-				mImpl->mAvaiableCmdList[i] = i;
-			}
-			mImpl->mAvaiableCmdCount = MAX_COMMANDLIST_COUNT;
 		}
 		return true;
 	}

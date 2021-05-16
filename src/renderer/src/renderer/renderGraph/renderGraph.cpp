@@ -1074,13 +1074,21 @@ namespace Cjing3D
 
 		// resources
 		mResourceSlots.clear();
+		for (auto inst : mResourceInsts) {
+			inst->~ResourceInst();
+		}
 		mResourceInsts.clear();
+		for (auto node : mResourceNodes) {
+			node->~ResourceNode();
+		}
+		mResourceNodes.clear();
 		mResourceNameMap.clear();
 		mResourceCache.Clear();
 		mPhysicalResourceDimensions.clear();
 		mFinalRes = RenderGraphResource();
 		mBlackboard.Clear();
 
+		// allocator
 		mAllocator.Reset();
 	}
 
@@ -1155,7 +1163,7 @@ namespace Cjing3D
 			RenderPassInst* renderPassInst = &mRenderPasses[subPass];
 
 			// execute pass
-			auto ent = cmd.Event(renderPassInst->mName);
+			cmd.EventBegin(renderPassInst->mName);
 			RenderGraphResources resources(*this, renderPassInst->mRenderPass);
 
 			auto frameBindingSet = resources.GetFrameBindingSet();
@@ -1168,6 +1176,7 @@ namespace Cjing3D
 			if (frameBindingSet != GPU::ResHandle::INVALID_HANDLE) {
 				cmd.EndFrameBindingSet();
 			}
+			cmd.EventEnd();
 		}
 
 		cmd.EndRenderPass();
@@ -1178,7 +1187,8 @@ namespace Cjing3D
 			if (!GPU::CompileCommandList(cmd))
 			{
 				Concurrency::AtomicIncrement(&mCompileFailCount);
-				Logger::Warning("Failed to compile cmd for render pass \"%s\"", pass);
+				RenderPassInst* renderPassInst = &mRenderPasses[pass.mSubPasses[0]];
+				Logger::Warning("Failed to compile cmd for render pass \"%s\"", renderPassInst->mName);
 			}
 		}
 	}
@@ -1247,6 +1257,10 @@ namespace Cjing3D
 		}
 
 		// execute render passes
+		// ¬“–Ú÷¥––RenderPass
+		DynamicArray<JobSystem::JobInfo> renderPassJobs;
+		renderPassJobs.resize(renderPassCount);
+		I32 jobCount = 0;
 		for (int i = 0; i < renderPassCount; i++)
 		{
 			RenderPassExecuteState& state = mRenderPassExecuteStates[i];
@@ -1254,18 +1268,25 @@ namespace Cjing3D
 				continue;
 			}
 
-			JobSystem::RunJob([i, this](I32 param, void* data) 
+			// create command list
+			state.mCmd = GPU::CreateCommandlist(state.mType);
+
+			// execute pass executing job
+			JobSystem::JobInfo& jobInfo = renderPassJobs[jobCount++];
+			jobInfo.jobName = StaticString<32>().Sprintf("Execute render pass:%d", i).c_str();
+			jobInfo.userData_ = this;
+			jobInfo.userParam_ = i;
+			jobInfo.jobFunc_ = [this](I32 param, void* data)
 			{
 				RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
 				if (!impl) {
 					return;
 				}
 
-				PhysicalRenderPass& physicalPass = impl->mPhysicalRenderPasses[i];
-				RenderPassExecuteState& state = impl->mRenderPassExecuteStates[i];
-				state.mCmd = GPU::CreateCommandlist(state.mType);
+				PhysicalRenderPass& physicalPass = impl->mPhysicalRenderPasses[param];
+				RenderPassExecuteState& state = impl->mRenderPassExecuteStates[param];
 				state.emitPreBarriers();
-				{	
+				{
 					// graphics commands
 					if (state.mIsGraphics) {
 						ExecuteGraphicsCommands(physicalPass, state);
@@ -1276,17 +1297,20 @@ namespace Cjing3D
 					}
 				}
 				state.emitPostBarriers();
-
-			}, this, &executeJobHandle, StaticString<32>().Sprintf("Execute render pass:%d", i).c_str());
+			};
 		}
+		JobSystem::RunJobs(renderPassJobs.data(), jobCount, &executeJobHandle);
 		
 		// submit commands (sequence submit)
+		// À≥–ÚÃ·ΩªRenderPass
 		JobSystem::RunJobEx([renderPassCount](I32 param, void* data) {
 			RenderGraphImpl* impl = reinterpret_cast<RenderGraphImpl*>(data);
 			if (!impl) {
 				return;
 			}
-			if (impl->mCompileFailCount > 0) {
+			if (impl->mCompileFailCount > 0) 
+			{
+				Logger::Error("Failed to compile cmds, count:%d", impl->mCompileFailCount);
 				return;
 			}
 
@@ -1304,7 +1328,7 @@ namespace Cjing3D
 				}
 			}
 
-			if (!GPU::SubmitCommandList(Span(cmdsToSubmit.data(), cmdsToSubmit.size())))
+			if (!GPU::SubmitCommandLists())
 			{
 				Logger::Warning("Failed to submit command lists.");
 				return;

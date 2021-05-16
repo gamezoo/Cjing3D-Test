@@ -27,9 +27,7 @@ namespace GPU
 
 	CommandList* CreateCommandlist(GPU::CommandListType type = GPU::COMMAND_LIST_GRAPHICS);
 	bool CompileCommandList(CommandList& cmd);
-	bool SubmitCommandList(const CommandList& cmd);
-	bool SubmitCommandList(Span<CommandList*> cmds);
-	bool SubmitAllRemainCommandList();
+	bool SubmitCommandLists();
 
 	ResHandle AllocateHandle(ResourceType type);
 	ResHandle CreateFrameBindingSet(const FrameBindingSetDesc* desc, const char* name = nullptr);

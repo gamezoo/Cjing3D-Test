@@ -160,7 +160,6 @@ namespace GPU
 		ComPtr<ID3D11DeviceContext> mDeviceContext;
 		ComPtr<ID3D11CommandList> mCommandList;
 		ComPtr<ID3DUserDefinedAnnotation> mUserDefinedAnnotations;
-
 		GPUAllocatorDX11 mGPUAllocator;
 
 		const FrameBindingSetDX11* mActiveFrameBindingSet = nullptr;

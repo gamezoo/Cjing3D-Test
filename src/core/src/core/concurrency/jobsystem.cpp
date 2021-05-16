@@ -54,7 +54,6 @@ namespace JobSystem
 		DynamicArray<WorkerThread*> mWorkerThreads;
 		MPMCBoundedQueue<JobFiber*> mFreeFibers;
 		I32 mFiberStackSize = 0;
-		//Concurrency::Semaphore mScheduleSem = Concurrency::Semaphore(0, 65536);	// 暂时不使用sem，改为cv和rwlock
 		Concurrency::ConditionMutex mScheduleLock;
 		bool mIsExting = false;
 
@@ -317,7 +316,6 @@ namespace JobSystem
 			for (auto* workerThread : mWorkerThreads) {
 				workerThread->Wakeup(mScheduleLock);
 			}
-			// mScheduleSem.Signal(1);
 		}
 
 #ifdef DEBUG
@@ -348,28 +346,29 @@ namespace JobSystem
 
 		Counter& counter = mCounterPool[jobHandle & HANDLE_ID_MASK];
 		I32 jobCount = Concurrency::AtomicDecrement(&counter.value_);
-		if (jobCount <= 0)
+		if (jobCount > 0) {
+			return;
+		}
+
+		// add next jobs, TODO: need to use implicit mutex
+		while (jobHandle != INVALID_HANDLE)
 		{
-			// add next jobs, TODO: need to use implicit mutex
-			while (jobHandle != INVALID_HANDLE)
-			{
-				Counter& currCounter = mCounterPool[jobHandle & HANDLE_ID_MASK];
-				if (currCounter.mNextJob.jobFunc_) {
-					PushJobInfo(currCounter.mNextJob);
-				}
-
-				currCounter.mGeneration = (((currCounter.mGeneration >> 16) + 1) & 0xffFF) << 16;
-				while (!mFreeHandleQueue.Enqueue((jobHandle & HANDLE_ID_MASK) | currCounter.mGeneration))
-				{
-#if JOB_SYSTEM_LOGGING_LEVEL >= 1
-					Logger::Warning("Failed to enqueue free conunter");
-#endif
-					Concurrency::SwitchToThread();
-				}
-
-				currCounter.mNextJob.jobFunc_ = nullptr;
-				jobHandle = currCounter.mSibling;
+			Counter& currCounter = mCounterPool[jobHandle & HANDLE_ID_MASK];
+			if (currCounter.mNextJob.jobFunc_) {
+				PushJobInfo(currCounter.mNextJob);
 			}
+
+			currCounter.mGeneration = (((currCounter.mGeneration >> 16) + 1) & 0xffFF) << 16;
+			while (!mFreeHandleQueue.Enqueue((jobHandle & HANDLE_ID_MASK) | currCounter.mGeneration))
+			{
+#if JOB_SYSTEM_LOGGING_LEVEL >= 1
+				Logger::Warning("Failed to enqueue free conunter");
+#endif
+				Concurrency::SwitchToThread();
+			}
+
+			currCounter.mNextJob.jobFunc_ = nullptr;
+			jobHandle = currCounter.mSibling;
 		}
 	}
 
