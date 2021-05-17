@@ -16,6 +16,23 @@ namespace Cjing3D
 		bool mGenerateMipmap = true;
 		bool mIsNormalMap = false;
 		F32 mMipScale = -1.0f;
+
+		enum WrapMode
+		{
+			REPEAT,
+			CLAMP
+		};
+		enum Filter 
+		{
+			LINEAR,
+			POINT,
+			ANISOTROPIC
+		};
+
+		Filter mFilter = Filter::LINEAR;
+		WrapMode mWrapModeU = WrapMode::REPEAT;
+		WrapMode mWrapModeV = WrapMode::REPEAT;
+		WrapMode mWrapModeW = WrapMode::REPEAT;
 	};
 
 	class TextureResConverter : public IResConverter

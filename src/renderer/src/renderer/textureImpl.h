@@ -14,6 +14,7 @@ namespace Cjing3D
 		I32 mMajor = MAJOR;
 		I32 mMinor = MINOR;
 		char mFileType[TEXTURE_MAX_NAME_LENGTH] = { '\0' };
-		GPU::TextureDesc mDesc;
+		GPU::TextureDesc mTexDesc;
+		GPU::SamplerDesc mSamplerDesc;
 	};
 }

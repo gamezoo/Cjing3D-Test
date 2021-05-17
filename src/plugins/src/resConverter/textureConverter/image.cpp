@@ -1,8 +1,6 @@
 #include "image.h"
 
-// stb_image is already implemented in nvtt
-// #define STB_IMAGE_IMPLEMENTATION
-
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb\stb_image.h"
 
 namespace Cjing3D

@@ -1,50 +1,39 @@
 #include "textureConverter.h"
 #include "image.h"
+#include "textureCompressor.h"
 #include "core\memory\linearAllocator.h"
 #include "core\serialization\jsonArchive.h"
 #include "core\helper\debug.h"
 #include "core\string\stringUtils.h"
 #include "core\helper\enumTraits.h"
-#include "core\helper\stream.h"
 #include "renderer\textureImpl.h"
 #include "renderer\texture.h"
 #include "imguiRhi\manager.h"
 #include "imguiRhi\imguiEx.h"
 
-#include "nvtt\include\nvtt.h"
-
 namespace Cjing3D
 {
-	// TODO
-	// 1. metadata editor
-	// 2. more img format support
-
-	struct ImageErrorHandler : nvtt::ErrorHandler
+	namespace 
 	{
-		virtual ~ImageErrorHandler() {}
-
-		void error(nvtt::Error e)override
+		void ConverterMetaDataToSamplerDesc(const TextureMetaObject& meta, GPU::SamplerDesc& samplerDesc)
 		{
-			Logger::Error(nvtt::errorString(e));
+			samplerDesc.mAddressU = meta.mWrapModeU == TextureMetaObject::WrapMode::CLAMP ? GPU::TEXTURE_ADDRESS_CLAMP : GPU::TEXTURE_ADDRESS_BORDER;
+			samplerDesc.mAddressV = meta.mWrapModeV == TextureMetaObject::WrapMode::CLAMP ? GPU::TEXTURE_ADDRESS_CLAMP : GPU::TEXTURE_ADDRESS_BORDER;
+			samplerDesc.mAddressW = meta.mWrapModeW == TextureMetaObject::WrapMode::CLAMP ? GPU::TEXTURE_ADDRESS_CLAMP : GPU::TEXTURE_ADDRESS_BORDER;
+			switch (meta.mFilter)
+			{
+			case TextureMetaObject::Filter::POINT:
+				samplerDesc.mFilter = GPU::FILTER_MIN_MAG_MIP_POINT;
+				break;
+			case TextureMetaObject::Filter::LINEAR:
+				samplerDesc.mFilter = GPU::FILTER_MIN_MAG_MIP_LINEAR;
+				break;
+			case TextureMetaObject::Filter::ANISOTROPIC:
+				samplerDesc.mFilter = GPU::FILTER_ANISOTROPIC;
+				break;
+			}
 		}
-	};
-
-	struct ImageOuputHander : nvtt::OutputHandler
-	{
-	private:
-		MemoryStream& mStream;
-
-	public:
-		ImageOuputHander(MemoryStream& stream) : 
-			nvtt::OutputHandler(),
-			mStream(stream) {}
-
-		bool writeData(const void* data, int size) override { 
-			return mStream.Write(data, size);
-		}
-		void beginImage(int size, int width, int height, int depth, int face, int miplevel) override {}
-		void endImage() override {}
-	};
+	}
 
 	void TextureMetaObject::Serialize(JsonArchive& archive)const
 	{
@@ -103,44 +92,25 @@ namespace Cjing3D
 		texDesc.mUsage = GPU::USAGE_IMMUTABLE;
 		texDesc.mBindFlags = GPU::BIND_SHADER_RESOURCE;
 
+		GPU::SamplerDesc samplerDesc = {};
+		ConverterMetaDataToSamplerDesc(metaData, samplerDesc);
+
 		TextureGeneralHeader header;
-		header.mDesc = texDesc;
-		CopyString(header.mFileType, "dds");
+		header.mTexDesc = texDesc;
+		header.mSamplerDesc = samplerDesc;
+		CopyString(header.mFileType, "lbc");
 		stream.Write(&header, sizeof(TextureGeneralHeader));
 
-		// 2. image data
-		// setup nvtt options
-		nvtt::Context nvttContext;
-		nvtt::InputOptions nvttInput;
-		if (metaData.mIsNormalMap) {
-			nvttInput.setGamma(1.0f, 1.0f);
-		}
-		nvttInput.setMipmapGeneration(metaData.mGenerateMipmap);
-		nvttInput.setAlphaCoverageMipScale(metaData.mMipScale, formatInfo.mChannels == 4 ? 3 : 0);
-		nvttInput.setAlphaMode(hasAlpah ? nvtt::AlphaMode_Transparency : nvtt::AlphaMode_None);
-		nvttInput.setNormalMap(metaData.mIsNormalMap);
-		nvttInput.setTextureLayout(nvtt::TextureType_2D, img.GetWidth(), img.GetHeight(), img.GetDepth());
-		nvttInput.setMipmapData(img.GetMipData<U8>(0), img.GetWidth(), img.GetHeight());
-
-		ImageOuputHander nvttOutputHandler(stream);
-		ImageErrorHandler nvttErrorHandler;
-		nvtt::OutputOptions nvttOuput;
-		nvttOuput.setSrgbFlag(false);
-		nvttOuput.setContainer(nvtt::Container_DDS10);
-		nvttOuput.setErrorHandler(&nvttErrorHandler);
-		nvttOuput.setOutputHandler(&nvttOutputHandler);
-
-		nvtt::CompressionOptions compression;
-		compression.setFormat(metaData.mIsNormalMap ? nvtt::Format_BC5 : (hasAlpah ? nvtt::Format_BC7 : nvtt::Format_BC6));
-		compression.setQuality(nvtt::Quality_Normal);
-
-		if (!nvttContext.process(nvttInput, compression, nvttOuput))
+		// 2. compile image data
+		TextureCompressor::Options options;
+		options.mIsGenerateMipmaps = metaData.mGenerateMipmap;
+		if (!TextureCompressor::Compress(img, options, stream))
 		{
 			Logger::Warning("[TextureConverter] failed to compile image:%s.", src);
 			return false;
 		}
 
-		// write resource
+		// 3. write resource
 		if (!context.WriteResource(dest, stream.data(), stream.Size())) {
 			return false;
 		}

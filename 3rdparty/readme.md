@@ -6,7 +6,7 @@
  * imgui
  * json
  * lua
- * nvtt    
+ * rgbcx   
  * optick   (optional)
  * physfs
  * rectPacker

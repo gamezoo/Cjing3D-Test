@@ -172,7 +172,7 @@ namespace Cjing3D
 				return false;
 			}
 
-			GPU::TextureDesc& texDesc = generalHeader.mDesc;
+			GPU::TextureDesc& texDesc = generalHeader.mTexDesc;
 			GPU::ResHandle texHandle;
 			if (EqualString(generalHeader.mFileType, "dds"))
 			{
