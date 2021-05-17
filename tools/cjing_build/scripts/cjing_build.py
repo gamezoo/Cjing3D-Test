@@ -8,8 +8,7 @@ import subprocess
 import importlib
 import platform
 import utils
-
-import jsc.jsc as jsc
+import jsc
 
 # major version
 major_version = 0

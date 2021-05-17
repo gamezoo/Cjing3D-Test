@@ -12,7 +12,7 @@
     tools<Windows>: 
     {
         type : tools,
-        jsc: "py -3 ${cjing_build_dir}/scripts/jsc/jsc.py",
+        jsc: "py -3 ${cjing_build_dir}/scripts/jsc.py",
         premake: "${cjing_build_dir}/premake/premake5.exe",
     },
 
