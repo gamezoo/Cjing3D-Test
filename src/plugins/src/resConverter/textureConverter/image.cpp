@@ -56,6 +56,11 @@ namespace Cjing3D
 		}
 	}
 
+	U32 Image::GetSize() const
+	{
+		return U32();
+	}
+
 	void Image::Swap(Image& rhs)
 	{
 		std::swap(mTexType,  rhs.mTexType);

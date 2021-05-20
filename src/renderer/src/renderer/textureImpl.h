@@ -6,6 +6,13 @@ namespace Cjing3D
 {
 	static const I32 TEXTURE_MAX_NAME_LENGTH = 64;
 
+	enum class TextureFlags : U32
+	{
+		CLAMP_U = 1 << 0,
+		CLAMP_V = 1 << 1,
+		CLAMP_W = 1 << 2,
+	};
+
 	struct TextureGeneralHeader
 	{
 		static const I32 MAJOR = 0;
@@ -15,6 +22,6 @@ namespace Cjing3D
 		I32 mMinor = MINOR;
 		char mFileType[TEXTURE_MAX_NAME_LENGTH] = { '\0' };
 		GPU::TextureDesc mTexDesc;
-		GPU::SamplerDesc mSamplerDesc;
+		U32 mTexFlags = 0;
 	};
 }

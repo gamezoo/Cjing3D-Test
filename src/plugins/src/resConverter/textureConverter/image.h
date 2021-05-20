@@ -21,6 +21,8 @@ namespace Cjing3D
 		I32 GetHeight()const { return mHeight; }
 		I32 GetDepth()const { return mDepth; }
 		I32 GetMipLevels()const { return mMipLevel; }
+		bool HasAlpha()const { return mHasAlpah;  }
+		U32 GetSize()const;
 
 		void  Swap(Image& rhs);
 		void* GetMipAddr(I32 mipLevel) const;
@@ -29,6 +31,12 @@ namespace Cjing3D
 		T* GetMipData(I32 mipLevel)
 		{
 			return reinterpret_cast<T*>(GetMipAddr(mipLevel));
+		}
+
+		template<typename T>
+		const T* GetMipData(I32 mipLevel)const
+		{
+			return reinterpret_cast<const T*>(GetMipAddr(mipLevel));
 		}
 
 		explicit operator bool()const {
@@ -48,6 +56,7 @@ namespace Cjing3D
 		I32 mHeight = 0;
 		I32 mDepth = 0;
 		I32 mMipLevel = 0;
+		bool mHasAlpah = false;
 		U8* mData = nullptr;
 		DataFreeFunc freeFunc = nullptr;
 	};

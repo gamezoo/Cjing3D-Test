@@ -13,28 +13,6 @@
 
 namespace Cjing3D
 {
-	namespace 
-	{
-		void ConverterMetaDataToSamplerDesc(const TextureMetaObject& meta, GPU::SamplerDesc& samplerDesc)
-		{
-			samplerDesc.mAddressU = meta.mWrapModeU == TextureMetaObject::WrapMode::CLAMP ? GPU::TEXTURE_ADDRESS_CLAMP : GPU::TEXTURE_ADDRESS_BORDER;
-			samplerDesc.mAddressV = meta.mWrapModeV == TextureMetaObject::WrapMode::CLAMP ? GPU::TEXTURE_ADDRESS_CLAMP : GPU::TEXTURE_ADDRESS_BORDER;
-			samplerDesc.mAddressW = meta.mWrapModeW == TextureMetaObject::WrapMode::CLAMP ? GPU::TEXTURE_ADDRESS_CLAMP : GPU::TEXTURE_ADDRESS_BORDER;
-			switch (meta.mFilter)
-			{
-			case TextureMetaObject::Filter::POINT:
-				samplerDesc.mFilter = GPU::FILTER_MIN_MAG_MIP_POINT;
-				break;
-			case TextureMetaObject::Filter::LINEAR:
-				samplerDesc.mFilter = GPU::FILTER_MIN_MAG_MIP_LINEAR;
-				break;
-			case TextureMetaObject::Filter::ANISOTROPIC:
-				samplerDesc.mFilter = GPU::FILTER_ANISOTROPIC;
-				break;
-			}
-		}
-	}
-
 	void TextureMetaObject::Serialize(JsonArchive& archive)const
 	{
 		archive.Write("format", mFormat);
@@ -92,12 +70,14 @@ namespace Cjing3D
 		texDesc.mUsage = GPU::USAGE_IMMUTABLE;
 		texDesc.mBindFlags = GPU::BIND_SHADER_RESOURCE;
 
-		GPU::SamplerDesc samplerDesc = {};
-		ConverterMetaDataToSamplerDesc(metaData, samplerDesc);
-
+		U32 texFlags = 0;
+		texFlags |= metaData.mWrapModeU == TextureMetaObject::WrapMode::CLAMP ? (U32)TextureFlags::CLAMP_U : 0;
+		texFlags |= metaData.mWrapModeV == TextureMetaObject::WrapMode::CLAMP ? (U32)TextureFlags::CLAMP_V : 0;
+		texFlags |= metaData.mWrapModeW == TextureMetaObject::WrapMode::CLAMP ? (U32)TextureFlags::CLAMP_W : 0;
+		
 		TextureGeneralHeader header;
 		header.mTexDesc = texDesc;
-		header.mSamplerDesc = samplerDesc;
+		header.mTexFlags = texFlags;
 		CopyString(header.mFileType, "lbc");
 		stream.Write(&header, sizeof(TextureGeneralHeader));
 
