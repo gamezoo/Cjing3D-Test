@@ -4,9 +4,6 @@
 #include "core\helper\enumTraits.h"
 #include "core\helper\stream.h"
 
-#define TINYDDSLOADER_IMPLEMENTATION
-#include "tiny\tinyddsloader.h"
-
 namespace Cjing3D
 {
 	class TextureFactory : public ResourceFactory
@@ -25,119 +22,65 @@ namespace Cjing3D
 			return texture;
 		}
 
-		GPU::FORMAT ConvertDDSFormatToFormat(tinyddsloader::DDSFile::DXGIFormat format)
+		GPU::ResHandle LoadRaw(Resource* resource, GPU::TextureDesc& texDesc, InputMemoryStream& inputStream, const char* name)
 		{
-			GPU::FORMAT targetFormat = GPU::FORMAT_UNKNOWN;
-			switch (format)
-			{
-			case tinyddsloader::DDSFile::DXGIFormat::B8G8R8A8_UNorm: targetFormat = GPU::FORMAT_B8G8R8A8_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::B8G8R8A8_UNorm_SRGB: targetFormat = GPU::FORMAT_B8G8R8A8_UNORM_SRGB; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8B8A8_UNorm: targetFormat = GPU::FORMAT_R8G8B8A8_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8B8A8_UNorm_SRGB: targetFormat = GPU::FORMAT_R8G8B8A8_UNORM_SRGB; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8B8A8_UInt: targetFormat = GPU::FORMAT_R8G8B8A8_UINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8B8A8_SNorm: targetFormat = GPU::FORMAT_R8G8B8A8_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8B8A8_SInt: targetFormat = GPU::FORMAT_R8G8B8A8_SINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16G16_Float: targetFormat = GPU::FORMAT_R16G16_FLOAT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16G16_UNorm: targetFormat = GPU::FORMAT_R16G16_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16G16_UInt: targetFormat = GPU::FORMAT_R16G16_UINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16G16_SNorm: targetFormat = GPU::FORMAT_R16G16_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16G16_SInt: targetFormat = GPU::FORMAT_R16G16_SINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::D32_Float: targetFormat = GPU::FORMAT_D32_FLOAT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R32_Float: targetFormat = GPU::FORMAT_R32_FLOAT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R32_UInt: targetFormat = GPU::FORMAT_R32_UINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R32_SInt: targetFormat = GPU::FORMAT_R32_SINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8_UNorm: targetFormat = GPU::FORMAT_R8G8_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8_UInt: targetFormat = GPU::FORMAT_R8G8_UINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8_SNorm: targetFormat = GPU::FORMAT_R8G8_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8G8_SInt: targetFormat = GPU::FORMAT_R8G8_SINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16_Float: targetFormat = GPU::FORMAT_R16_FLOAT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::D16_UNorm: targetFormat = GPU::FORMAT_D16_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16_UNorm: targetFormat = GPU::FORMAT_R16_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16_UInt: targetFormat = GPU::FORMAT_R16_UINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16_SNorm: targetFormat = GPU::FORMAT_R16_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R16_SInt: targetFormat = GPU::FORMAT_R16_SINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8_UNorm: targetFormat = GPU::FORMAT_R8_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8_UInt: targetFormat = GPU::FORMAT_R8_UINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8_SNorm: targetFormat = GPU::FORMAT_R8_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::R8_SInt: targetFormat = GPU::FORMAT_R8_SINT; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC1_UNorm: targetFormat = GPU::FORMAT_BC1_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC1_UNorm_SRGB: targetFormat = GPU::FORMAT_BC1_UNORM_SRGB; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC2_UNorm: targetFormat = GPU::FORMAT_BC2_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC2_UNorm_SRGB: targetFormat = GPU::FORMAT_BC2_UNORM_SRGB; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC3_UNorm: targetFormat = GPU::FORMAT_BC3_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC3_UNorm_SRGB: targetFormat = GPU::FORMAT_BC3_UNORM_SRGB; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC4_UNorm: targetFormat = GPU::FORMAT_BC4_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC4_SNorm: targetFormat = GPU::FORMAT_BC4_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC5_UNorm: targetFormat = GPU::FORMAT_BC5_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC5_SNorm: targetFormat = GPU::FORMAT_BC5_SNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC7_UNorm: targetFormat = GPU::FORMAT_BC7_UNORM; break;
-			case tinyddsloader::DDSFile::DXGIFormat::BC7_UNorm_SRGB: targetFormat = GPU::FORMAT_BC7_UNORM_SRGB; break;
-			default:
-				break;
-			}
-			return targetFormat;
+			return GPU::ResHandle::INVALID_HANDLE;
 		}
 
-		GPU::ResHandle LoadDDS(Resource* resource, GPU::TextureDesc& texDesc, InputMemoryStream& inputStream, const char* name)
+		GPU::ResHandle LoadLBC(Resource* resource, GPU::TextureDesc& texDesc, InputMemoryStream& inputStream, const char* name)
 		{
-			// TODO: create a mapping file to get data address?
-			I64 bytes = inputStream.Size() - inputStream.Offset();
-			U8* texData = CJING_NEW_ARR(U8, bytes);
-			if (!inputStream.Read(texData, (U32)bytes))
+			// lbc header
+			const TextureLBCHeader* lbcHeader = (const TextureLBCHeader*)(inputStream.data() + inputStream.Offset());
+			if (lbcHeader == nullptr)
 			{
-				CJING_SAFE_DELETE_ARR(texData, bytes);
+				Logger::Error("Invalid texture:%s", name);
 				return GPU::ResHandle::INVALID_HANDLE;
 			}
+			inputStream.AddOffset(sizeof(TextureLBCHeader));
 
-			tinyddsloader::DDSFile ddsFile;
-			auto result = ddsFile.Load(texData, bytes);
-			if (result != tinyddsloader::Result::Success)
+			// texture data
+			U32 bytes = inputStream.Size() - inputStream.Offset();
+			U8* texData = CJING_NEW_ARR(U8, inputStream.Size() - inputStream.Offset());
+			if (!inputStream.Read(texData, bytes))
 			{
 				CJING_SAFE_DELETE_ARR(texData, bytes);
 				return GPU::ResHandle::INVALID_HANDLE;
 			}
 
 			GPU::TextureDesc desc = texDesc;
-			desc.mWidth = ddsFile.GetWidth();
-			desc.mHeight = ddsFile.GetHeight();
-			desc.mDepth = ddsFile.GetDepth();
-			desc.mArraySize = ddsFile.GetArraySize();
-			desc.mMipLevels = ddsFile.GetMipCount();
-			if (ddsFile.IsCubemap()) {
-				desc.mMiscFlags |= GPU::RESOURCE_MISC_TEXTURECUBE;
-			}
-
-			GPU::FORMAT targetFormat = ConvertDDSFormatToFormat(ddsFile.GetFormat());
-			if (targetFormat == GPU::FORMAT_UNKNOWN)
-			{
-				Logger::Warning("Invalid dds texture format:%s", EnumTraits::EnumToName(desc.mFormat).data());
-				CJING_SAFE_DELETE_ARR(texData, bytes);
-				return GPU::ResHandle::INVALID_HANDLE;
-			}
-			desc.mFormat = targetFormat;
+			GPU::FORMAT srcFormat = texDesc.mFormat;
+			desc.mFormat = lbcHeader->mCompressedFormat;
 
 			// create gpu::texture
 			DynamicArray<GPU::SubresourceData> initalData;
 			initalData.reserve(desc.mMipLevels * desc.mArraySize);
 
+			// set subresource data
+			GPU::FormatInfo formatInfo = GPU::GetFormatInfo(srcFormat);
+			U8* mem = texData;
+			U32 faces = (desc.mMiscFlags & GPU::RESOURCE_MISC_TEXTURECUBE) ? 6 : 1;
 			for (U32 arrayIndex = 0; arrayIndex < desc.mArraySize; arrayIndex++)
 			{
-				for (U32 mipLevel = 0; mipLevel < desc.mMipLevels; mipLevel++)
+				for (U32 faceIndex = 0; faceIndex < faces; faceIndex++)
 				{
-					auto imageData = ddsFile.GetImageData(mipLevel, arrayIndex);
-					GPU::SubresourceData& subresourceData = initalData.emplace();
-					subresourceData.mSysMem = imageData->m_mem;;
-					subresourceData.mSysMemPitch = imageData->m_memPitch;
-					subresourceData.mSysMemSlicePitch = imageData->m_memSlicePitch;
+					for (U32 mipLevel = 0; mipLevel < desc.mMipLevels; mipLevel++)
+					{
+						const U32 w = std::max(desc.mWidth  >> mipLevel, 1u);
+						const U32 h = std::max(desc.mHeight >> mipLevel, 1u);
+						GPU::SubresourceData& subresourceData = initalData.emplace();
+						subresourceData.mSysMem = mem;
+						subresourceData.mSysMemPitch = w * (formatInfo.mBlockBits >> 3);
+
+						mem += w * h * (U32)(formatInfo.mBlockBits >> 3);
+					}
 				}
 			}
 
 			GPU::ResHandle ret = GPU::CreateTexture(&desc, initalData.data(), name);
 			if (ret != GPU::ResHandle::INVALID_HANDLE) 
 			{
-				GPU::FORMAT prevFormat = texDesc.mFormat;
 				texDesc = desc;
-				texDesc.mFormat = prevFormat;
+				texDesc.mFormat = srcFormat;
 			}
 			CJING_SAFE_DELETE_ARR(texData, bytes);
 			return ret;
@@ -174,9 +117,13 @@ namespace Cjing3D
 
 			GPU::TextureDesc& texDesc = generalHeader.mTexDesc;
 			GPU::ResHandle texHandle;
-			if (EqualString(generalHeader.mFileType, "dds"))
+			if (EqualString(generalHeader.mFileType, "lbc"))
 			{
-				texHandle = LoadDDS(resource, texDesc, inputStream, name);
+				texHandle = LoadLBC(resource, texDesc, inputStream, name);
+			}
+			else if (EqualString(generalHeader.mFileType, "Raw"))
+			{
+				texHandle = LoadRaw(resource, texDesc, inputStream, name);
 			}
 			else
 			{

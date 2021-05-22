@@ -8,34 +8,23 @@ namespace Cjing3D
 	Image::Image(
 		GPU::TEXTURE_TYPE texType, 
 		GPU::FORMAT format, 
-		I32 width, I32 height, I32 depth, 
-		I32 level, U8* data, 
+		U32 width, U32 height, U32 depth, U32 mips, U32 slices,
+		U8* data,
 		DataFreeFunc freeFunc) :
 		mTexType(texType),
 		mFormat(format),
 		mWidth(width),
 		mHeight(height),
 		mDepth(depth),
-		mMipLevel(level),
-		mData(data),
+		mMips(mips),
+		mSlices(slices),
+		mSrcData(data),
 		mDataFreeFunc(freeFunc)
 	{
-		if (!data)
-		{
-			U32 bytes = GPU::GetTextureSize(format, width, height, depth, level);
-			if (texType == GPU::TEXTURE_CUBE) {
-				bytes *= 6;
-			}
-			
-			if (bytes > 0)
-			{
-				mData = CJING_NEW_ARR(U8, bytes);
-				Memory::Memset(mData, 0, bytes);
-				mDataFreeFunc = [bytes](U8* data) {
-					CJING_SAFE_DELETE_ARR(data, bytes);
-				};
-			}
-		}
+		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(format);
+		mHasAlpha = formatInfo.mABits > 0;
+
+		AddDatas(0, 0, data);
 	}
 
 	Image::Image(Image&& rhs)
@@ -51,14 +40,10 @@ namespace Cjing3D
 
 	Image::~Image()
 	{
-		if (mDataFreeFunc && mData) {
-			mDataFreeFunc(mData);
+		if (mDataFreeFunc && mSrcData)
+		{
+			mDataFreeFunc(mSrcData);
 		}
-	}
-
-	U32 Image::GetSize() const
-	{
-		return U32();
 	}
 
 	void Image::Swap(Image& rhs)
@@ -67,67 +52,98 @@ namespace Cjing3D
 		std::swap(mWidth,    rhs.mWidth);
 		std::swap(mHeight,   rhs.mHeight);
 		std::swap(mDepth,    rhs.mDepth);
-		std::swap(mMipLevel, rhs.mMipLevel);
+		std::swap(mMips,     rhs.mMips);
+		std::swap(mSlices,   rhs.mSlices);
 		std::swap(mFormat,   rhs.mFormat);
-		std::swap(mData,     rhs.mData);
+		std::swap(mDatas,    rhs.mDatas);
 		std::swap(mDataFreeFunc, rhs.mDataFreeFunc);
 	}
 
-	void* Image::GetMipAddr(I32 mipLevel) const
+	const Image::ImageData& Image::GetData(U32 slice, U32 face, U32 mipLevel)const
 	{
-		if (mipLevel > mMipLevel) {
-			return nullptr;
-		}
-
-		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(mFormat);
-		I32 blockW = (mWidth + formatInfo.mBlockW - 1)  / formatInfo.mBlockW;
-		I32 blockH = (mHeight + formatInfo.mBlockH - 1) / formatInfo.mBlockH;
-
-		U8* targetData = mData;
-		for (int i = 0; i < mMipLevel; i++)
+		for (auto& imgData : mDatas)
 		{
-			if (i == mipLevel) {
-				return targetData;
+			if (imgData.mSlice == slice && imgData.mMip == mipLevel && imgData.mFace == face) {
+				return imgData;
 			}
-
-			const I64 numBlocks = blockW * blockH;
-			targetData += (numBlocks * formatInfo.mBlockBits) >> 3; // /8
-			blockW = std::max(blockW >> 1, 1);
-			blockH = std::max(blockH >> 1, 1);
 		}
-
-		return nullptr;
+		Debug::ThrowIfFailed(false);
+		return mDatas[0];
 	}
+
 
 	Image Image::Load(const char* data, size_t length, const char* ext)
 	{
 		if (EqualString(ext, "DDS"))
 		{
-			// load dds
 		}
 		else
 		{
-			const I32 channelCount = 4;
-			// non-HDR imgage
+			const U32 channelCount = 4;
 			I32 width, height, bpp;
-			unsigned char* rgb = stbi_load_from_memory((stbi_uc*)data, length, &width, &height, &bpp, channelCount);
-			if (rgb != nullptr)
+			GPU::FORMAT format = GPU::FORMAT_R8G8B8A8_UNORM;
+
+			// non-hdr
+			U8* rgb = (U8*)stbi_load_from_memory((stbi_uc*)data, length, &width, &height, &bpp, channelCount);
+			if (rgb == nullptr)
 			{
-				return Image(GPU::TEXTURE_2D, GPU::FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, rgb,
-					[](U8* data) { stbi_image_free(data); }
-				);
+				// hdr
+				format = GPU::FORMAT_R32G32B32A32_FLOAT;
+				rgb = (U8*)stbi_loadf_from_memory((stbi_uc*)data, length, &width, &height, &bpp, channelCount);
+				if (rgb == nullptr) 
+				{
+					Logger::Warning("Failed to load image from memory");
+					return Image();
+				}
 			}
 
-			// HDR image
-			float* rgbf = stbi_loadf_from_memory((stbi_uc*)data, length, &width, &height, &bpp, channelCount);
-			if (rgbf != nullptr)
-			{
-				return Image(GPU::TEXTURE_2D, GPU::FORMAT_R32G32B32A32_FLOAT, width, height, 1, 1, rgb,
-					[](U8* data) { stbi_image_free(data); }
-				);
-			}
+			return Image(
+				GPU::TEXTURE_2D, 
+				format,
+				(U32)width, 
+				(U32)height, 
+				1, 
+				1, 
+				1,
+				rgb,
+				[](U8* data) {
+					stbi_image_free(data); 
+				}
+			);
 		}
 
 		return Image();
+	}
+
+	void Image::AddDatas(U32 slice, U32 face, U8* data)
+	{
+		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(mFormat);
+		U32 blockW = (mWidth + formatInfo.mBlockW - 1)  / formatInfo.mBlockW;
+		U32 blockH = (mHeight + formatInfo.mBlockH - 1) / formatInfo.mBlockH;
+
+		U8* targetData = data;
+		for (int mip = 0; mip < mMips; mip++)
+		{
+			const size_t numBlocks = (size_t)(blockW * blockH);
+			const size_t size = (numBlocks * formatInfo.mBlockBits) >> 3;	
+			AddData(slice, face, mip, targetData, size);
+
+			targetData += size;
+			blockW = std::max(blockW >> 1, 1u);
+			blockH = std::max(blockH >> 1, 1u);
+		}
+	}
+
+	void Image::AddData(U32 slice, U32 face, U32 mip, U8* data, size_t size)
+	{
+		if (mip > mMips) {
+			return;
+		}
+
+		ImageData& imgData = mDatas.emplace();
+		imgData.mSlice = slice;
+		imgData.mFace = face;
+		imgData.mMip = mip;
+		imgData.mMem = InputMemoryStream(data, size);
 	}
 }

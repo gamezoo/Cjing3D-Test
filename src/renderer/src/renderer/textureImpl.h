@@ -13,6 +13,11 @@ namespace Cjing3D
 		CLAMP_W = 1 << 2,
 	};
 
+	struct TextureLBCHeader
+	{
+		GPU::FORMAT mCompressedFormat;
+	};
+
 	struct TextureGeneralHeader
 	{
 		static const I32 MAJOR = 0;

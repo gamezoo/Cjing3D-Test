@@ -24,7 +24,7 @@ namespace Cjing3D
 		};
 
 		using JobFunc = std::function<void(I32, void*)>;
-		using JobGroupFunc = std::function<void(I32, JobGroupArgs*, void*)>;
+		using JobGroupFunc = std::function<bool(I32, JobGroupArgs*, void*)>;
 		enum class Priority
 		{
 			HIGH = 0,

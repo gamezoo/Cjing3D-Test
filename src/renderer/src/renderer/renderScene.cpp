@@ -105,7 +105,7 @@ namespace Cjing3D
 
                 ECS::Entity entity = mObjectAABBs->GetEntityByIndex(jobIndex);
                 if (entity == ECS::INVALID_ENTITY) {
-                    return;
+                    return false;
                 }
 
                 const AABB* aabb = mObjectAABBs->GetComponentByIndex(jobIndex);
@@ -123,6 +123,8 @@ namespace Cjing3D
                         cullingResult.mCulledObjects[newCount - list->mCount + i] = list->mList[i];
                     }
                 }
+
+                return false;
 
             }, sizeof(CullingEntityList), &jobHandle);
         }

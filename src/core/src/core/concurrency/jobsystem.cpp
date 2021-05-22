@@ -822,7 +822,9 @@ namespace JobSystem
 					groupArg.isFirstJobInGroup_ = (i == groupJobOffset);
 					groupArg.isLastJobInGroup_ = (i == groupJobEnd - 1);
 
-					jobFunc(i, &groupArg, sharedMemData);
+					if (jobFunc(i, &groupArg, sharedMemData)) {
+						break;
+					}
 				}
 			};
 

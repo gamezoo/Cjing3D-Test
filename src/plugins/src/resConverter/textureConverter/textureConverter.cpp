@@ -55,20 +55,20 @@ namespace Cjing3D
 		MemoryStream stream;
 		stream.Reserve(256);
 
-		GPU::FormatInfo formatInfo = GPU::GetFormatInfo(img.GetFormat());
-		bool hasAlpah = formatInfo.mABits > 0;
-
 		// 1. texture general header
 		GPU::TextureDesc texDesc = {};
 		texDesc.mType = GPU::TEXTURE_2D;
-		texDesc.mWidth = std::max(formatInfo.mBlockW, img.GetWidth());
-		texDesc.mHeight = std::max(formatInfo.mBlockH, img.GetHeight());
+		texDesc.mWidth = img.GetWidth();
+		texDesc.mHeight = img.GetHeight();
 		texDesc.mDepth = img.GetDepth();
 		texDesc.mMipLevels = img.GetMipLevels();
 		texDesc.mArraySize = 1;
 		texDesc.mFormat = img.GetFormat();
 		texDesc.mUsage = GPU::USAGE_IMMUTABLE;
 		texDesc.mBindFlags = GPU::BIND_SHADER_RESOURCE;
+		if (img.IsCubemap()) {
+			texDesc.mMiscFlags |= GPU::RESOURCE_MISC_TEXTURECUBE;
+		}
 
 		U32 texFlags = 0;
 		texFlags |= metaData.mWrapModeU == TextureMetaObject::WrapMode::CLAMP ? (U32)TextureFlags::CLAMP_U : 0;

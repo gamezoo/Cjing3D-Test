@@ -13,7 +13,7 @@ namespace Cjing3D
 		virtual void Unserialize(JsonArchive& archive);
 
 		GPU::FORMAT mFormat = GPU::FORMAT_UNKNOWN;
-		bool mGenerateMipmap = true;
+		bool mGenerateMipmap = false;
 		bool mIsNormalMap = false;
 		F32 mMipScale = -1.0f;
 

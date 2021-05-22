@@ -202,7 +202,8 @@ namespace Cjing3D
 		U32 mOffset = 0;
 
 	public:
-		explicit InputMemoryStream(const MemoryStream& stream) : 
+		InputMemoryStream() = default;
+		InputMemoryStream(const MemoryStream& stream) : 
 			mBuffer(stream.data()), mSize(stream.Size()) {}
 		InputMemoryStream(const U8* data, U32 size) :
 			mBuffer(data), mSize(size) {}
@@ -262,6 +263,11 @@ namespace Cjing3D
 
 		U32 Size()const {
 			return mSize;
+		}
+
+		void AddOffset(U32 offset)
+		{
+			mOffset += offset;
 		}
 	};
 }

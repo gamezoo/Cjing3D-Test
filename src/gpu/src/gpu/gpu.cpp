@@ -716,8 +716,7 @@ namespace GPU
 			info.mChannels = 1;
 			break;
 		default:
-			Logger::Error("Unsupport format:%d", format);
-			return FormatInfo();
+			break;
 		}
 
 		info.mBlockBits += info.mRBits;
