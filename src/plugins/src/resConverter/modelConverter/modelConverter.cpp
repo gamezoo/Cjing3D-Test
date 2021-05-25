@@ -51,14 +51,17 @@ namespace Cjing3D
 			return false;
 		}
 
-		// 3. write model
+		// 3. write converted model
+		// Model data
+		// Material data
+		// Animation data
 		MemoryStream stream;
-		if (!importer->WriteModel(stream))
+		if (!importer->WriteModel(context, stream))
 		{
 			Logger::Warning("Failed to write model:%s", dest);
 			return false;
 		}
-		if (!importer->WriteMaterials(dirPath.c_str())) 
+		if (!importer->WriteMaterials(context, dirPath.c_str()))
 		{
 			Logger::Warning("Failed to write materials:%s", dest);
 			return false;
