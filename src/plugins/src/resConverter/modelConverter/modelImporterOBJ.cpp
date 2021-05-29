@@ -335,6 +335,7 @@ namespace Cjing3D
 		// meshes
 		I32 numVertexElements = 0;
 		I32 numSubMeshes = 0;
+		I32 vertexDataOffset = 0;
 		for (const auto& mesh : mMeshes)
 		{
 			ModelMeshData meshData;
@@ -346,8 +347,9 @@ namespace Cjing3D
 			}
 
 			CopyString(meshData.mName, mesh.mName.c_str());
-			meshData.mVertexSize = vertexSize;
+			meshData.mVertexElementSize = vertexSize;
 			meshData.mVertices = mesh.mVertices;
+			meshData.mVertexDataOffset = vertexDataOffset;
 			meshData.mIndices = mesh.mIndices.size();
 			meshData.mStartVertexElements = numVertexElements;
 			meshData.mNumVertexElements = mesh.mVertexElements.size();
@@ -358,6 +360,7 @@ namespace Cjing3D
 
 			numVertexElements += mesh.mVertexElements.size();
 			numSubMeshes += mesh.mSubMeshes.size();
+			vertexDataOffset += mesh.mVertexData.Size();
 		}
 
 		// write vertex elements

@@ -12,6 +12,11 @@ namespace Cjing3D
 		I32 mIndices = 0;
 	};
 
+	struct ModelMesh
+	{
+		DynamicArray<ModelSubMesh> mSubMeshes;
+	};
+
 	class Model : public Resource
 	{
 	public:
@@ -25,6 +30,8 @@ namespace Cjing3D
 
 		Model(const Model& rhs) = delete;
 		Model& operator=(const Model& rhs) = delete;
+
+		struct ModelImpl* mImpl = nullptr;
 	};
 	using ModelRef = ResRef<Model>;
 }

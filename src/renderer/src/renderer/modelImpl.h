@@ -25,8 +25,9 @@ namespace Cjing3D
 	struct ModelMeshData
 	{
 		char mName[MODEL_MAX_NAME_LENGTH] = { '\0' };
-		I32 mVertexSize = 0;
+		I32 mVertexElementSize = 0;
 		I32 mVertices = 0;
+		I32 mVertexDataOffset = 0;
 		I32 mIndices = 0;
 		I32 mStartVertexElements = 0;
 		I32 mNumVertexElements = 0;
@@ -39,5 +40,12 @@ namespace Cjing3D
 		char mMaterial[MODEL_MATERIAL_PATH_LENGTH] = { '\0' };
 		I32 mMeshIndex = -1;
 		I32 mSubMeshIndex = -1;
+	};
+
+	struct ModelImpl
+	{
+		DynamicArray<ModelMesh> mMeshes;
+		DynamicArray<char> mVertexData;
+		DynamicArray<I32> mIndices;
 	};
 }
