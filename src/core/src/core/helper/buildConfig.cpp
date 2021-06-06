@@ -9,8 +9,8 @@ namespace BuildConfig
 {
 	namespace {
 		nlohmann::json mRootJson;
-		String mBuildCmd;
-		String mProfile;
+		std::string mBuildCmd; //String mBuildCmd;
+		std::string mProfile;  //String mProfile;
 	}
 
 	void Initialize(BaseFileSystem* filesystem)

@@ -101,7 +101,7 @@ namespace Renderer
 		void BindCommonResources(ShaderBindingContext& context);
 		void BindConstantBuffers(ShaderBindingContext& context, GPU::SHADERSTAGES stage);
 
-		void ProcessRenderQueue(
+		void ProcessMeshRenderQueue(
 			ObjectRenderQueue& queue, 
 			RENDERPASS renderPass, 
 			RENDERTYPE renderType,
@@ -192,7 +192,7 @@ namespace Renderer
 		ResourceManager::WaitAll();
 	}
 
-	void RendererImpl::ProcessRenderQueue(
+	void RendererImpl::ProcessMeshRenderQueue(
 		ObjectRenderQueue& queue,
 		RENDERPASS renderPass, 
 		RENDERTYPE renderType, 
@@ -206,7 +206,8 @@ namespace Renderer
 		if (queue.IsEmpty()) {
 			return;
 		}
-		cmd.EventBegin("ProcessRenderQueue");
+
+		cmd.EventBegin("ProcessMeshRenderQueue");
 
 		RenderScene& scene = *mRenderScene;
 		auto transforms = scene.GetUniverse().GetComponents<Transform>(ECS::SceneReflection::GetComponentType("Transform"));
@@ -215,8 +216,10 @@ namespace Renderer
 		// * worldMatrix(mMat0, mMat1, mMat2);
 		// * I32x4 mUserdata
 
+		U32 instanceDataSize = sizeof(RenderInstance);
+
 		// allocate all intances
-		I32 instanceSize = queue.mRenderBatches.size() * sizeof(RenderInstance);
+		I32 instanceSize = queue.mRenderBatches.size() * handlerCount * instanceDataSize;
 		GPU::GPUAllocation instanceAllocation = cmd.GPUAlloc(instanceSize);
 
 		// InstancedBatch combines ObjectRenderBatch by the same meshIndex
@@ -226,78 +229,29 @@ namespace Renderer
 			U32 mInstanceCount = 0;
 			U32 mInstanceOffset = 0;
 		};
-		DynamicArray<InstancedBatch*> instancedBatches;
+		InstancedBatch instancedBatch;
+		instancedBatch.mMeshIndex = ~0;	// init mesh index unused
 
-		// 对于相邻且MeshIndex相同的ObjectRenderBatch会合并为一个InstancedBatch
-		I32 totalInstanceCount = 0;
-		I32 prevMeshIndex = ~0;
-		for (ObjectRenderBatch* renderBatch : queue.mRenderBatches)
+		// flush and render current render batch
+		auto FlushRenderBatch = [&](const InstancedBatch& renderBatch)
 		{
-			const I32 objectIndex = renderBatch->mObjectIndex;
-			const I32 meshIndex = renderBatch->GetMeshIndex();
-			if (meshIndex != prevMeshIndex)
-			{
-				prevMeshIndex = meshIndex;
-
-				InstancedBatch* instancedBatch = cmd.Alloc<InstancedBatch>();
-				instancedBatch->mMeshIndex = meshIndex;
-				instancedBatch->mInstanceCount = 0;
-				instancedBatch->mInstanceOffset = instanceAllocation.mOffset + totalInstanceCount * sizeof(RenderInstance);
-
-				instancedBatches.push(instancedBatch);
+			if (renderBatch.mInstanceCount <= 0) {
+				return;
 			}
 
-			// 创建一个新的RenderInstance并添加到当前InstancedBatch中
-			InstancedBatch& currentBatch = *instancedBatches.back();
-			const ObjectComponent* object = scene.mObjects->GetComponentByIndex(objectIndex);
-			if (object == nullptr) {
-				continue;
-			}
-
-			F32x4x4 worldMatrix = IDENTITY_MATRIX;
-			Transform* transform = object->mTransformIndex >= 0 ? transforms->GetComponentByIndex(object->mTransformIndex) : nullptr;
-			if (transform != nullptr) {
-				worldMatrix = transform->mWorld;
-			}
-
-			for (U32 handleIndex = 0; handleIndex < handlerCount; handleIndex++)
-			{
-				if ( instanceHandler != nullptr &&
-					 instanceHandler->checkCondition_ != nullptr &&
-					!instanceHandler->checkCondition_(handleIndex, objectIndex, scene)) {
-					continue;
-				}
-
-				// setup renderInstance from worldMatrix and object color
-				RenderInstance& renderInstance = ((RenderInstance*)instanceAllocation.mData)[totalInstanceCount];
-				renderInstance.Setup(worldMatrix, object->mColor);
-
-				if (instanceHandler != nullptr &&
-					instanceHandler->processInstance_ != nullptr) {
-					instanceHandler->processInstance_(handleIndex, renderInstance);
-				}
-
-				currentBatch.mInstanceCount++;
-				totalInstanceCount++;
-			}
-		}
-
-		// process instanced batches
-		for (InstancedBatch* batch : instancedBatches)
-		{
-			const MeshComponent* mesh = scene.mMeshes->GetComponentByIndex(batch->mMeshIndex); 
+			const MeshComponent* mesh = scene.mMeshes->GetComponentByIndex(renderBatch.mMeshIndex);
 			if (!mesh) {
-				continue;
+				return;
 			}
 
 			cmd.BindIndexBuffer(GPU::Binding::IndexBuffer(mesh->mIndexBuffer, 0), mesh->GetIndexFormat());
 
 			// bind vertex buffer
 			DynamicArray<GPU::BindingBuffer> buffers;
-			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferPos,   0, sizeof(MeshComponent::VertexPos)));
-			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferTex,   0, sizeof(MeshComponent::VertexTex)));
+			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferPos, 0, sizeof(MeshComponent::VertexPos)));
+			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferTex, 0, sizeof(MeshComponent::VertexTex)));
 			buffers.push(GPU::Binding::VertexBuffer(mesh->mVertexBufferColor, 0, sizeof(MeshComponent::VertexColor)));
-			buffers.push(GPU::Binding::VertexBuffer(instanceAllocation.mBuffer, batch->mInstanceOffset, sizeof(RenderInstance)));
+			buffers.push(GPU::Binding::VertexBuffer(instanceAllocation.mBuffer, renderBatch.mInstanceOffset, sizeof(RenderInstance)));
 			cmd.BindVertexBuffer(Span(buffers.data(), buffers.size()), 0);
 
 			// render mesh subsets
@@ -342,18 +296,69 @@ namespace Renderer
 
 				// bind material textures
 				bindingSet.Set("texture_BaseColorMap", GPU::Binding::Texture(material->GetTexture(Material::BaseColorMap), GPU::SHADERSTAGES_PS));
-				bindingSet.Set("texture_NormalMap",    GPU::Binding::Texture(material->GetTexture(Material::NormalMap), GPU::SHADERSTAGES_PS));
-				bindingSet.Set("texture_SurfaceMap",   GPU::Binding::Texture(material->GetTexture(Material::SurfaceMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_NormalMap", GPU::Binding::Texture(material->GetTexture(Material::NormalMap), GPU::SHADERSTAGES_PS));
+				bindingSet.Set("texture_SurfaceMap", GPU::Binding::Texture(material->GetTexture(Material::SurfaceMap), GPU::SHADERSTAGES_PS));
 
 				if (shaderContext.Bind(tech, bindingSet))
 				{
 					cmd.BindPipelineState(tech.GetPipelineState());
-					cmd.DrawIndexedInstanced(subset.mIndexCount, batch->mInstanceCount, subset.mIndexOffset, 0, 0);
+					cmd.DrawIndexedInstanced(subset.mIndexCount, renderBatch.mInstanceCount, subset.mIndexOffset, 0, 0);
 				}
+			}
+		};
+
+		// 对于相邻且MeshIndex相同的ObjectRenderBatch会合并为一个InstancedBatch
+		I32 totalInstanceCount = 0;
+
+		for (ObjectRenderBatch* renderBatch : queue.mRenderBatches)
+		{
+			const I32 objectIndex = renderBatch->mObjectIndex;
+			const I32 meshIndex = renderBatch->GetMeshIndex();
+			if (meshIndex != instancedBatch.mMeshIndex)
+			{
+				FlushRenderBatch(instancedBatch);
+
+				instancedBatch.mMeshIndex = meshIndex;
+				instancedBatch.mInstanceCount = 0;
+				instancedBatch.mInstanceOffset = instanceAllocation.mOffset + totalInstanceCount * instanceDataSize;
+			}
+
+			// 创建一个新的RenderInstance并添加到当前InstancedBatch中
+			const ObjectComponent* object = scene.mObjects->GetComponentByIndex(objectIndex);
+			if (object == nullptr) {
+				continue;
+			}
+
+			F32x4x4 worldMatrix = IDENTITY_MATRIX;
+			Transform* transform = object->mTransformIndex >= 0 ? transforms->GetComponentByIndex(object->mTransformIndex) : nullptr;
+			if (transform != nullptr) {
+				worldMatrix = transform->mWorld;
+			}
+
+			for (U32 handleIndex = 0; handleIndex < handlerCount; handleIndex++)
+			{
+				if ( instanceHandler != nullptr &&
+					 instanceHandler->checkCondition_ != nullptr &&
+					!instanceHandler->checkCondition_(handleIndex, objectIndex, scene)) {
+					continue;
+				}
+
+				// setup renderInstance from worldMatrix and object color
+				RenderInstance& renderInstance = ((RenderInstance*)instanceAllocation.mData)[totalInstanceCount];
+				renderInstance.Setup(worldMatrix, object->mColor);
+
+				if (instanceHandler != nullptr &&
+					instanceHandler->processInstance_ != nullptr) {
+					instanceHandler->processInstance_(handleIndex, renderInstance);
+				}
+
+				instancedBatch.mInstanceCount++;
+				totalInstanceCount++;
 			}
 		}
 
-		cmd.Free(instancedBatches.size() * sizeof(InstancedBatch));
+		FlushRenderBatch(instancedBatch);
+
 		cmd.EventEnd();
 	}
 
@@ -495,7 +500,7 @@ namespace Renderer
 		{
 			// 对于Transparent需要从后往前排序，来实现blending，而对于object则需要从前往后，根据depthCmp来减少over draw
 			queue.Sort(renderType != RENDERTYPE_TRANSPARENT ? ObjectRenderQueue::FrontToBack : ObjectRenderQueue::BackToFront);
-			mImpl->ProcessRenderQueue(queue, renderPass, renderType, cullResult, resources, cmd, context);
+			mImpl->ProcessMeshRenderQueue(queue, renderPass, renderType, cullResult, resources, cmd, context);
 		}
 	}
 

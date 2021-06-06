@@ -34,8 +34,10 @@ namespace Cjing3D
 			desc.mHeight = resolution[1];
 			desc.mFormat = GPU::FORMAT_R32G8X24_TYPELESS;
 			desc.mBindFlags = GPU::BIND_DEPTH_STENCIL | GPU::BIND_SHADER_RESOURCE;
-			TextureHelper::CreateTexture(mRtMain, desc, nullptr, "dbpMain");
+			TextureHelper::CreateTexture(mDepthMain, desc, nullptr, "dbpMain");
 		}
+
+		RenderGraphPath2D::ResizeBuffers(resolution);
 	}
 
 	void RenderGraphPath3D::Start()

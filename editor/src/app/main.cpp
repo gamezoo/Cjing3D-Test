@@ -3,9 +3,7 @@
 #include <iostream>
 
 #include "client\app\win32\gameAppWin32.h"
-#include "client\app\mainComponent.h"
-#include "core\container\map.h"
-#include "renderer\renderPath\renderGraphPath3D.h"
+#include "app.h"
 
 using namespace Cjing3D;
 
@@ -15,7 +13,6 @@ int WINAPI WinMain(
 	_In_ LPSTR lpCmdLine,
 	_In_ int nShowCmd)
 {
-
 	InitConfig config = {};
 	config.mScreenSize = { 1280, 720 };
 	config.mIsFullScreen = false;
@@ -25,15 +22,11 @@ int WINAPI WinMain(
 	config.mTitle = "Cjing3D";
 	config.mIsApp = true;
 
-	auto renderPath = CJING_MAKE_SHARED<RenderGraphPath3D>();
 	Win32::GameAppWin32 gameApp(hInstance);
 	gameApp.Run(config,
-		[renderPath](const SharedPtr<Engine> engine)->SharedPtr<MainComponent> {
-			auto game = CJING_MAKE_SHARED<MainComponent>(engine);
-			game->SetRenderPath(renderPath.get());
-			return game;
+		[](const SharedPtr<Engine> engine)->SharedPtr<MainComponent> {
+			return CJING_MAKE_SHARED<GameApp>(engine);
 		}
 	);
-
 	return 0;
 }

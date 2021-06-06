@@ -26,7 +26,7 @@ namespace Cjing3D
 		RenderPipeline3D mRenderPipeline3D;
 
 		Texture mRtMain;
-		Texture mDpbMain;
+		Texture mDepthMain;
 
 		Viewport mViewport;
 		CullingResult mVisibility;

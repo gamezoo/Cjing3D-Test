@@ -20,7 +20,6 @@ project (PROJECT_CLIENT_NAME)
     setup_project_env()
     setup_platform()
     setup_project_definines()
-    setup_plugins_definines(all_plugins)
     targetname(PROJECT_CLIENT_NAME)
 
     -- dependencies

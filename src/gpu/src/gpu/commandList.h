@@ -103,7 +103,7 @@ namespace GPU {
 		void EventEnd();
 
 		void* Alloc(size_t size) {
-			return  mAllocator.Allocate(size);
+			return mAllocator.Allocate(size);
 		}
 
 		void Free(size_t size) {
