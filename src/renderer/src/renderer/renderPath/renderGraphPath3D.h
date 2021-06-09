@@ -19,10 +19,14 @@ namespace Cjing3D
 		void RenderPipelines(RenderGraph& renderGraph)override;		// called by RenderGraph::Render
 		void ComposePipelines(GPU::CommandList& cmd)override;		// called by RenderGraph::Compose
 
+		constexpr bool IsShadowEnable()const { return mIsShadowEnable; }
+
 	protected:
 		virtual void AddFinalResources(RenderGraph& renderGraph);
 
 	protected:
+		bool mIsShadowEnable = true;
+		
 		RenderPipeline3D mRenderPipeline3D;
 
 		Texture mRtMain;

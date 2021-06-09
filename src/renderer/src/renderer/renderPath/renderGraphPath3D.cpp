@@ -71,14 +71,81 @@ namespace Cjing3D
 	{
 		PROFILE_FUNCTION();
 
-		//auto rtMainRes = renderGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), &mRtMain.GetDesc());
-		//auto dbMainRes = renderGraph.ImportTexture("dbMain", mDpbMain.GetHandle(), &mDpbMain.GetDesc());
+		// Setup render frame
+		renderGraph.AddCallbackRenderPass("SetupRenderFrame",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
 
-		//mRenderPipeline3D.SetResource("rtMain", rtMainRes);
-		//mRenderPipeline3D.SetResource("dbMain", dbMainRes);
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 
-		//setup pipelines
-		// mRenderPipeline3D.Setup(renderGraph, mViewport, mFrameCB, mVisibility);
+				};
+			});
+
+		// Depth prepass 
+		renderGraph.AddCallbackRenderPass("DepthPrepass",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
+
+		// Camera effects
+		renderGraph.AddCallbackRenderPass("CameraEffect",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
+
+		// Shadow maps
+		if (IsShadowEnable())
+		{
+			renderGraph.AddCallbackRenderPass("ShadowMaps",
+				RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+				[&](RenderGraphResBuilder& builder) {
+
+					return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+					};
+				});
+		}
+
+		// Opaque pass
+		renderGraph.AddCallbackRenderPass("OpaquePass",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
+
+		// Transparent pass
+		renderGraph.AddCallbackRenderPass("TransparentPass",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
+
+		// Post process
+		renderGraph.AddCallbackRenderPass("Postprocess",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
+
+		// Render 2D
+		RenderGraphPath2D::RenderPipelines(renderGraph);
 	}
 
 	void RenderGraphPath3D::ComposePipelines(GPU::CommandList& cmd)

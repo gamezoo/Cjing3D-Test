@@ -29,6 +29,7 @@ namespace Cjing3D
 
 	void RenderGraphPath2D::Stop()
 	{
+		RenderPath::Stop();
 	}
 
 	void RenderGraphPath2D::Update(F32 dt)

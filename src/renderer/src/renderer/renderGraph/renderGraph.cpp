@@ -1694,6 +1694,12 @@ namespace Cjing3D
 		return res;
 	}
 
+	void RenderGraphResBuilder::WaitForPass(const char* name)
+	{
+		// TODO
+		// 一方面需要参与到RenderPasses的排序中，同时在Device端也需要等待
+	}
+
 	const GPU::TextureDesc* RenderGraphResBuilder::GetTextureDesc(RenderGraphResource res)const
 	{
 		if (!res || res.mIndex >= mImpl.mResourceSlots.size()) {

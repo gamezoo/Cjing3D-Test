@@ -27,6 +27,8 @@ namespace Cjing3D
 		RenderGraphResource AddRTV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::RenderTarget());
 		RenderGraphResource SetDSV(RenderGraphResource res, RenderGraphAttachment attachment = RenderGraphAttachment::DepthStencil());
 
+		void WaitForPass(const char* name);
+
 		RenderGraphBlackboard& GetBloackBoard();
 		RenderGraphBlackboard const& GetBloackBoard()const;
 
