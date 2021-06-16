@@ -81,7 +81,7 @@ namespace Cjing3D
         return mUniverse;
     }
 
-    void RenderScene::GetCullingResult(CullingResult& cullingResult, Frustum& frustum, I32 cullingFlag)
+    void RenderScene::GetCullingResult(Visibility& cullingResult, Frustum& frustum, I32 cullingFlag)
     {
         struct CullingEntityList
         {

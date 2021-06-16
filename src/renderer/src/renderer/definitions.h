@@ -68,7 +68,7 @@ namespace Cjing3D
 		}
 	};
 
-	struct CullingResult
+	struct Visibility
 	{
 		Viewport* mViewport = nullptr;
 		DynamicArray<ECS::Entity> mCulledObjects;

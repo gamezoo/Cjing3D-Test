@@ -96,16 +96,15 @@ namespace Renderer
 		~RendererImpl();
 
 		void PreLoadShaders();
-		void PreLoadBuffers();
 
-		void BindCommonResources(ShaderBindingContext& context);
-		void BindConstantBuffers(ShaderBindingContext& context, GPU::SHADERSTAGES stage);
+		void BindCommonResources(RenderGraphResources& resources, ShaderBindingContext& context);
+		void BindConstantBuffers(RenderGraphResources& resources, ShaderBindingContext& context, GPU::SHADERSTAGES stage);
 
 		void ProcessMeshRenderQueue(
 			ObjectRenderQueue& queue, 
 			RENDERPASS renderPass, 
 			RENDERTYPE renderType,
-			const CullingResult& cullResult, 
+			const Visibility& cullResult, 
 			RenderGraphResources& resources, 
 			GPU::CommandList& cmd,
 			ShaderBindingContext& shaderContext, 
@@ -120,10 +119,15 @@ namespace Renderer
 		RenderScene* mRenderScene = nullptr;
 
 		StaticArray<ShaderRef, SHADERTYPE_COUNT> mShaders;
-		StaticArray<GPU::ResHandle, CBTYPE_COUNT> mConstantBuffers;
 		DynamicArray<GPU::ResHandle> mSamplerStates;
 		F32 mResolutionScale = 1.0f;
 		U32x2 mWindowSize = { 0u, 0u };
+		U32 mShadowResolution2D = 1024;
+
+		// Runtime render graph resources
+		I32 mShadow2DCount = 8;
+		RenderGraphResource mShadowTex2D; // DynamicArray<RenderGraphResource> mShadowTex2D;
+		StaticArray<RenderGraphResource, CBTYPE_COUNT> mConstantBuffers;
 	};
 
 	RendererImpl::RendererImpl()
@@ -137,13 +141,6 @@ namespace Renderer
 		}
 
 		// release gpu handles
-		for (const auto& handle : mConstantBuffers)
-		{
-			if (handle != GPU::ResHandle::INVALID_HANDLE) {
-				GPU::DestroyResource(handle);
-			}
-		}
-
 		for (const auto& handle : mSamplerStates)
 		{
 			if (handle != GPU::ResHandle::INVALID_HANDLE) {
@@ -154,30 +151,19 @@ namespace Renderer
 		mRenderScene = nullptr;
 	}
 
-	void RendererImpl::PreLoadBuffers()
-	{
-		GPU::BufferDesc desc = {};
-		desc.mByteWidth = sizeof(FrameCB);
-		desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
-		mConstantBuffers[CBTYPE_FRAME] = GPU::CreateBuffer(&desc, nullptr, "FrameCB");
-
-		desc.mByteWidth = sizeof(CameraCB);
-		desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
-		mConstantBuffers[CBTYPE_CAMERA] = GPU::CreateBuffer(&desc, nullptr, "CameraCB");
-	}
-
-	void RendererImpl::BindCommonResources(ShaderBindingContext& context)
+	void RendererImpl::BindCommonResources(RenderGraphResources& resources, ShaderBindingContext& context)
 	{
 		for (int i = 0; i < GPU::SHADERSTAGES_COUNT; i++) {
-			BindConstantBuffers(context, (GPU::SHADERSTAGES)i);
+			BindConstantBuffers(resources, context, (GPU::SHADERSTAGES)i);
 		}
 	}
 
-	void RendererImpl::BindConstantBuffers(ShaderBindingContext& context, GPU::SHADERSTAGES stage)
+	void RendererImpl::BindConstantBuffers(RenderGraphResources& resources, ShaderBindingContext& context, GPU::SHADERSTAGES stage)
 	{
 		ShaderBindingSet bindingSet = Shader::CreateGlobalBindingSet("CommonBindings");
-		bindingSet.Set("gFrameCB", GPU::Binding::ConstantBuffer(mConstantBuffers[CBTYPE_FRAME], stage));
-		bindingSet.Set("gCameraCB", GPU::Binding::ConstantBuffer(mConstantBuffers[CBTYPE_CAMERA], stage));
+		
+		bindingSet.Set("gFrameCB", GPU::Binding::ConstantBuffer(resources.GetBuffer(mConstantBuffers[CBTYPE_FRAME]), stage));
+		bindingSet.Set("gCameraCB", GPU::Binding::ConstantBuffer(resources.GetBuffer(mConstantBuffers[CBTYPE_CAMERA]), stage));
 	}
 
 	void RendererImpl::PreLoadShaders()
@@ -196,7 +182,7 @@ namespace Renderer
 		ObjectRenderQueue& queue,
 		RENDERPASS renderPass, 
 		RENDERTYPE renderType, 
-		const CullingResult& cullResult, 
+		const Visibility& cullResult, 
 		RenderGraphResources& resources, 
 		GPU::CommandList& cmd, 
 		ShaderBindingContext& shaderContext,
@@ -401,8 +387,6 @@ namespace Renderer
 
 		// initialize impl
 		mImpl = CJING_NEW(RendererImpl);
-		mImpl->PreLoadBuffers();
-
 		auto clientBounds = Platform::GetClientBounds(params.mWindow);
 		mImpl->mWindowSize = {
 			(U32)(clientBounds.mRight - clientBounds.mLeft),
@@ -455,7 +439,7 @@ namespace Renderer
 		universe.AddScene(std::move(renderScene));
 	}
 
-	void UpdatePerFrameData(CullingResult& visibility, FrameCB& frameCB, F32 deltaTime, const U32x2& resolution)
+	void UpdatePerFrameData(Visibility& visibility, FrameCB& frameCB, F32 deltaTime, const U32x2& resolution)
 	{
 		frameCB.gFrameScreenSize = F32x2((F32)resolution.x(), (F32)resolution.y());
 		frameCB.gFrameScreenSizeRCP = F32x2(1.0f / (F32)resolution.x(), 1.0f / (F32)resolution.y());
@@ -466,7 +450,7 @@ namespace Renderer
 		GPU::EndFrame();
 	}
 
-	void DrawScene(RENDERPASS renderPass, RENDERTYPE renderType, const CullingResult& cullResult, RenderGraphResources& resources, GPU::CommandList& cmd)
+	void DrawScene(RENDERPASS renderPass, RENDERTYPE renderType, const Visibility& cullResult, RenderGraphResources& resources, GPU::CommandList& cmd)
 	{
 		if (!IsInitialized()) {
 			return;
@@ -479,7 +463,7 @@ namespace Renderer
 		auto& scene = *mImpl->mRenderScene;
 		// bind common resources (cbs, samplers)
 		ShaderBindingContext context(cmd);
-		mImpl->BindCommonResources(context);
+		mImpl->BindCommonResources(resources, context);
 
 		// setup render queue
 		ObjectRenderQueue queue;
@@ -504,7 +488,7 @@ namespace Renderer
 		}
 	}
 
-	GPU::ResHandle GetConstantBuffer(CBTYPE type)
+	RenderGraphResource GetConstantBuffer(CBTYPE type)
 	{
 		Debug::CheckAssertion(IsInitialized());
 		return mImpl->mConstantBuffers[(U32)type];
@@ -554,7 +538,7 @@ namespace Renderer
 		GPU::AddStaticSampler(sam);
 	}
 
-	void UpdateViewCulling(CullingResult& cullingResult, Viewport& viewport, I32 cullingFlag)
+	void UpdateViewCulling(Visibility& cullingResult, Viewport& viewport, I32 cullingFlag)
 	{
 		Profiler::BeginCPUBlock("Frustum Culling");
 
@@ -582,6 +566,60 @@ namespace Renderer
 		cameraCB.gCameraFarZ = viewport.mFar;
 		cameraCB.gCameraInvNearZ = (1.0f / std::max(0.00001f, cameraCB.gCameraNearZ));
 		cameraCB.gCameraInvFarZ = (1.0f / std::max(0.00001f, cameraCB.gCameraFarZ));
+	}
+
+	void SetupRenderData(RenderGraph& renderGraph, const FrameCB& frameCB, const Visibility& visibility, Viewport& viewport)
+	{
+		renderGraph.AddCallbackRenderPass("SetupRenderFrame",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder)->CallbackRenderPass::ExecuteFn {
+
+				// create constant buffer
+				GPU::BufferDesc desc = {};
+				desc.mByteWidth = sizeof(FrameCB);
+				desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
+				mImpl->mConstantBuffers[CBTYPE_FRAME] = builder.CreateBuffer("FrameCB", &desc);
+
+				desc.mByteWidth = sizeof(CameraCB);
+				desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
+				mImpl->mConstantBuffers[CBTYPE_CAMERA] = builder.CreateBuffer("CameraCB", &desc);
+
+				// update camera buffer
+				CameraCB cameraCB = {};
+				Renderer::UpdateCameraCB(viewport, cameraCB);
+
+				// Wait for this pass
+				builder.WaitForThisPass();
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+					// update constant buffer
+					cmd.UpdateBuffer(resources.GetBuffer(mImpl->mConstantBuffers[CBTYPE_FRAME]), &frameCB, 0, sizeof(FrameCB));
+					cmd.UpdateBuffer(resources.GetBuffer(mImpl->mConstantBuffers[CBTYPE_CAMERA]), &cameraCB, 0, sizeof(CameraCB));
+				};
+			});
+	}
+
+	void DrawShadowMaps(RenderGraph& renderGraph, const Visibility& visibility)
+	{
+		renderGraph.AddCallbackRenderPass("ShadowMaps",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder)->CallbackRenderPass::ExecuteFn {
+
+				// create shadow map
+				auto shadowTex2D = builder.GetTextureDesc(mImpl->mShadowTex2D);
+				if (shadowTex2D == nullptr || mImpl->mShadowResolution2D != shadowTex2D->mWidth)
+				{
+					GPU::TextureDesc desc;
+
+					mImpl->mShadowTex2D = builder.CreateTexture("ShadowMap2D", &desc);
+				}
+
+
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
 	}
 
 	U32x2 GetInternalResolution()

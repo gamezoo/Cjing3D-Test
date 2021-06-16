@@ -5,12 +5,14 @@
 
 namespace Cjing3D
 {
+	class RenderGraphPath3D;
+
 	class RenderPipeline3D : public RenderPipeline
 	{
 	public:
 		RenderPipeline3D();
 		virtual ~RenderPipeline3D();
 
-		void Setup(RenderGraph& graph, const Viewport& viewport, FrameCB& frameCB, const CullingResult& cullResult);
+		void Setup(RenderGraphPath3D& renderPath, RenderGraph& renderGraph, const Viewport& viewport, const FrameCB& frameCB, const Visibility& cullResult);
 	};
 }

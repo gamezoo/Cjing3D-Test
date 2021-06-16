@@ -34,7 +34,7 @@ namespace Cjing3D
 			desc.mHeight = resolution[1];
 			desc.mFormat = GPU::FORMAT_R32G8X24_TYPELESS;
 			desc.mBindFlags = GPU::BIND_DEPTH_STENCIL | GPU::BIND_SHADER_RESOURCE;
-			TextureHelper::CreateTexture(mDepthMain, desc, nullptr, "dbpMain");
+			TextureHelper::CreateTexture(mDepthMain, desc, nullptr, "depthMain");
 		}
 
 		RenderGraphPath2D::ResizeBuffers(resolution);
@@ -71,78 +71,50 @@ namespace Cjing3D
 	{
 		PROFILE_FUNCTION();
 
+		// import texture
+		RenderGraphResource resRtMain = renderGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), mRtMain.GetDesc());
+		RenderGraphResource resDepthMain =  renderGraph.ImportTexture("depthMain", mDepthMain.GetHandle(), mDepthMain.GetDesc());
+
 		// Setup render frame
-		renderGraph.AddCallbackRenderPass("SetupRenderFrame",
-			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-			[&](RenderGraphResBuilder& builder) {
-
-				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
-				};
-			});
+		Renderer::SetupRenderData(renderGraph, mFrameCB, mVisibility, mViewport);
 
 		// Depth prepass 
 		renderGraph.AddCallbackRenderPass("DepthPrepass",
 			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-			[&](RenderGraphResBuilder& builder) {
+			[&](RenderGraphResBuilder& builder)->CallbackRenderPass::ExecuteFn {
+
+				// Set viewport
+				auto texture = builder.GetTextureDesc(resDepthMain);
+				if (texture == nullptr) {
+					return nullptr;
+				}
+				GPU::ViewPort viewPort;
+				viewPort.mWidth = texture->mWidth;
+				viewPort.mHeight = texture->mHeight;
+
+				// Update camera constant buffer
+				CameraCB cameraCB = {};
+				Renderer::UpdateCameraCB(mViewport, cameraCB);
+
+				// Set depth output
+				resDepthMain = builder.SetDSV(resDepthMain, RenderGraphAttachment::DepthStencil(
+					GPU::BindingFrameAttachment::LOAD_CLEAR
+				));
+
+				// Wait for this pass
+				builder.WaitForThisPass();
 
 				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
-				};
-			});
-
-		// Camera effects
-		renderGraph.AddCallbackRenderPass("CameraEffect",
-			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-			[&](RenderGraphResBuilder& builder) {
-
-				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
+					cmd.BindViewport(viewPort);
+					Renderer::DrawScene(RENDERPASS_PREPASS, RENDERTYPE_OPAQUE, mVisibility, resources, cmd);
 				};
 			});
 
 		// Shadow maps
 		if (IsShadowEnable())
 		{
-			renderGraph.AddCallbackRenderPass("ShadowMaps",
-				RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-				[&](RenderGraphResBuilder& builder) {
-
-					return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
-					};
-				});
+			Renderer::DrawShadowMaps(renderGraph, mVisibility);
 		}
-
-		// Opaque pass
-		renderGraph.AddCallbackRenderPass("OpaquePass",
-			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-			[&](RenderGraphResBuilder& builder) {
-
-				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
-				};
-			});
-
-		// Transparent pass
-		renderGraph.AddCallbackRenderPass("TransparentPass",
-			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-			[&](RenderGraphResBuilder& builder) {
-
-				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
-				};
-			});
-
-		// Post process
-		renderGraph.AddCallbackRenderPass("Postprocess",
-			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
-			[&](RenderGraphResBuilder& builder) {
-
-				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-
-				};
-			});
 
 		// Render 2D
 		RenderGraphPath2D::RenderPipelines(renderGraph);

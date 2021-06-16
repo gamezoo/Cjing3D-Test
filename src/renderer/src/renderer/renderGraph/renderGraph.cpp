@@ -56,13 +56,6 @@ namespace Cjing3D
 		RenderPass* mRenderPass = nullptr;
 		I32 mIndex = 0;
 		U32 mPhysicalIndex = Unused;
-
-		~RenderPassInst()
-		{
-			if (mRenderPass != nullptr) {
-				mRenderPass->~RenderPass();
-			}
-		}
 	};
 
 	// real available render pass
@@ -362,6 +355,9 @@ namespace Cjing3D
 		void CreateResources();
 		void CreateFrameBindingSets();
 
+		RenderGraphResource ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc);
+		RenderGraphResource ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc);
+
 		void ExecuteGraphicsCommands(PhysicalRenderPass& pass, RenderPassExecuteState& state);
 		void ExecuteComputeCommands(PhysicalRenderPass& pass, RenderPassExecuteState& state);
 
@@ -476,6 +472,73 @@ namespace Cjing3D
 				renderPass->mFrameBindingSet = GPU::CreateFrameBindingSet(&frameBindingSetDesc);
 			}
 		}
+	}
+
+
+	RenderGraphResource RenderGraphImpl::ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc)
+	{
+		if (auto res = GetResource(name))
+		{
+			Logger::Warning("Render graph resource is already imported, %s.", name);
+			return RenderGraphResource(res->mIndex);
+		}
+
+		RenderGraphResource res(mResourceSlots.size());
+		// res slot
+		ResourceSlot& resSlot = mResourceSlots.emplace();
+		resSlot.mInstIndex = mResourceInsts.size();
+		resSlot.mNodeIndex = mResourceNodes.size();
+
+		// res inst
+		ResourceInst* resInst = Alloc<ResourceInst>();
+		resInst->mName = name;
+		resInst->mIndex = mResourceInsts.size();
+		resInst->mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
+		resInst->mTexDesc = desc;
+		resInst->mImportedHandle = handle;
+		mResourceInsts.push(resInst);
+		mResourceNameMap.insert(name, resInst->mIndex);
+
+		// res node
+		ResourceNode* resNode = Alloc<ResourceNode>();
+		resNode->mIndex = mResourceNodes.size();
+		resNode->mRes = res;
+		mResourceNodes.push(resNode);
+
+		return res;
+	}
+
+	RenderGraphResource RenderGraphImpl::ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc)
+	{
+		if (auto res = GetResource(name))
+		{
+			Logger::Warning("Render graph resource is already imported, %s.", name);
+			return RenderGraphResource(res->mIndex);
+		}
+
+		RenderGraphResource res(mResourceSlots.size());
+		// res slot
+		ResourceSlot& resSlot = mResourceSlots.emplace();
+		resSlot.mInstIndex = mResourceInsts.size();
+		resSlot.mNodeIndex = mResourceNodes.size();
+
+		// res inst
+		ResourceInst* resInst = Alloc<ResourceInst>();
+		resInst->mName = name;
+		resInst->mIndex = mResourceInsts.size();
+		resInst->mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
+		resInst->mBufferDesc = desc;
+		resInst->mImportedHandle = handle;
+		mResourceInsts.push(resInst);
+		mResourceNameMap.insert(name, resInst->mIndex);
+
+		// res node
+		ResourceNode* resNode = Alloc<ResourceNode>();
+		resNode->mIndex = mResourceNodes.size();
+		resNode->mRes = res;
+		mResourceNodes.push(resNode);
+
+		return res;
 	}
 
 	void RenderGraphImpl::TraverseRenderPassDependency(const RenderPassInst& renderPass, U32 stackCount)
@@ -1069,6 +1132,12 @@ namespace Cjing3D
 		}
 
 		// renderPasses
+		for (auto renderPass : mRenderPasses)
+		{
+			if (renderPass.mRenderPass != nullptr) {
+				renderPass.mRenderPass->~RenderPass();
+			}
+		}
 		mRenderPasses.clear();
 		mRenderPassIndexMap.clear();
 
@@ -1497,6 +1566,10 @@ namespace Cjing3D
 		resNode->mRes = res;
 		mImpl.mResourceNodes.push(resNode);
 
+		// add edge
+		resNode->mWrittenPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddOutput(resNode);
+
 		return res;
 	}
 
@@ -1528,6 +1601,10 @@ namespace Cjing3D
 		resNode->mIndex = mImpl.mResourceNodes.size();
 		resNode->mRes = res;
 		mImpl.mResourceNodes.push(resNode);
+
+		// add edge
+		resNode->mWrittenPasses.push(mRenderPass->GetIndex());
+		mRenderPass->AddOutput(resNode);
 
 		return res;
 	}
@@ -1614,7 +1691,6 @@ namespace Cjing3D
 		resInst->mQueueFlags |= mRenderPass->GetQueueFlags();
 		resInst->mBufferDesc.mBindFlags |= GPU::BIND_UNORDERED_ACCESS;
 
-
 		// 如果当前资源节点已经存在读写Pass，则CreateNewVersionRes(更新Version，创建ResNode)
 		if (resNode->mWrittenPasses.size() > 0 || resNode->mReadPasses.size() > 0)
 		{
@@ -1694,9 +1770,19 @@ namespace Cjing3D
 		return res;
 	}
 
-	void RenderGraphResBuilder::WaitForPass(const char* name)
+	RenderGraphResource RenderGraphResBuilder::ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc)
 	{
-		// TODO
+		return mImpl.ImportTexture(name, handle, desc);
+	}
+
+	RenderGraphResource RenderGraphResBuilder::ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc)
+	{
+		return mImpl.ImportBuffer(name, handle, desc);
+	}
+
+	void RenderGraphResBuilder::WaitForThisPass()
+	{
+		// TODO:
 		// 一方面需要参与到RenderPasses的排序中，同时在Device端也需要等待
 	}
 
@@ -1909,68 +1995,12 @@ namespace Cjing3D
 
 	RenderGraphResource RenderGraph::ImportTexture(const char* name, GPU::ResHandle handle, const GPU::TextureDesc& desc)
 	{
-		if (auto res = mImpl->GetResource(name))
-		{
-			Logger::Warning("Render graph resource is already imported, %s.", name);
-			return RenderGraphResource(res->mIndex);
-		}
-
-		RenderGraphResource res(mImpl->mResourceSlots.size());
-		// res slot
-		ResourceSlot& resSlot = mImpl->mResourceSlots.emplace();
-		resSlot.mInstIndex = mImpl->mResourceInsts.size();
-		resSlot.mNodeIndex = mImpl->mResourceNodes.size();
-
-		// res inst
-		ResourceInst* resInst = mImpl->Alloc<ResourceInst>();
-		resInst->mName = name;
-		resInst->mIndex = mImpl->mResourceInsts.size();
-		resInst->mType = GPU::ResourceType::RESOURCETYPE_TEXTURE;
-		resInst->mTexDesc = desc;
-		resInst->mImportedHandle = handle;
-		mImpl->mResourceInsts.push(resInst);
-		mImpl->mResourceNameMap.insert(name, resInst->mIndex);
-
-		// res node
-		ResourceNode* resNode = mImpl->Alloc<ResourceNode>();
-		resNode->mIndex = mImpl->mResourceNodes.size();
-		resNode->mRes = res;
-		mImpl->mResourceNodes.push(resNode);
-
-		return res;
+		return mImpl->ImportTexture(name, handle, desc);
 	}
 
 	RenderGraphResource RenderGraph::ImportBuffer(const char* name, GPU::ResHandle handle, const GPU::BufferDesc& desc)
 	{
-		if (auto res = mImpl->GetResource(name))
-		{
-			Logger::Warning("Render graph resource is already imported, %s.", name);
-			return RenderGraphResource(res->mIndex);
-		}
-
-		RenderGraphResource res(mImpl->mResourceSlots.size());
-		// res slot
-		ResourceSlot& resSlot = mImpl->mResourceSlots.emplace();
-		resSlot.mInstIndex = mImpl->mResourceInsts.size();
-		resSlot.mNodeIndex = mImpl->mResourceNodes.size();
-
-		// res inst
-		ResourceInst* resInst = mImpl->Alloc<ResourceInst>();
-		resInst->mName = name;
-		resInst->mIndex = mImpl->mResourceInsts.size();
-		resInst->mType = GPU::ResourceType::RESOURCETYPE_BUFFER;
-		resInst->mBufferDesc = desc;
-		resInst->mImportedHandle = handle;
-		mImpl->mResourceInsts.push(resInst);
-		mImpl->mResourceNameMap.insert(name, resInst->mIndex);
-
-		// res node
-		ResourceNode* resNode = mImpl->Alloc<ResourceNode>();
-		resNode->mIndex = mImpl->mResourceNodes.size();
-		resNode->mRes = res;
-		mImpl->mResourceNodes.push(resNode);
-
-		return res;
+		return mImpl->ImportBuffer(name, handle, desc);
 	}
 
 	void* RenderGraph::Alloc(size_t size)

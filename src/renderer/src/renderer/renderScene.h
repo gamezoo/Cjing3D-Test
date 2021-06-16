@@ -123,7 +123,7 @@ namespace Cjing3D
 		void Clear()override;
 		Universe& GetUniverse()override;
 
-		void GetCullingResult(CullingResult& cullingResult, Frustum& frustum, I32 cullingFlag);
+		void GetCullingResult(Visibility& cullingResult, Frustum& frustum, I32 cullingFlag);
 
 		static void RegisterReflect();
 

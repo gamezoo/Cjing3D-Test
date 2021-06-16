@@ -33,7 +33,7 @@ namespace Cjing3D
 		Texture mDepthMain;
 
 		Viewport mViewport;
-		CullingResult mVisibility;
+		Visibility mVisibility;
 		FrameCB mFrameCB;
 	};
 }
