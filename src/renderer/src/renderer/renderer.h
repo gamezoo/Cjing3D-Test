@@ -29,7 +29,7 @@ namespace Cjing3D
 		void EndFrame();
 		void AddStaticSampler(const GPU::ResHandle& handle, I32 slot);
 		void UpdateViewCulling(Visibility& cullingResult, Viewport& viewport, I32 cullingFlag);
-		void UpdateCameraCB(const Viewport& viewport, CameraCB& cameraCB);
+		void UpdateCameraCB(const Viewport& viewport, RenderGraphResources& resources, GPU::CommandList& cmd);
 
 		// render graph path
 		void SetupRenderData(RenderGraph& renderGraph, const FrameCB& frameCB, const Visibility& visibility, Viewport& viewport);

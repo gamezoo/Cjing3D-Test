@@ -73,7 +73,7 @@ namespace Cjing3D
 
 		// import texture
 		RenderGraphResource resRtMain = renderGraph.ImportTexture("rtMain3D", mRtMain.GetHandle(), mRtMain.GetDesc());
-		RenderGraphResource resDepthMain =  renderGraph.ImportTexture("depthMain", mDepthMain.GetHandle(), mDepthMain.GetDesc());
+		RenderGraphResource resDepthMain = renderGraph.ImportTexture("depthMain", mDepthMain.GetHandle(), mDepthMain.GetDesc());
 
 		// Setup render frame
 		Renderer::SetupRenderData(renderGraph, mFrameCB, mVisibility, mViewport);
@@ -88,13 +88,6 @@ namespace Cjing3D
 				if (texture == nullptr) {
 					return nullptr;
 				}
-				GPU::ViewPort viewPort;
-				viewPort.mWidth = texture->mWidth;
-				viewPort.mHeight = texture->mHeight;
-
-				// Update camera constant buffer
-				CameraCB cameraCB = {};
-				Renderer::UpdateCameraCB(mViewport, cameraCB);
 
 				// Set depth output
 				resDepthMain = builder.SetDSV(resDepthMain, RenderGraphAttachment::DepthStencil(
@@ -105,7 +98,15 @@ namespace Cjing3D
 				builder.WaitForThisPass();
 
 				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
-					cmd.BindViewport(viewPort);
+					// Update camera constant buffer
+					Renderer::UpdateCameraCB(mViewport, resources, cmd);
+
+					// Bind viewport
+					GPU::ViewPort gpuViewPort;
+					gpuViewPort.mWidth = (F32)texture->mWidth;
+					gpuViewPort.mHeight = (F32)texture->mHeight;
+					cmd.BindViewport(gpuViewPort);
+
 					Renderer::DrawScene(RENDERPASS_PREPASS, RENDERTYPE_OPAQUE, mVisibility, resources, cmd);
 				};
 			});
@@ -115,6 +116,26 @@ namespace Cjing3D
 		{
 			Renderer::DrawShadowMaps(renderGraph, mVisibility);
 		}
+
+		// Opaque pass
+		renderGraph.AddCallbackRenderPass("OpaquePass",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
+
+		// Post process
+		renderGraph.AddCallbackRenderPass("Postprocess",
+			RenderGraphQueueFlag::RENDER_GRAPH_QUEUE_GRAPHICS_BIT,
+			[&](RenderGraphResBuilder& builder) {
+
+				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+
+				};
+			});
 
 		// Render 2D
 		RenderGraphPath2D::RenderPipelines(renderGraph);

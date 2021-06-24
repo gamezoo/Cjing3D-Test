@@ -552,8 +552,9 @@ namespace Renderer
 		Profiler::EndCPUBlock();
 	}
 
-	void UpdateCameraCB(const Viewport& viewport, CameraCB& cameraCB)
+	void UpdateCameraCB(const Viewport& viewport, RenderGraphResources& resources, GPU::CommandList& cmd)
 	{
+		CameraCB cameraCB = {};
 		cameraCB.gCameraVP = XMStore<F32x4x4>(viewport.GetViewProjectionMatrix());
 		cameraCB.gCameraView = XMStore<F32x4x4>(viewport.GetViewMatrix());
 		cameraCB.gCameraProj = XMStore<F32x4x4>(viewport.GetProjectionMatrix());
@@ -566,6 +567,8 @@ namespace Renderer
 		cameraCB.gCameraFarZ = viewport.mFar;
 		cameraCB.gCameraInvNearZ = (1.0f / std::max(0.00001f, cameraCB.gCameraNearZ));
 		cameraCB.gCameraInvFarZ = (1.0f / std::max(0.00001f, cameraCB.gCameraFarZ));
+
+		cmd.UpdateBuffer(resources.GetBuffer(mImpl->mConstantBuffers[CBTYPE_CAMERA]), &cameraCB, 0, sizeof(CameraCB));
 	}
 
 	void SetupRenderData(RenderGraph& renderGraph, const FrameCB& frameCB, const Visibility& visibility, Viewport& viewport)
@@ -584,17 +587,15 @@ namespace Renderer
 				desc.mBindFlags = GPU::BIND_CONSTANT_BUFFER;
 				mImpl->mConstantBuffers[CBTYPE_CAMERA] = builder.CreateBuffer("CameraCB", &desc);
 
-				// update camera buffer
-				CameraCB cameraCB = {};
-				Renderer::UpdateCameraCB(viewport, cameraCB);
-
 				// Wait for this pass
 				builder.WaitForThisPass();
 
 				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
+					// update camera buffer
+					Renderer::UpdateCameraCB(viewport, resources, cmd);
+
 					// update constant buffer
 					cmd.UpdateBuffer(resources.GetBuffer(mImpl->mConstantBuffers[CBTYPE_FRAME]), &frameCB, 0, sizeof(FrameCB));
-					cmd.UpdateBuffer(resources.GetBuffer(mImpl->mConstantBuffers[CBTYPE_CAMERA]), &cameraCB, 0, sizeof(CameraCB));
 				};
 			});
 	}
@@ -613,8 +614,6 @@ namespace Renderer
 
 					mImpl->mShadowTex2D = builder.CreateTexture("ShadowMap2D", &desc);
 				}
-
-
 
 				return [=](RenderGraphResources& resources, GPU::CommandList& cmd) {
 
