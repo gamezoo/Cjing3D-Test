@@ -4,12 +4,60 @@
 group "plugins"
 
 -----------------------------------------------------------------
+-- IMGuiRhi
+-----------------------------------------------------------------
+-- Imgui rhi
+create_plugin(
+    "imguiRhi",
+    { PROJECT_RENDERER_NAME }, nil,
+    function(SOURCE_DIR)
+        -- Files
+        files 
+        { 
+            "../../3rdparty/imgui/**.h",
+            "../../3rdparty/imgui/**.cpp"
+        }
+        
+        vpaths { 
+            [""] =  {
+                SOURCE_DIR .. "/**.c",
+                SOURCE_DIR .. "/**.cpp",
+                SOURCE_DIR .. "/**.hpp",
+                SOURCE_DIR .. "/**.h",
+                SOURCE_DIR .. "/**.inl",
+            },
+            ["imgui"] =  {
+                "../../3rdparty/imgui/**.h", 
+                "../../3rdparty/imgui/**.cpp"
+            }
+        }
+
+        -- includes
+        includedirs {
+            -- 3rdParty
+            "../../3rdparty", 
+        }
+        
+        -- Debug config
+        filter {"configurations:Debug"}
+            targetdir ("lib/" .. platform_dir .. "/Debug")
+            defines { "DEBUG" }
+
+        -- Release config
+        filter {"configurations:Release"}
+            targetdir ("lib/" .. platform_dir .. "/Release")
+            defines { "NDEBUG" }
+        filter { }
+    end 
+)
+
+-----------------------------------------------------------------
 -- Modules
 -----------------------------------------------------------------
 -- luaScripts
 create_plugin(
     "luaScripts",
-    { PROJECT_CORE_NAME, PROJECT_LUA_HELPER_NAME},
+    { PROJECT_CORE_NAME, PROJECT_LUA_HELPER_NAME}, nil,
     function()
         -- libdirs
         libdirs {  "../../3rdparty/lua/lib/" .. platform_dir,  }
@@ -31,7 +79,7 @@ create_plugin(
 -- plugin shader converter
 create_plugin(
     "resConverter",
-    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME, PROJECT_IMGUI },
+    { PROJECT_RESOURCE_NAME, PROJECT_GPU_NAME, PROJECT_RENDERER_NAME }, {"imguiRhi"},
     function()
         -- includes
         includedirs {

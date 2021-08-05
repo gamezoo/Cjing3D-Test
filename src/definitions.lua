@@ -6,7 +6,6 @@ PROJECT_RENDERER_NAME   = "renderer"
 PROJECT_CLIENT_NAME     = "client"
 PROJECT_RESOURCE_NAME   = "resource"
 PROJECT_GPU_NAME        = "gpu"
-PROJECT_IMGUI           = "imguiRhi"
 PROJECT_NETWORK         = "network"
 
 -- default modules
@@ -51,11 +50,6 @@ register_engine_module(
     }
 )
 -- extra modules
-register_engine_module(
-    PROJECT_IMGUI,
-    {PROJECT_RENDERER_NAME},
-    false
-)
 register_engine_module(
     PROJECT_NETWORK,
     {PROJECT_CORE_NAME},

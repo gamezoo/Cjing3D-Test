@@ -4,6 +4,7 @@
 #include "core\platform\platform.h"
 #include "imgui\imgui.h"
 #include "imgui\imgui_internal.h"
+#include "core\plugin\modulePulgin.h"
 
 namespace Cjing3D
 {

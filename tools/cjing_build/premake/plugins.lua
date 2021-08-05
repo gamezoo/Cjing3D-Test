@@ -9,14 +9,14 @@ local function setup_platform()
     end 
 end 
 
-local function set_plugin_env(plugin_dependencies, config)
-    if not plugin_dependencies then 
+local function set_module_env(module_dependencies, config)
+    if not module_dependencies then 
         return
     end 
     
     local dependency_map = {}
     
-    for _, dependency in ipairs(plugin_dependencies) do 
+    for _, dependency in ipairs(module_dependencies) do 
         get_all_dependencies(dependency, dependency_map)
     end 
 
@@ -25,6 +25,24 @@ local function set_plugin_env(plugin_dependencies, config)
         links {dependency}
         includedirs {"../" .. dependency .. "/src"}
     end 
+end 
+
+local function set_plugin_env(plugin_dependencies, config)
+    if not plugin_dependencies then 
+        return
+    end 
+    
+    -- TODO:
+    -- need to get dependencies from plugin
+
+    -- local dependency_map = {}
+    -- for _, dependency in ipairs(module_dependencies) do 
+    --     get_all_dependencies(dependency, dependency_map)
+    -- end 
+
+    for _, dependency in ipairs(plugin_dependencies) do 
+        links {dependency}
+    end
 end 
 
 function setup_plugins_definines(plugins)
@@ -50,7 +68,7 @@ function link_plugin(plugin_name)
     end 
 end 
 
-function create_plugin(plugin_name, plugin_dependencies, ext_func)
+function create_plugin(plugin_name, module_dependencies, plugin_dependencies, ext_func)
     print("[Plugin]", plugin_name)
     table.insert(all_plugins, plugin_name)
 
@@ -80,7 +98,7 @@ function create_plugin(plugin_name, plugin_dependencies, ext_func)
     includedirs {
         -- local
         SOURCE_DIR,
-        
+        "src",
         -- 3rdParty
         "../../3rdparty", 
     }
@@ -89,17 +107,20 @@ function create_plugin(plugin_name, plugin_dependencies, ext_func)
     filter {"configurations:Debug"}
         targetdir ("lib/" .. platform_dir .. "/Debug")
         defines { "DEBUG" }
+        libdirs {"lib/" .. platform_dir .. "/Debug"}
+        set_module_env(module_dependencies, "Debug")
         set_plugin_env(plugin_dependencies, "Debug")
 
     -- Release config
     filter {"configurations:Release"}
         targetdir ("lib/" .. platform_dir .. "/Release")
         defines { "NDEBUG" }
+        set_module_env(module_dependencies, "Release")
         set_plugin_env(plugin_dependencies, "Release")
     filter { }
 
     -- do ext function
     if ext_func ~= nil then 
-        ext_func()
+        ext_func(SOURCE_DIR)
     end 
 end

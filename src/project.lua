@@ -17,7 +17,6 @@ dofile "core/project.lua"
 dofile "resource/project.lua"
 dofile "gpu/project.lua"
 dofile "renderer/project.lua"
-dofile "imguiRhi/project.lua"
 dofile "network/project.lua"
 -- client
 dofile "client/project.lua"

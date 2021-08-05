@@ -560,4 +560,31 @@ namespace ImGuiRHI
 		ImGui::Render();
 	}
 }
+
+class ImguiRhiModuler : public ModulerPlugin
+{
+public:
+	explicit ImguiRhiModuler(Engine& engine) :
+		mEngine(engine)
+	{}
+	virtual ~ImguiRhiModuler() {}
+
+	void Initialize()override {}
+	void Uninitialize()override {}
+	void Update(F32 dt)override {}
+	void CreateScene(Universe& universe)override {}
+
+	Engine& GetEngine() {
+		return mEngine;
+	}
+
+private:
+	Engine& mEngine;
+};
+
+LUMIX_PLUGIN_ENTRY(imguiRhi)
+{
+	return CJING_NEW(ImguiRhiModuler)(engine);
+}
+
 }
